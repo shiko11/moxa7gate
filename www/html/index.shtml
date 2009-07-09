@@ -1,0 +1,7 @@
+<!--#set var="TITLE" value="MOXA - Øëþç MODBUS" -->
+<!--#include virtual="header.htm" -->
+
+<!--#include virtual="/cgi-bin/control" -->
+<p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p>
+
+<!--#include virtual="footer.htm" -->

@@ -1,8 +1,8 @@
-/*        modbus_rtu.h
-
-
- */
-
+/*
+MOXA7GATE MODBUS GATEWAY SOFTWARE
+SEM-ENGINEERING
+                    BRYANSK 2009
+*/
 
 #ifndef MODBUS_RTU_H
 #define MODBUS_RTU_H
@@ -45,11 +45,11 @@
 
 
 /* Коды функций */
-#define MBF_READ_DECRETE_INPUTS                             0x02
-#define MBF_READ_COILS                                           0x01
-#define MBF_WRITE_SINGLE_COIL                               0x05
-#define MBF_WRITE_MULTIPLE_COILS                            0x0F
-#define MBF_READ_INPUT_REGISTERS                            0x04
+#define MBF_READ_DECRETE_INPUTS                        0x02
+#define MBF_READ_COILS                                 0x01
+#define MBF_WRITE_SINGLE_COIL                          0x05
+#define MBF_WRITE_MULTIPLE_COILS                       0x0F
+#define MBF_READ_INPUT_REGISTERS                       0x04
 #define MBF_READ_HOLDING_REGISTERS                     0x03
 #define MBF_WRITE_SINGLE_REGISTER                      0x06
 #define MBF_WRITE_MULTIPLE_REGISTERS                   0x10

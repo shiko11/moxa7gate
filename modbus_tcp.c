@@ -1,8 +1,8 @@
 /*
-
-
+MOXA7GATE MODBUS GATEWAY SOFTWARE
+SEM-ENGINEERING
+                    BRYANSK 2009
 */
-
 
 #include "modbus_tcp.h"
 #include "global.h"

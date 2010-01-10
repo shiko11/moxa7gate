@@ -1,3 +1,9 @@
+/*
+MOXA7GATE MODBUS GATEWAY SOFTWARE
+SEM-ENGINEERING
+                    BRYANSK 2009
+*/
+
 #include "global.h"
 #include "mx_keypad_lcm.h"
 ///---------------------------------------------------------------
@@ -47,7 +53,7 @@ void *mx_keypad_lcm(void *arg)
     }
 
 		refresh_shm(&iDATA);
-	  usleep(400000);
+	  usleep(LCM_SCREEN_UPDATE_RATE);
 
 	  if(	screen.current_screen==LCM_SCREEN_MAIN				||
 	  		screen.current_screen==LCM_SCREEN_MAIN2				||
@@ -539,10 +545,10 @@ void show_system_info()
 	struct tm *tmd;
 	time_t moment;
 
-	time_t start_time=iDATA[0].start_time;
-	int i;
-  for(i=1; i<MAX_MOXA_PORTS; i++)
-  	if(start_time>iDATA[i].start_time) start_time=iDATA[i].start_time;
+//	time_t start_time=iDATA[0].start_time;
+//	int i;
+//  for(i=1; i<MAX_MOXA_PORTS; i++)
+//  	if(start_time>iDATA[i].start_time) start_time=iDATA[i].start_time;
 
 	tmd=gmtime(&start_time);
 
@@ -894,7 +900,7 @@ int ctrl_reset_port_counters(int port)
 //  iDATA[port].stat.clp; // current latensy point
   int i;
   for(i=0; i<MB_FUNCTIONS_IMPLEMENTED*2+1; i++)
-  	iDATA[port].stat.input_messages[i]=\
+  	//iDATA[port].stat.input_messages[i]=\
   	iDATA[port].stat.output_messages[i]=0;
 
   return 0;	
@@ -921,6 +927,8 @@ int ctrl_reboot_system()
   mxbuzzer_close(mxbzr_handle);
 
 	close_shm();
+	semctl(semaphore_id, MAX_MOXA_PORTS, IPC_RMID, NULL);
+
   	
 	sysmsg(EVENT_SOURCE_SYSTEM, "Program stopped", 1);
 

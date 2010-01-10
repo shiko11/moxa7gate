@@ -1,6 +1,9 @@
 /*
-
+MOXA7GATE MODBUS GATEWAY SOFTWARE
+SEM-ENGINEERING
+                    BRYANSK 2009
 */
+
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
@@ -8,9 +11,27 @@
 #include <sys/time.h>
 #include <sys/socket.h>
 
+#include <errno.h>
+#include <fcntl.h>
+
+#include <netinet/in.h>
+#include <signal.h>
+
+//#include <sys/ipc.h>
+#include <sys/sem.h>
+//#include <sys/types.h>
+union semun {
+	int val;
+	struct semid_ds *buf;
+	unsigned short int *array;
+	struct seminfo *__buf;
+  };
+int semaphore_id;
+
 #include "modbus_rtu.h"
 #include "mx_keypad_lcm.h"
 #include "mxlib/mxwdg.h"
+#include "monitoring.h"
 
 //УФБФХУЩ ФПЮЕЛ
 #define   PSTAT_NO_INVOLVED        0x00 //ФПЮЛБ ОЕ ЪБДЕКУФЧПЧБОБ Ч ЛПОЖЙЗХТБГЙПООПН УЛТЙРФЕ
@@ -33,52 +54,6 @@
 #define MB_FUNCTION_0x0f	6
 #define MB_FUNCTION_0x10	7
 
-#define MAX_LATENCY_HISTORY_POINTS	8
-
-typedef struct { // net initsializatsii polej structury
-	unsigned int accepted;
-
-	unsigned int errors_input_communication;
-	unsigned int errors_tcp_adu;
-	unsigned int errors_tcp_pdu;						// est' detalisatsiya po modbus-funktsiyam v zhurnale
-
-	unsigned int errors_serial_sending;				// MB_SERIAL_WRITE_ERR
-	unsigned int errors_serial_accepting;
-
-	unsigned int timeouts;
-
-	unsigned int crc_errors;
-	unsigned int errors_serial_adu;
-	unsigned int errors_serial_pdu;						// est' detalisatsiya po modbus-funktsiyam v zhurnale
-
-	unsigned int errors_tcp_sending;
-
-	unsigned int errors;
-	unsigned int sended;
-	
-	unsigned int request_time_min;
-	unsigned int request_time_max;
-	unsigned int request_time_average;				// algoritm usredneniya po n poslednih znachenij
-	
-	unsigned int scan_rate;				// algoritm usredneniya po n poslednih znachenij
-	
-	unsigned int latency_history[MAX_LATENCY_HISTORY_POINTS];
-	unsigned int clp; // current latensy point
-	
-	unsigned int input_messages [MB_FUNCTIONS_IMPLEMENTED*2+1];
-	unsigned int output_messages[MB_FUNCTIONS_IMPLEMENTED*2+1];
-	} GW_StaticData;
-
-#define EVENT_LOG_LENGTH			64
-#define EVENT_MESSAGE_LENGTH	32
-#define EVENT_SOURCE_SYSTEM		16
-typedef struct {
-	time_t	time;
-	unsigned int source;
-	unsigned int code;
-	char desc[EVENT_MESSAGE_LENGTH]; // proverit' dlinu soobscheniya functsii perror()
-	} GW_EventLog;
-
 #define MAX_TCP_CLIENTS_PER_PORT	8
 #define MB_CONNECTION_CLOSED			1
 #define MB_CONNECTION_ESTABLISHED	2
@@ -86,18 +61,21 @@ typedef struct {
 #define MB_SLAVE_NOT_DEFINED			0xff
 #define MB_ADDRESS_NO_SHIFT				0
 #define MB_SCAN_RATE_INFINITE			100000
-typedef struct {
+#define MAX_CLIENT_ACTIVITY_TIMEOUT	30
+
+typedef struct { // параметры клиентского устройства
 	u8        p_num;						// номер последовательного порта
 
 	u8        c_num;						// порядковый номер, 0..MAX_TCP_CLIENTS_PER_PORT-1
 	time_t	connection_time;		// время подключения
+	time_t	last_activity_time;		// время последнего запроса
 
 	u8        mb_slave;					// адрес modbus-устройства для перенаправления запросов в режиме BRIDGE
 	unsigned int ip;						
 	unsigned int port;
 
 	int connection_status;	// состояние TCP-соединения
-	int csd;								// TCP-порт принятого или созданного соединения
+	int csd;								// TCP-сокет принятого или созданного соединения
 
 	int rc;									// результат функции создания потока (только режим GATEWAY)
 	pthread_t	tid_srvr; 		// идентификатор потока в системе (только режим GATEWAY)
@@ -117,6 +95,7 @@ typedef struct {
 #define SERIAL_P6	5
 #define SERIAL_P7	6
 #define SERIAL_P8	7
+#define SERIAL_STUB 0xff
 typedef struct { // параметры последовательного порта
 	int				fd;						// идентификатор
 	u8        p_num;				// номер порта MOXA
@@ -131,11 +110,20 @@ typedef struct { // параметры последовательного порта
 
 #define   MAX_MOXA_PORTS		8
 #define MODBUS_GATEWAY_MODE	1
-#define MODBUS_MASTER_MODE	2
+#define MODBUS_PROXY_MODE	2
 #define MODBUS_BRIDGE_MODE	3
 #define MODBUS_PORT_ERROR		4
 #define MODBUS_PORT_OFF			5
+#define   MAX_GATEWAY_QUEUE_LENGTH	16
 //УФТХЛФХТБ ЛПОЖЙЗХТЙТХЕНЩИ ФПЮЕЛ Й РПТФПЧ
+typedef struct {
+	u16				tcp_port;				// номер TCP-порта для приема входящих клиентских соединений
+	int				ssd;						// TCP-порт для приема входящих клиентских соединений
+	int current_client;				// номер свободного соединения
+
+	GW_Client	clients[MAX_MOXA_PORTS*MAX_TCP_CLIENTS_PER_PORT];
+	} input_cfg_502;
+
 typedef struct {
 	GW_SerialLine serial;
 
@@ -147,7 +135,7 @@ typedef struct {
 
 	GW_Client	clients[MAX_TCP_CLIENTS_PER_PORT];
   GW_StaticData stat;
-	time_t start_time;  // vremya zapuska programmy
+	time_t start_time;  // время последней инициализации порта
 
   unsigned int accepted_connections_number;
   unsigned int  current_connections_number;
@@ -155,11 +143,43 @@ typedef struct {
   
   pthread_mutex_t serial_mutex;
 
-	u16	*oDATA;          //НБУУЙЧ ЧЙТФХБМШОЩИ ТЕЗЙУФТПЧ нпиб
+	u8			queue_adu[MAX_GATEWAY_QUEUE_LENGTH][MB_TCP_MAX_ADU_LENGTH];// TCP ADU
+	u16			queue_adu_len[MAX_GATEWAY_QUEUE_LENGTH];
+	u16			queue_clients[MAX_GATEWAY_QUEUE_LENGTH];
+	u16			queue_slaves[MAX_GATEWAY_QUEUE_LENGTH];
+	int			queue_start, queue_len;
 
 	} input_cfg;
 
+#define MAX_VIRTUAL_SLAVES 64
+/// пока определия этих блоков адресов относится к Holding-регистрам modbus и функции 06
+typedef struct {			// блок регистров внутреннего адресного пространства шлюза
+	unsigned start;			// начальный регистр диапазона адресного пространства шлюза
+	unsigned length;		// количество регистров дипазона адресного пространства шлюза
+	unsigned port;			// последовательный порт шлюза для перенаправления запроса
+	unsigned device;		// адрес устройства в сети modbus для перенаправления запроса
+
+  unsigned modbus_table; // одна из 4-х стандартных таблиц протокола MODBUS (см. файл modbus_rtu.h)
+  unsigned offset;  // смещение в адресном пространстве устройства modbus (чтобы читать регистры не с нуля)
+  } RT_Table_Entry;
+
+#define MAX_QUERY_ENTRIES 64
+#define GATE_STAT_AREA 49
+typedef struct {			// modbus-запрос для циклического опроса ведомого устройства в режиме PROXY
+	unsigned start;			// начальный регистр диапазона адресного пространства ведомого устройства
+	unsigned length;		// количество регистров в диапазоне адресов ведомого устройства
+  unsigned offset;  // смещение в адресном пространстве шлюза, с которого запивывать полученные данные
+	unsigned port;			// последовательный порт шлюза для опроса ведомого устройства
+	unsigned device;		// адрес ведомого устройства в сети modbus
+
+  unsigned mbf; 			// одна из стандартных функций протокола MODBUS (см. файл modbus_rtu.h)
+  unsigned delay;  // задержка перед отправкой запроса при работе в режиме PROXY в милисекундах
+  unsigned status_register;  // номер регистра статуса опроса
+  unsigned status_bit;  // номер бита статуса
+  } Query_Table_Entry;
+
 input_cfg		iDATA[MAX_MOXA_PORTS];        //НБУУЙЧ РБТБНЕФТПЧ УЛПОЖЙЗХТЙТПЧБООЩИ ФПЮЕЛ ()
+input_cfg_502 gate502;
 int mxlcm_handle;
 int mxkpd_handle;
 int mxbzr_handle;
@@ -172,7 +192,17 @@ struct timeval tv_mem;
 struct timezone tz;
 unsigned int p_errors[MAX_MOXA_PORTS];
 char eventmsg[2*EVENT_MESSAGE_LENGTH];
+time_t start_time;  // время запуска программы
+RT_Table_Entry vslave[MAX_VIRTUAL_SLAVES];
+Query_Table_Entry query_table[MAX_QUERY_ENTRIES];
+
+#define PROXY_MODE_REGISTERS 1024
+	u16	*oDATA;          //НБУУЙЧ ЧЙТФХБМШОЩИ ТЕЗЙУФТПЧ нпиб
 	
+/// управление клиентскими соединениями
+/// управление запросами modbus (переадресация)
+/// управление запросами modbus (синхронизация и буферизация)
+
 
 //ЖМБЗЙ ТЕЦЙНПЧ
 //u8                       _cl;                                    //ЖМБЗ ЧЛМАЮЕОЙС ТЕЦЙНБ ПФМБДЛЙ ЛПНБОДОПК УФТПЛЙ
@@ -185,6 +215,9 @@ char eventmsg[2*EVENT_MESSAGE_LENGTH];
 //u8                       _rtu_crc_off;                      //ЖМБЗ ПФЛМАЮЕОЙС ЖПТНЙТПЧБОЙС Й РТПЧЕТЛЙ CRC16 Ч Modbus RTU
 u8					_show_data_flow;
 u8					_show_sys_messages;
+u8					_single_gateway_port_502;
+u8					_single_address_space;
+u8					_proxy_mode;
 
 //#define   MIN_CL_PARAM             14        //НЙОЙНБМШОПЕ ЛПМЙЮЕУФЧП ЛПОЖЙЗХТБГЙПООЩИ РБТБНЕФТПЧ ЛПНБОДОПК УФТПЛЙ
 #define   MAX_KEYS                 10        //НБЛУЙНБМШОПЕ ЛПМЙЮЕУФЧП РБТБНЕФТПЧ ЛПНБОДОПК УФТПЛЙ У РТЕЖЙЛУПН "--"
@@ -197,6 +230,9 @@ u8					_show_sys_messages;
 #define   CL_ERR_GATEWAY_MODE      -6
 #define   CL_ERR_IN_MAP						 -7
 #define   CL_ERR_MIN_PARAM				 -8
+#define   CL_ERR_MUTEX_PARAM			 -9
+#define   CL_ERR_VSLAVES_CFG			 -10
+#define   CL_ERR_QT_CFG						 -11
 #define   CL_OK                    0    //ХУЕ ОПТНХМШ
 
 //#define   CL_ERR_MIN_PARAM         -1   //НЕОЕЕ 9 РБТБНЕФТПЧ
@@ -205,26 +241,32 @@ u8					_show_sys_messages;
 int get_command_line (int 	argc,
 											char	*argv[],
 											input_cfg *ptr_iDATA,
+											RT_Table_Entry *vslave,
+											Query_Table_Entry *query_table,
 											u8	*show_data_flow,
-											u8	*show_sys_messages
+											u8	*show_sys_messages,
+											u8	*single_gateway_port_502,
+											u8  *single_address_space,
+											u8  *proxy_mode
 											);
 
-void		*test_idata(void *arg);
-void		*test_odata(void *arg);
-void		*run_work(void *arg);
+//void		*test_idata(void *arg);
+//void		*test_odata(void *arg);
+//void		*run_work(void *arg);
 
 int 		mb_check_request_pdu(unsigned char *pdu, unsigned char len);
 int 		mb_check_response_pdu(unsigned char *pdu, unsigned char len, unsigned char *request);
+int			enqueue_query(int port_id, int client_id, int device_id, u8 *tcp_adu, u16 tcp_adu_len);
 
 
 ///--- shared memory operations
 int init_shm();
 int refresh_shm(void *arg);
 int close_shm();
-void sysmsg(int source, char *string, int show_anyway);
-
-void update_stat(GW_StaticData *dst, GW_StaticData *src);
-void clear_stat(GW_StaticData *dst);
 int check_gate_settings(input_cfg *data);
+
+void sigpipe_handler();
+void sigio_handler();
+
 
 #endif  /* GLOBAL_H */

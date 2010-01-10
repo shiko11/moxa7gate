@@ -1,3 +1,9 @@
+/*
+MOXA7GATE MODBUS GATEWAY SOFTWARE
+SEM-ENGINEERING
+                    BRYANSK 2009
+*/
+
 #include "global.h"
 
 #include <stdio.h>
@@ -45,20 +51,40 @@ int refresh_shm(void *arg)
 	{
   input_cfg *iDATA=(input_cfg *) arg;
   
-  int i, j;
+  int i, j, k;
   for(i=0; i<MAX_MOXA_PORTS; i++) {
 
-		iDATA[i].stat.request_time_average=0;
-    for(j=0; j<MAX_TCP_CLIENTS_PER_PORT; j++)
-  	  if(iDATA[i].clients[j].stat.request_time_average!=0)
-  	    if(iDATA[i].stat.request_time_average<iDATA[i].clients[j].stat.request_time_average)
-  	      iDATA[i].stat.request_time_average=iDATA[i].clients[j].stat.request_time_average;
+//		iDATA[i].stat.request_time_average=0;
+//    for(j=0; j<MAX_TCP_CLIENTS_PER_PORT; j++)
+//  	  if(iDATA[i].clients[j].stat.request_time_average!=0)
+//  	    if(iDATA[i].stat.request_time_average<iDATA[i].clients[j].stat.request_time_average)
+//  	      iDATA[i].stat.request_time_average=iDATA[i].clients[j].stat.request_time_average;
   	      
-//  	if(strcmp(iDATA[i].bridge_status, "ERR")!=0 && strcmp(iDATA[i].bridge_status, "OFF")!=0)
-  	if(iDATA[i].modbus_mode!=MODBUS_PORT_ERROR && iDATA[i].modbus_mode!=MODBUS_PORT_OFF)
-	    sprintf(iDATA[i].bridge_status, "%2.2d%c",
-	    				iDATA[i].current_connections_number,
-	    				iDATA[i].bridge_status[2]);
+  	if(iDATA[i].modbus_mode!=MODBUS_PORT_ERROR && iDATA[i].modbus_mode!=MODBUS_PORT_OFF) {
+	    sprintf(iDATA[i].bridge_status, "***");
+			switch(iDATA[i].modbus_mode) {
+				case MODBUS_GATEWAY_MODE:
+					k=iDATA[i].current_connections_number;
+			    sprintf(iDATA[i].bridge_status, "%2.2dG", k);
+					if(_single_gateway_port_502==1) {
+						k=iDATA[i].queue_len*100/MAX_GATEWAY_QUEUE_LENGTH;
+						if(k<100) sprintf(iDATA[i].bridge_status, "%2.2dA", k);
+							else sprintf(iDATA[i].bridge_status, "ERR");
+						}
+					if(_single_address_space==1) {
+						k=iDATA[i].queue_len*100/MAX_GATEWAY_QUEUE_LENGTH;
+						if(k<100) sprintf(iDATA[i].bridge_status, "%2.2dR", k);
+							else sprintf(iDATA[i].bridge_status, "ERR");
+						}
+					break;
+				case MODBUS_BRIDGE_MODE:
+					k=iDATA[i].current_connections_number;
+			    sprintf(iDATA[i].bridge_status, "%2.2dB", k);
+					break;
+				default:;
+				}
+			}
+
     }
     
 	gettimeofday(&tv, &tz);

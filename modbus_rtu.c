@@ -1,8 +1,11 @@
+/*
+MOXA7GATE MODBUS GATEWAY SOFTWARE
+SEM-ENGINEERING
+                    BRYANSK 2009
+*/
+
 /*        modbus_rtu.c
-
 νορ ςεδαλγιρ ?1
-
-
 */
 
 #include <fcntl.h>  /* File control definitions */

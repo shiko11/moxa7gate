@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 		strcpy(iDATA[i].serial.p_mode, "RS485_2w");
 		strcpy(iDATA[i].serial.speed, "9600");
 		strcpy(iDATA[i].serial.parity, "none");
-		iDATA[i].serial.timeout=2000000;
+		iDATA[i].serial.timeout=1000000;
 		iDATA[i].tcp_port=1000*i+502;
 		
     iDATA[i].current_client=0;
@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
 				exit(1);
 				}
 			printf("OK\n");
-			memset(oDATA,0,sizeof(u16)*PROXY_MODE_REGISTERS);	// zdes' ispol'zuem dinamicheskoe vydelenit pamyati
+			memset(oDATA,0,sizeof(u16)*PROXY_MODE_REGISTERS);
 			}
 
 //-------------------------------------------------------	
@@ -373,11 +373,18 @@ int main(int argc, char *argv[])
 
 				arg=(P<<8)|(iDATA[P].current_client&0xff);
 				//printf("arg:%d\n", arg);
+				if(_proxy_mode==0)
 				iDATA[P].clients[0].rc = pthread_create(
 					&iDATA[P].clients[0].tid_srvr,
 					NULL,
 					srvr_tcp_bridge,
 					(void *) arg);
+					else
+					iDATA[P].clients[0].rc = pthread_create(
+						&iDATA[P].clients[0].tid_srvr,
+						NULL,
+						srvr_tcp_bridge_proxy,
+						(void *) arg);
 				
 				if (iDATA[P].clients[0].rc){
 					sprintf(eventmsg, "pthread_create() ERROR %d", iDATA[P].clients[0].rc);

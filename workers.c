@@ -943,3 +943,180 @@ void *srvr_tcp_proxy(void *arg) //прием - передача данных по Modbus TCP
 	pthread_exit (0);	
 }
 ///-----------------------------------------------------------------------------------------------------------------
+void *srvr_tcp_bridge_proxy(void *arg) //прием - передача данных по Modbus TCP
+  {
+
+	u8			tcp_adu[MB_TCP_MAX_ADU_LENGTH];// TCP ADU
+	u16			tcp_adu_len;
+	u8			serial_adu[MB_SERIAL_MAX_ADU_LEN];/// SERIAL ADU
+	u16			serial_adu_len;
+	u8			exception_adu[MB_SERIAL_MAX_ADU_LEN];/// SERIAL ADU
+	u16			exception_adu_len;
+
+	int		status, j, k;
+
+  int port_id=((unsigned)arg)>>8;
+  int client_id=((unsigned)arg)&0xff;
+
+//  printf("port %d cliet %d\n", port_id, client_id);
+	GW_StaticData tmpstat;
+	
+	input_cfg	*inputDATA;
+	inputDATA = &iDATA[port_id];
+	int fd=inputDATA->serial.fd;
+	
+	struct timeval tv1, tv2;
+	struct timezone tz;
+
+	int i;
+	inputDATA->clients[client_id].stat.request_time_min=10000; // 10 seconds, must be "this->serial.timeout"
+	inputDATA->clients[client_id].stat.request_time_max=0;
+	inputDATA->clients[client_id].stat.request_time_average=0;
+	for(i=0; i<MAX_LATENCY_HISTORY_POINTS; i++) inputDATA->clients[client_id].stat.latency_history[i]=1000; //ms
+	inputDATA->clients[client_id].stat.clp=0;
+
+///-----------------------------------------
+  sysmsg(port_id, "BRIDGE PROXY port mode started", 0);
+
+	while (1) {
+		
+		//if(inputDATA->clients[0].connection_status!=MB_CONNECTION_ESTABLISHED) pthread_exit (0);
+		
+		clear_stat(&tmpstat);
+		
+		exception_adu_len=0;
+
+///-----------------------------------
+	  if(_show_data_flow) printf("PORT%d    IN: ", port_id+1);
+    /// kazhetsya net zaschity ot perepolneniya bufera priema "serial_adu[]"
+	  status = serial_receive_adu(fd, &tmpstat, serial_adu, &serial_adu_len, &tcp_adu[MB_TCP_ADU_HEADER_LEN], inputDATA->serial.timeout, inputDATA->serial.ch_interval_timeout);
+
+		gettimeofday(&tv2, &tz);
+		inputDATA->clients[client_id].stat.scan_rate=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
+		if(inputDATA->clients[client_id].stat.scan_rate>MB_SCAN_RATE_INFINITE)
+		  inputDATA->clients[client_id].stat.scan_rate=MB_SCAN_RATE_INFINITE;
+//	inputDATA->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
+//	printf("cycle begins after %d msec\n", inputDATA->clients[client_id].stat.request_time_average);
+		gettimeofday(&tv1, &tz);
+
+//	  pthread_mutex_unlock(&inputDATA->serial_mutex);
+	  
+		tmpstat.accepted++;
+
+		switch(status) {
+		  case 0:
+		  	break;
+		  case MB_SERIAL_READ_FAILURE:
+		  case MB_SERIAL_COM_TIMEOUT:
+		  case MB_SERIAL_ADU_ERR_MIN:
+		  case MB_SERIAL_ADU_ERR_MAX:
+		  case MB_SERIAL_CRC_ERROR:
+		  case MB_SERIAL_PDU_ERR:
+		  	tmpstat.errors++;
+				sprintf(eventmsg, "serial receive error: %d", status);
+  			sysmsg(port_id|(client_id<<8), eventmsg, 0);
+				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
+				update_stat(&iDATA[port_id].stat, &tmpstat);
+				iDATA[port_id].modbus_mode=MODBUS_PORT_ERROR;
+				if(status==MB_SERIAL_READ_FAILURE) goto EndRun;
+		  	break;
+		  default:;
+		  };
+
+///###-----------------------------			
+// Б ПЕФХЛЕ PROXY БШДЮЕЛ ДЮММШЕ ХГ КНЙЮКЭМНЦН АСТЕПЮ
+		u8			memory_adu[MB_SERIAL_MAX_ADU_LEN];
+		u16			memory_adu_len;
+
+		switch(serial_adu[1]) {
+
+					case MBF_READ_HOLDING_REGISTERS:
+				j=((serial_adu[2]<<8)|serial_adu[3])&0xffff;
+				k=((serial_adu[4]<<8)|serial_adu[5])&0xffff;
+			  if((j+k)>=PROXY_MODE_REGISTERS) {
+					sprintf(eventmsg, "Proxy mode error: query addressing\n");
+	  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), eventmsg, 0);
+					continue;
+					}
+
+			memory_adu[0]=serial_adu[0]; //device ID
+			memory_adu[1]=serial_adu[1]; //ModBus Function Code
+			memory_adu[2]=2*k; 				//bytes total
+			int n;
+//			for(n=0; n<(2*k); n++)
+//        memory_adu[3+n]=oDATA[2*j+n];
+			for(n=0; n<k; n++) {
+        memory_adu[3+2*n]=(oDATA[j+n]>>8)&0xff;
+        memory_adu[3+2*n+1]=oDATA[j+n]&0xff;
+				}
+			memory_adu_len=2*k+3+2;
+      	break;
+
+			default:;
+					sprintf(eventmsg, "Proxy mode error: unsupported mbf\n");
+	  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), eventmsg, 0);
+					continue;
+			}
+///--------------------------------------------------------
+
+		if(_show_data_flow) printf("PORT%d   OUT: ", port_id+1);
+		status = mb_serial_send_adu(fd, &tmpstat, memory_adu, memory_adu_len-2, serial_adu, &serial_adu_len);
+
+		switch(status) {
+		  case 0:
+		  	if(exception_adu_len==0) tmpstat.sended++;
+		  	  else {
+			  		tmpstat.errors_serial_adu++;
+				  	tmpstat.errors++;
+		  	    }
+		  	break;
+		  case MB_SERIAL_WRITE_ERR:
+		  	tmpstat.errors++;
+				sprintf(eventmsg, "serial send error: %d", status);
+  			sysmsg(port_id|(client_id<<8), eventmsg, 0);
+				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
+				update_stat(&iDATA[port_id].stat, &tmpstat);
+				continue;
+		  	break;
+		  default:;
+		  };
+
+	update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
+	update_stat(&iDATA[port_id].stat, &tmpstat);
+
+	gettimeofday(&tv2, &tz);
+
+	inputDATA->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
+	inputDATA->clients[client_id].stat.latency_history[inputDATA->clients[client_id].stat.clp]=inputDATA->clients[client_id].stat.request_time_average;
+	inputDATA->clients[client_id].stat.clp=inputDATA->clients[client_id].stat.clp<MAX_LATENCY_HISTORY_POINTS?inputDATA->clients[client_id].stat.clp+1:0;
+
+	if(inputDATA->clients[client_id].stat.request_time_min>inputDATA->clients[client_id].stat.request_time_average)
+	  inputDATA->clients[client_id].stat.request_time_min=inputDATA->clients[client_id].stat.request_time_average;
+	if(inputDATA->clients[client_id].stat.request_time_max<inputDATA->clients[client_id].stat.request_time_average)
+	  inputDATA->clients[client_id].stat.request_time_max=inputDATA->clients[client_id].stat.request_time_average;
+
+	inputDATA->clients[client_id].stat.request_time_average=0;
+	for(i=0; i<MAX_LATENCY_HISTORY_POINTS; i++)
+	  inputDATA->clients[client_id].stat.request_time_average+=inputDATA->clients[client_id].stat.latency_history[i];
+	inputDATA->clients[client_id].stat.request_time_average/=MAX_LATENCY_HISTORY_POINTS;
+	
+//	printf("%d\n", inputDATA->stat.request_time_average);
+//	printf("%d:%d\n", tv1.tv_sec, tv1.tv_usec);
+//	printf("%d:%d\n", tv2.tv_sec, tv2.tv_usec);
+//	printf("noop\n");
+//  usleep(100000);
+
+//	gettimeofday(&tv2, &tz);
+//	inputDATA->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
+//	printf("cycle ended after %d msec\n", inputDATA->clients[client_id].stat.request_time_average);
+	}
+
+	EndRun: ;
+//	close(tcsd);
+//	inputDATA->current_connections_number--;
+  sysmsg(port_id, "BRIDGE PROXY port mode stopped", 0);
+	inputDATA->clients[client_id].rc=1;
+	
+	pthread_exit (0);	
+}
+///-----------------------------------------------------------------------------------------------------------------

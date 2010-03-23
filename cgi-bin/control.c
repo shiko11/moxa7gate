@@ -15,7 +15,7 @@ extern char **environ;
 
 int shm_segment_id;
 input_cfg *shared_memory;
-time_t *timestamp;
+SHM_Data *shm_data;
 key_t access_key;
 time_t moment;
 
@@ -27,31 +27,32 @@ int main(int argc, char *argv[])
 {
 printf("Content-Type: text/html\r\n\r\n"); 
 
-//printf("<html> <head>\n"); 
-//printf("<title>CGI Environment</title>\n"); 
-//printf("</head>\n");
-//printf("<body>\n");
-//printf("<h1>CGI Environment</h1>\n"); 
-
-//printf("</body></html>\n");
-//return 0;
-
+int diff;
 	access_key=ftok("/tmp/app", 'a');
-	shm_segment_id=shmget(access_key, sizeof(time_t)+sizeof(input_cfg)*MAX_MOXA_PORTS, S_IRUSR | S_IWUSR);
+	shm_segment_id=shmget(access_key, sizeof(SHM_Data)+sizeof(input_cfg)*MAX_MOXA_PORTS, S_IRUSR | S_IWUSR);
 	if(shm_segment_id==-1) {
+		char estr[16];
+		switch(errno) {
+			case ENOENT: strcpy(estr, "ENOENT"); break;
+			case EACCES: strcpy(estr, "EACCES"); break;
+			case EINVAL: strcpy(estr, "EINVAL"); break;
+			case ENOMEM: strcpy(estr, "ENOMEM"); break;
+			default: strcpy(estr, "unknown");
+			}
+
 		printf("\
 <div class=\"err_block\">\
-Modbus-шлюз не запущен на этом компьютере MOXA.\
+Modbus-шлюз не отвечает на этом компьютере MOXA. Код ошибки: %s\
 </div>\
-\n");
+\n", estr);
 		return 0;
 	  }
 
-	timestamp=(time_t *) shmat(shm_segment_id, 0, 0);
-	shared_memory=(input_cfg *)(timestamp+sizeof(time_t));
+	shm_data=(SHM_Data *) shmat(shm_segment_id, 0, 0);
+	shared_memory=(input_cfg *)(shm_data+sizeof(SHM_Data));
 	
 	time(&moment);
-	int diff=difftime(moment, *timestamp);
+	diff=difftime(moment, shm_data->timestamp);
 	if(diff>4) {
 		printf("\
 <div class=\"err_block\">\
@@ -61,10 +62,6 @@ Modbus-шлюз не отвечает %d секунд(ы).\
 		return 0;
 	  }
 
-//	printf("shared memory attached at address %p\n", shared_memory);
-//	shmctl(segment_id, IPC_STAT, &shmbuffer);
-//	segment_size=shmbuffer.shm_segsz;
-//	printf("segment size: %d\n", segment_size);
 ///----------------------------------------------------------------------------------------
 	int t, i;
 	diff=shared_memory[0].start_time==0?0:difftime(moment, shared_memory[0].start_time);
@@ -72,6 +69,14 @@ Modbus-шлюз не отвечает %d секунд(ы).\
   	t=shared_memory[i].start_time==0?0:difftime(moment, shared_memory[i].start_time);
   	if(diff<t) diff=t;
     }
+
+	char sel1[16], sel2[16], sel3[16], sel4[16];
+  sel1[0]=sel2[0]=sel3[0]=sel4[0]=0;
+	if(shm_data->ATM)		strcpy(sel2, " class=\"sel\"");
+	if(shm_data->RTM && !shm_data->PROXY)		strcpy(sel3, " class=\"sel\"");
+	if(shm_data->PROXY)	strcpy(sel4, " class=\"sel\"");
+  if(!(shm_data->ATM || shm_data->RTM || shm_data->PROXY)) strcpy(sel1, " class=\"sel\"");
+
 
 printf("\
 <table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" style=\"float:right;\" id=\"uc7410\">\n\
@@ -83,6 +88,17 @@ printf("\
 <tr><td colspan=\"2\" style=\"text-align:center;\">%3.3dд %2.2d:%2.2d:%2.2d\n\
 </table>\n\
 \n", (diff/86400)%1000, (diff/3600)%24, (diff/60)%60, diff%60);
+
+printf("\
+<table id=\"mode\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\" style=\"float:right;\">\n\
+<tr>\n\
+<td class=\"sel\">РЕЖИМ\n\
+<td%s>GATEWAY SIMPLE\n\
+<td%s>GATEWAY ATM\n\
+<td%s>GATEWAY RTM\n\
+<td%s style=\"border-right:none;\">GATEWAY PROXY\n\
+</table>\n\
+\n", sel1, sel2, sel3, sel4);
 
 ///----------------------------------------------------------------------------------------
 
@@ -129,9 +145,9 @@ return 0;
 void main_table(input_cfg *shared_memory)
 {
 printf("\
-<h1>Статистика опроса по портам</h1>\
-<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\">\n\
-<caption>Modbus - шлюз</caption>\n\
+<h1 align=\"center\">Шлюз MODBUS</h1>\
+<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" align=\"center\" style=\"width:80%\">\n\
+<caption>Статистика опроса по портам</caption>\n\
 <tr>\n\
 <th rowspan=\"2\">Порт\n\
 <th rowspan=\"2\">Состояние\n\
@@ -184,8 +200,6 @@ printf("\
 	  
 	  if(shared_memory[i].modbus_mode==MODBUS_GATEWAY_MODE)
 	  	printf("<td>GATEWAY\n");
-	  	else if(shared_memory[i].modbus_mode==MODBUS_MASTER_MODE)
-	  	  printf("<td>MASTER");
 	  	  else if(shared_memory[i].modbus_mode==MODBUS_BRIDGE_MODE)
 					printf("<td>BRIDGE");
 					else printf("<td>&nbsp;&nbsp;");
@@ -229,10 +243,6 @@ if(((port-1)>=SERIAL_P1)&&((port-1)<=SERIAL_P8)) P=port-1;
   	
 		case MODBUS_GATEWAY_MODE:
   		strcpy(pmode, "GATEWAY");
-			break;
-
-		case MODBUS_MASTER_MODE:
-  		strcpy(pmode, "MASTER");
 			break;
 
 		case MODBUS_BRIDGE_MODE:

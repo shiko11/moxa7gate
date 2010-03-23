@@ -12,7 +12,7 @@ SEM-ENGINEERING
 #include <errno.h>
 
 input_cfg *shared_memory;
-time_t *timestamp;
+SHM_Data *shm_data;
 key_t access_key;
 struct shmid_ds shmbuffer;
 
@@ -33,15 +33,30 @@ int init_shm()
   {
 	access_key=ftok("/tmp/app", 'a');
 
-  shm_segment_id=shmget(access_key, sizeof(time_t)+sizeof(input_cfg)*MAX_MOXA_PORTS,
+  shm_segment_id=shmget(access_key, sizeof(SHM_Data)+sizeof(input_cfg)*MAX_MOXA_PORTS,
   																					IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
 
 	if(shm_segment_id==-1) {
-		printf("error %d. segment exists?\n", errno);
+
+		switch(errno) {
+			case ENOENT: printf("shmget error: ENOENT\n"); break;
+			case EACCES: printf("shmget error: EACCES\n"); break;
+			case EINVAL: printf("shmget error: EINVAL\n"); break;
+			case ENOMEM: printf("shmget error: ENOMEM\n"); break;
+			default: printf("shmget error: unknown\n");
+			}
+
 		return shm_segment_id;
 	  }
-	timestamp=(time_t *) shmat(shm_segment_id, 0, 0);
-	shared_memory=(input_cfg *)(timestamp+sizeof(time_t));
+	printf("shmget OK\n");
+
+  ///--- permission mode-------
+	struct shmid_ds mds;
+	mds.shm_perm.mode=438;
+	shmctl(shm_segment_id, IPC_SET, &mds);
+
+	shm_data=(SHM_Data *) shmat(shm_segment_id, 0, 0);
+	shared_memory=(input_cfg *)(shm_data+sizeof(SHM_Data));
 
   return 0;
   }
@@ -176,7 +191,10 @@ int refresh_shm(void *arg)
 		//unsigned int output_messages[MB_FUNCTIONS_IMPLEMENTED*2+1];
 	  }
 		 
-	time(timestamp);
+	time(&shm_data->timestamp);
+	shm_data->ATM=_single_gateway_port_502;
+	shm_data->RTM=_single_address_space;
+	shm_data->PROXY=_proxy_mode;
   ///--------------------------------------------------
 
 	return 0;
@@ -187,5 +205,6 @@ int close_shm()
 	{
 	shmdt(shared_memory);
 	shmctl(shm_segment_id, IPC_RMID, 0);
+	printf("shmget CLOSED\n");
 	return 0;
 	}

@@ -219,6 +219,11 @@ u8					_single_gateway_port_502;
 u8					_single_address_space;
 u8					_proxy_mode;
 
+typedef struct {
+	time_t timestamp;
+	u8 ATM, RTM, PROXY;
+  } SHM_Data;
+
 //#define   MIN_CL_PARAM             14        //минимальное количество конфигурационных параметров командной строки
 #define   MAX_KEYS                 10        //максимальное количество параметров командной строки с префиксом "--"
 //ошибки интерпретации командной строки

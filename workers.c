@@ -22,7 +22,7 @@ void *srvr_tcp_child(void *arg) //прием - передача данных по Modbus TCP
   int port_id=((unsigned)arg)>>8;
   int client_id=((unsigned)arg)&0xff;
 
-  sysmsg(port_id|(client_id<<8), "GATEWAY mode Connection accepted", 0);
+  sysmsg(port_id|(client_id<<8), 0, "GATEWAY mode Connection accepted", 0);
 
 	int		tcsd = iDATA[port_id].clients[client_id].csd;
 	GW_StaticData tmpstat;
@@ -66,7 +66,7 @@ void *srvr_tcp_child(void *arg) //прием - передача данных по Modbus TCP
 		  case TCP_PDU_ERR:
 		  	//tmpstat.errors++;
 				sprintf(eventmsg, "tcp receive error: %d", status);
-  			sysmsg(port_id|(client_id<<8), eventmsg, 0);
+  			sysmsg(port_id|(client_id<<8), 0, eventmsg, 0);
 				//update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 				//update_stat(&iDATA[port_id].stat, &tmpstat);
 				inputDATA->clients[client_id].connection_status=MB_CONNECTION_CLOSED;
@@ -87,7 +87,7 @@ void *srvr_tcp_child(void *arg) //прием - передача данных по Modbus TCP
 		  case MB_SERIAL_WRITE_ERR:
 		  	tmpstat.errors++;
 				sprintf(eventmsg, "serial send error: %d", status);
-  			sysmsg(port_id|(client_id<<8), eventmsg, 0);
+  			sysmsg(port_id|(client_id<<8), 0, eventmsg, 0);
 				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 				update_stat(&iDATA[port_id].stat, &tmpstat);
 				continue;
@@ -112,7 +112,7 @@ void *srvr_tcp_child(void *arg) //прием - передача данных по Modbus TCP
 		  case MB_SERIAL_PDU_ERR:
 		  	tmpstat.errors++;
 				sprintf(eventmsg, "serial receive error: %d", status);
-  			sysmsg(port_id|(client_id<<8), eventmsg, 0);
+  			sysmsg(port_id|(client_id<<8), 0, eventmsg, 0);
 				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 				update_stat(&iDATA[port_id].stat, &tmpstat);
 				if(status==MB_SERIAL_READ_FAILURE) goto EndRun;
@@ -134,7 +134,7 @@ void *srvr_tcp_child(void *arg) //прием - передача данных по Modbus TCP
 		  case TCP_COM_ERR_SEND:
 		  	tmpstat.errors++;
 				sprintf(eventmsg, "tcp send error: %d", status);
-  			sysmsg(port_id|(client_id<<8), eventmsg, 0);
+  			sysmsg(port_id|(client_id<<8), 0, eventmsg, 0);
 		  	break;
 		  default:;
 		  };
@@ -210,7 +210,7 @@ void *srvr_tcp_child2(void *arg) //прием - передача данных по Modbus TCP
 	
 	int fd=inputDATA->serial.fd;
 
-  sysmsg(port_id, "GATEWAY 502 port mode started", 0);
+  sysmsg(port_id, 0, "GATEWAY 502 port mode started", 0);
 
 	while (1) {
 		
@@ -269,16 +269,19 @@ void *srvr_tcp_child2(void *arg) //прием - передача данных по Modbus TCP
 
 			int device_id, exception_on;
 			exception_on=0;
-			if(_single_address_space==1) {
+			if(inputDATA->modbus_mode==GATEWAY_RTM) {
 				//port_id=		i/0x2000; // 8 com ports
-				device_id=tcp_adu[6];
+				device_id=tcp_adu[TCPADU_ADDRESS];
 				///!!!tcp_adu[6]=(i-port_id*0x2000)/0x200+1; // [1..16] device addresses
-				tcp_adu[6]=vslave[iDATA[port_id].queue_slaves[queue_current]].device;
+				tcp_adu[TCPADU_ADDRESS]=vslave[iDATA[port_id].queue_slaves[queue_current]].device;
 				///!!!i-=(port_id*0x2000+(tcp_adu[6]-1)*0x200);
 
-				i=(((tcp_adu[8]<<8)|tcp_adu[9])&0xffff)-(vslave[iDATA[port_id].queue_slaves[queue_current]].start);
-				tcp_adu[8]=(i>>8)&0xff;
-				tcp_adu[9]=i&0xff;
+				i=((tcp_adu[TCPADU_START_HI]<<8)|tcp_adu[TCPADU_START_LO])-
+					vslave[iDATA[port_id].queue_slaves[queue_current]].start+
+					vslave[iDATA[port_id].queue_slaves[queue_current]].address_shift;
+//				printf("result RTM adress: [%2.2X]\n", i);
+				tcp_adu[TCPADU_START_HI]=(i>>8)&0xff;
+				tcp_adu[TCPADU_START_LO]=i&0xff;
 
 				};
 
@@ -291,7 +294,7 @@ void *srvr_tcp_child2(void *arg) //прием - передача данных по Modbus TCP
 		  case MB_SERIAL_WRITE_ERR:
 		  	tmpstat.errors++;
 				sprintf(eventmsg, "serial send error: %d", status);
-  			sysmsg(port_id, eventmsg, 0);
+  			sysmsg(port_id, 0, eventmsg, 0);
 //				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 				update_stat(&iDATA[port_id].stat, &tmpstat);
 
@@ -323,7 +326,7 @@ void *srvr_tcp_child2(void *arg) //прием - передача данных по Modbus TCP
 		  case MB_SERIAL_READ_FAILURE:
 		  	tmpstat.errors++;
 				sprintf(eventmsg, "serial receive error: %d", status);
-  			sysmsg(port_id, eventmsg, 0);
+  			sysmsg(port_id, 0, eventmsg, 0);
 //				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 				update_stat(&iDATA[port_id].stat, &tmpstat);
 
@@ -346,7 +349,7 @@ void *srvr_tcp_child2(void *arg) //прием - передача данных по Modbus TCP
 			//port_id=tcp_adu[6]/30;
 			//tcp_adu[6]-=port_id*30;
 
-			if(_single_address_space==1)
+			if(inputDATA->modbus_mode==GATEWAY_RTM)
 				serial_adu[0]=device_id;
 				else serial_adu[0]+=port_id*30;
 
@@ -368,7 +371,7 @@ void *srvr_tcp_child2(void *arg) //прием - передача данных по Modbus TCP
 		  case TCP_COM_ERR_SEND:
 		  	tmpstat.errors++;
 				sprintf(eventmsg, "tcp send error: %d", status);
-  			sysmsg(port_id, eventmsg, 0);
+  			sysmsg(port_id, 0, eventmsg, 0);
 		  	break;
 		  default:;
 		  };
@@ -487,7 +490,7 @@ void *srvr_tcp_bridge(void *arg) //прием - передача данных по Modbus TCP
 		  case MB_SERIAL_PDU_ERR:
 		  	tmpstat.errors++;
 				sprintf(eventmsg, "serial receive error: %d", status);
-  			sysmsg(port_id|(client_id<<8), eventmsg, 0);
+  			sysmsg(port_id|(client_id<<8), 0, eventmsg, 0);
 				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 				update_stat(&iDATA[port_id].stat, &tmpstat);
 				iDATA[port_id].modbus_mode=MODBUS_PORT_ERROR;
@@ -551,7 +554,7 @@ void *srvr_tcp_bridge(void *arg) //прием - передача данных по Modbus TCP
 		  case TCP_COM_ERR_SEND:
 		  	tmpstat.errors++;
 				sprintf(eventmsg, "tcp send error: %d", status);
-  			sysmsg(port_id|(client_id<<8), eventmsg, 0);
+  			sysmsg(port_id|(client_id<<8), 0, eventmsg, 0);
 				//iDATA[port_id].modbus_mode=MODBUS_PORT_ERROR;
 				shutdown(inputDATA->clients[client_id].csd, SHUT_RDWR);
 				close(inputDATA->clients[client_id].csd);
@@ -582,7 +585,7 @@ void *srvr_tcp_bridge(void *arg) //прием - передача данных по Modbus TCP
 		  case TCP_PDU_ERR:
 		  	tmpstat.errors++;
 				sprintf(eventmsg, "tcp receive error: %d", status);
-  			sysmsg(port_id|(client_id<<8), eventmsg, 0);
+  			sysmsg(port_id|(client_id<<8), 0, eventmsg, 0);
 				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 				update_stat(&iDATA[port_id].stat, &tmpstat);
 				//iDATA[port_id].modbus_mode=MODBUS_PORT_ERROR;
@@ -619,7 +622,7 @@ void *srvr_tcp_bridge(void *arg) //прием - передача данных по Modbus TCP
 		  case MB_SERIAL_WRITE_ERR:
 		  	tmpstat.errors++;
 				sprintf(eventmsg, "serial send error: %d", status);
-  			sysmsg(port_id|(client_id<<8), eventmsg, 0);
+  			sysmsg(port_id|(client_id<<8), 0, eventmsg, 0);
 				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 				update_stat(&iDATA[port_id].stat, &tmpstat);
 				continue;
@@ -697,7 +700,7 @@ int bridge_reset_tcp(input_cfg *bridge, int client)
 	if(
 	(setsockopt(bridge->clients[client].csd, SOL_SOCKET, SO_SNDTIMEO, &tvs, optlen)!=0)||
 	(setsockopt(bridge->clients[client].csd, SOL_SOCKET, SO_RCVTIMEO, &tvr, optlen)!=0)) 
-	sysmsg((bridge->serial.p_num-1)|(client<<8), "setting socket timeout error", 0);
+	sysmsg((bridge->serial.p_num-1)|(client<<8), 0, "setting socket timeout error", 0);
 //	printf("for client%d send_timeout=%dms, receive_timeout=%dms\n", client, tvs.tv_sec*1000+tvs.tv_usec/1000, tvr.tv_sec*1000+tvr.tv_usec/1000);
 
 	// бШГНБ ТСМЙЖХХ connect()
@@ -709,9 +712,9 @@ int bridge_reset_tcp(input_cfg *bridge, int client)
 													(bridge->clients[client].ip>>8)&0xff,
 													bridge->clients[client].ip&0xff);
 		
-		sysmsg((bridge->serial.p_num-1)|(client<<8), eventmsg, 0);
+		sysmsg((bridge->serial.p_num-1)|(client<<8), 0, eventmsg, 1);
 		return 2;
-		} else sysmsg((bridge->serial.p_num-1)|(client<<8), "connection established", 0);
+		} else sysmsg((bridge->serial.p_num-1)|(client<<8), 0, "connection established", 1);
 
 
 	bridge->clients[client].connection_status=MB_CONNECTION_ESTABLISHED;
@@ -760,13 +763,14 @@ void *srvr_tcp_proxy(void *arg) //прием - передача данных по Modbus TCP
 	int fd=inputDATA->serial.fd;
 	operations[0].sem_flg=IPC_NOWAIT;
 
-  sysmsg(port_id, "GATEWAY PROXY port mode started", 0);
+  sysmsg(port_id, 0, "GATEWAY PROXY port mode started", 1);
 	int queue_has_query;
 	int queue_current;
 
 	while (1) for(i=0; i<=MAX_QUERY_ENTRIES; i++) {
 
 		status=semop(semaphore_id, operations, 1);
+
 		//queue_has_query=(status==-1)&&(errno==EAGAIN)?0:1;
 		queue_has_query=status==-1?0:1;
 		if(queue_has_query==1) i=MAX_QUERY_ENTRIES;
@@ -828,7 +832,7 @@ void *srvr_tcp_proxy(void *arg) //прием - передача данных по Modbus TCP
 	  ///---------------------
 		gettimeofday(&tv1, &tz);
 		tmpstat.accepted++;
-		oDATA[GATE_STAT_AREA+3*port_id+0]++;
+		wData4x[gate502.status_info+3*port_id+0]++;
 
 		if(_show_data_flow) printf("PORT%d   OUT: ", port_id+1);
 		status = mb_serial_send_adu(fd, &tmpstat, &tcp_adu[6], tcp_adu_len-6, serial_adu, &serial_adu_len);
@@ -839,7 +843,7 @@ void *srvr_tcp_proxy(void *arg) //прием - передача данных по Modbus TCP
 		  case MB_SERIAL_WRITE_ERR:
 		  	tmpstat.errors++;
 				sprintf(eventmsg, "serial send error: %d", status);
-  			sysmsg(port_id, eventmsg, 0);
+  			sysmsg(port_id, 0, eventmsg, 0);
 //				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 				update_stat(&iDATA[port_id].stat, &tmpstat);
 
@@ -850,7 +854,7 @@ void *srvr_tcp_proxy(void *arg) //прием - передача данных по Modbus TCP
 		pthread_mutex_unlock(&iDATA[port_id].serial_mutex);
 		}
 
-		oDATA[query_table[i].status_register]&=(~query_table[i].status_bit);
+		wData4x[query_table[i].status_register]&=(~query_table[i].status_bit);
 				continue;
 		  	break;
 		  default:;
@@ -871,7 +875,7 @@ void *srvr_tcp_proxy(void *arg) //прием - передача данных по Modbus TCP
 		  case MB_SERIAL_READ_FAILURE:
 		  	tmpstat.errors++;
 				sprintf(eventmsg, "serial receive error: %d", status);
-  			sysmsg(port_id, eventmsg, 0);
+  			sysmsg(port_id, 0, eventmsg, 0);
 //				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 				update_stat(&iDATA[port_id].stat, &tmpstat);
 
@@ -883,7 +887,7 @@ void *srvr_tcp_proxy(void *arg) //прием - передача данных по Modbus TCP
 	}
 
 				if(status==MB_SERIAL_READ_FAILURE) goto EndRun;
-		oDATA[query_table[i].status_register]&=(~query_table[i].status_bit);
+		wData4x[query_table[i].status_register]&=(~query_table[i].status_bit);
 				continue;
 		  	break;
 		  default:;
@@ -894,8 +898,8 @@ void *srvr_tcp_proxy(void *arg) //прием - передача данных по Modbus TCP
 //		for(j=3; j<serial_adu_len-2; j++)
 //			oDATA[2*query_table[i].offset+j-3]=serial_adu[j];
 		for(j=3; j<serial_adu_len-2; j+=2)
-			oDATA[query_table[i].offset+(j-3)/2]=(serial_adu[j]<<8)|serial_adu[j+1];
-		oDATA[query_table[i].status_register]|=query_table[i].status_bit;
+			wData4x[query_table[i].offset+(j-3)/2]=(serial_adu[j]<<8)|serial_adu[j+1];
+		wData4x[query_table[i].status_register]|=query_table[i].status_bit;
 		} else { //НРОПЮБКЪЕЛ ПЕГСКЭРЮР ГЮОПНЯЮ МЕОНЯПЕДЯРБЕММН ЙКХЕМРС
 
 			j=(((serial_adu[2]<<8)|serial_adu[3])&0xffff)+(query_table[iDATA[port_id].queue_slaves[queue_current]].offset);
@@ -915,7 +919,7 @@ void *srvr_tcp_proxy(void *arg) //прием - передача данных по Modbus TCP
 			  case TCP_COM_ERR_SEND:
 			  	tmpstat.errors++;
 					sprintf(eventmsg, "tcp send error: %d", status);
-	  			sysmsg(port_id, eventmsg, 0);
+	  			sysmsg(port_id, 0, eventmsg, 0);
 			  	break;
 			  default:;
 			  };
@@ -930,14 +934,14 @@ void *srvr_tcp_proxy(void *arg) //прием - передача данных по Modbus TCP
 			}
 
 		  	tmpstat.sended++; ///!!!
-				oDATA[GATE_STAT_AREA+3*port_id+1]++;
+				wData4x[gate502.status_info+3*port_id+1]++;
 
 //	update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 	update_stat(&iDATA[port_id].stat, &tmpstat);
 
 	gettimeofday(&tv2, &tz);
 	inputDATA->stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
-	oDATA[GATE_STAT_AREA+3*port_id+2]=inputDATA->stat.request_time_average;
+	wData4x[gate502.status_info+3*port_id+2]=inputDATA->stat.request_time_average;
 	}
 	EndRun: ;
 	pthread_exit (0);	
@@ -976,7 +980,7 @@ void *srvr_tcp_bridge_proxy(void *arg) //прием - передача данных по Modbus TCP
 	inputDATA->clients[client_id].stat.clp=0;
 
 ///-----------------------------------------
-  sysmsg(port_id, "BRIDGE PROXY port mode started", 0);
+  sysmsg(port_id, 0, "BRIDGE PROXY port mode started", 0);
 
 	while (1) {
 		
@@ -1014,7 +1018,7 @@ void *srvr_tcp_bridge_proxy(void *arg) //прием - передача данных по Modbus TCP
 		  case MB_SERIAL_PDU_ERR:
 		  	tmpstat.errors++;
 				sprintf(eventmsg, "serial receive error: %d", status);
-  			sysmsg(port_id|(client_id<<8), eventmsg, 0);
+  			sysmsg(port_id|(client_id<<8), 0, eventmsg, 0);
 				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 				update_stat(&iDATA[port_id].stat, &tmpstat);
 				iDATA[port_id].modbus_mode=MODBUS_PORT_ERROR;
@@ -1035,7 +1039,7 @@ void *srvr_tcp_bridge_proxy(void *arg) //прием - передача данных по Modbus TCP
 				k=((serial_adu[4]<<8)|serial_adu[5])&0xffff;
 			  if((j+k)>=PROXY_MODE_REGISTERS) {
 					sprintf(eventmsg, "Proxy mode error: query addressing\n");
-	  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), eventmsg, 0);
+	  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), 0, eventmsg, 0);
 					continue;
 					}
 
@@ -1046,15 +1050,15 @@ void *srvr_tcp_bridge_proxy(void *arg) //прием - передача данных по Modbus TCP
 //			for(n=0; n<(2*k); n++)
 //        memory_adu[3+n]=oDATA[2*j+n];
 			for(n=0; n<k; n++) {
-        memory_adu[3+2*n]=(oDATA[j+n]>>8)&0xff;
-        memory_adu[3+2*n+1]=oDATA[j+n]&0xff;
+        memory_adu[3+2*n]=(wData4x[j+n]>>8)&0xff;
+        memory_adu[3+2*n+1]=wData4x[j+n]&0xff;
 				}
 			memory_adu_len=2*k+3+2;
       	break;
 
 			default:;
 					sprintf(eventmsg, "Proxy mode error: unsupported mbf\n");
-	  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), eventmsg, 0);
+	  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), 0, eventmsg, 0);
 					continue;
 			}
 ///--------------------------------------------------------
@@ -1073,7 +1077,7 @@ void *srvr_tcp_bridge_proxy(void *arg) //прием - передача данных по Modbus TCP
 		  case MB_SERIAL_WRITE_ERR:
 		  	tmpstat.errors++;
 				sprintf(eventmsg, "serial send error: %d", status);
-  			sysmsg(port_id|(client_id<<8), eventmsg, 0);
+  			sysmsg(port_id|(client_id<<8), 0, eventmsg, 0);
 				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 				update_stat(&iDATA[port_id].stat, &tmpstat);
 				continue;
@@ -1114,9 +1118,176 @@ void *srvr_tcp_bridge_proxy(void *arg) //прием - передача данных по Modbus TCP
 	EndRun: ;
 //	close(tcsd);
 //	inputDATA->current_connections_number--;
-  sysmsg(port_id, "BRIDGE PROXY port mode stopped", 0);
+  sysmsg(port_id, 0, "BRIDGE PROXY port mode stopped", 0);
 	inputDATA->clients[client_id].rc=1;
 	
+	pthread_exit (0);	
+}
+///-----------------------------------------------------------------------------------------------------------------
+void *moxa_mb_thread(void *arg) //прием - передача данных по Modbus TCP
+  {
+	u8			tcp_adu[MB_TCP_MAX_ADU_LENGTH];// TCP ADU
+	u16			tcp_adu_len;
+		u8			memory_adu[MB_SERIAL_MAX_ADU_LEN];
+		u16			memory_adu_len;
+
+	int		status;
+
+//  int port_id=MOXA_MB_DEVICE;
+//  int client_id=((unsigned)arg)&0xff;
+
+//	int		tcsd = iDATA[port_id].clients[client_id].csd;
+	GW_StaticData tmpstat;
+	
+//	input_cfg	*inputDATA;
+//	inputDATA = &iDATA[port_id];
+	
+	struct timeval tv1, tv2;
+	struct timezone tz;
+
+	unsigned i, j, k;
+
+///!!!
+//	inputDATA->clients[client_id].stat.request_time_min=10000; // 10 seconds, must be "this->serial.timeout"
+//	inputDATA->clients[client_id].stat.request_time_max=0;
+//	inputDATA->clients[client_id].stat.request_time_average=0;
+//	for(i=0; i<MAX_LATENCY_HISTORY_POINTS; i++) inputDATA->clients[client_id].stat.latency_history[i]=1000; //ms
+//	inputDATA->clients[client_id].stat.clp=0;
+
+	/// semaphore
+	struct sembuf operations[1];
+	operations[0].sem_num=MOXA_MB_DEVICE;
+	operations[0].sem_op=-1;
+	operations[0].sem_flg=0;
+	semop(semaphore_id, operations, 1);
+	
+//	int fd=inputDATA->serial.fd;
+
+  sysmsg(MOXA_MB_DEVICE, 0, "GATEWAY 502 mb device started", 1);
+
+	while (1) {
+		
+		clear_stat(&tmpstat);
+
+  	semop(semaphore_id, operations, 1);
+
+  	pthread_mutex_lock(&gate502.moxa_mutex);
+
+		int queue_current=gate502.queue_start;
+
+//		printf("MOXA_MB_DEVICE ");
+		for(i=0; i<gate502.queue_adu_len[queue_current]; i++) {
+			tcp_adu[i]=gate502.queue_adu[queue_current][i];
+//			printf("{%2.2X}", tcp_adu[i]);
+			}
+		tcp_adu_len=gate502.queue_adu_len[queue_current];
+//		printf("\n");
+
+		///$$$printf(" go[%d]", queue_current);
+
+  	pthread_mutex_unlock(&gate502.moxa_mutex);
+
+
+	  ///---------------------
+		gettimeofday(&tv1, &tz);
+		tmpstat.accepted++;
+
+			int device_id, exception_on;
+			exception_on=0;
+
+///###-----------------------------			
+
+			if(exception_on==1) {
+				memory_adu[1]|=0x80;
+				memory_adu[2]=0x0b;
+				memory_adu_len=3+2;
+				}
+
+				switch(tcp_adu[TCPADU_FUNCTION]) {
+
+					case MBF_READ_HOLDING_REGISTERS:
+				j=(tcp_adu[TCPADU_START_HI]<<8)|tcp_adu[TCPADU_START_LO];
+				k=(tcp_adu[TCPADU_LEN_HI]<<8)|tcp_adu[TCPADU_LEN_LO];
+			  if( (j+k) > offset4xRegisters + amount4xRegisters) {
+					sprintf(eventmsg, "Proxy mode error: query addressing\n");
+	  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), 0, eventmsg, 1);
+
+					pthread_mutex_lock(&gate502.moxa_mutex);
+					gate502.queue_start=(gate502.queue_start+1)%MAX_GATEWAY_QUEUE_LENGTH;
+					gate502.queue_len--;
+					pthread_mutex_unlock(&gate502.moxa_mutex);
+
+					continue; ///!!! НАПЮАНРЙЮ НЬХАЙХ Д.А., МСФМЮ КХ ГДЕЯ ЩРЮ ОПНБЕПЙЮ БННАЫЕ?
+					}
+
+			memory_adu[RTUADU_ADDRESS]=tcp_adu[TCPADU_ADDRESS]; //device ID
+			memory_adu[RTUADU_FUNCTION]=tcp_adu[TCPADU_FUNCTION]; //ModBus Function Code
+			memory_adu[2]=2*k; 				//bytes total
+			int n;
+//			for(n=0; n<(2*k); n++)
+//        memory_adu[3+n]=oDATA[2*j+n];
+			for(n=0; n<k; n++) {
+        memory_adu[3+2*n]=(wData4x[j+n]>>8)&0xff;
+        memory_adu[3+2*n+1]=wData4x[j+n]&0xff;
+				}
+			memory_adu_len=2*k+3+2;
+      	break;
+
+			case MBF_WRITE_SINGLE_REGISTER:
+/*				
+				status=translateProxyDevice(((tcp_adu[8]<<8)|tcp_adu[9])&0xffff, 1, &port_id, &device_id);
+			  if(status) {
+					sprintf(eventmsg, "Proxy translation error %d P%d CL%d", status, port_id+1, i);
+	  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), 0, eventmsg, 0);
+					return 0;
+					}
+
+				if((status=enqueue_query(port_id, i, device_id, tcp_adu, tcp_adu_len))!=0) return 0;
+
+				return 0;*/
+				break;
+
+			default:;
+					sprintf(eventmsg, "Proxy mode error: unsupported mbf\n");
+	  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), 0, eventmsg, 0);
+					return 0;
+			}
+
+			if(_show_data_flow) printf("TCP%4.4d OUT: ", gate502.clients[gate502.queue_clients[queue_current]].port);
+			status = mb_tcp_send_adu(gate502.clients[gate502.queue_clients[queue_current]].csd,
+																&tmpstat, memory_adu, memory_adu_len-2, tcp_adu, &tcp_adu_len);
+
+		switch(status) {
+		  case 0:
+		  	if(exception_on!=1) tmpstat.sended++;
+		  	break;
+		  case TCP_COM_ERR_SEND:
+		  	tmpstat.errors++;
+				sprintf(eventmsg, "tcp send error: %d", status);
+  			sysmsg(MOXA_MB_DEVICE, 0, eventmsg, 0);
+		  	break;
+		  default:;
+		  };
+
+	if(exception_on==1) continue;///!!! НАПЮАНРЙЮ НЬХАЙХ Д.А., МСФМЮ КХ ГДЕЯ ЩРЮ ОПНБЕПЙЮ БННАЫЕ?
+//	update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
+	update_stat(&gate502.stat, &tmpstat);
+
+	gettimeofday(&tv2, &tz);
+
+	gate502.stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
+	
+	pthread_mutex_lock(&gate502.moxa_mutex);
+
+	gate502.queue_start=(gate502.queue_start+1)%MAX_GATEWAY_QUEUE_LENGTH;
+	gate502.queue_len--;
+	pthread_mutex_unlock(&gate502.moxa_mutex);
+
+	}
+	EndRun: ;
+//	close(tcsd);
+//	inputDATA->current_connections_number--;
+//	inputDATA->clients[client_id].rc=1;
 	pthread_exit (0);	
 }
 ///-----------------------------------------------------------------------------------------------------------------

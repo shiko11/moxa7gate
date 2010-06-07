@@ -9,3 +9,4 @@ void *srvr_tcp_child2(void *arg); //прием - передача данных по Modbus TCP
 void *srvr_tcp_bridge(void *arg); //прием - передача данных по Modbus TCP
 void *srvr_tcp_proxy(void *arg); //прием - передача данных по Modbus TCP
 void *srvr_tcp_bridge_proxy(void *arg); //прием - передача данных по Modbus TCP
+void *moxa_mb_thread(void *arg); // НАПЮАНРВХЙ ГЮОПНЯНБ МЕОНЯПЕДЯРБЕММН Й ОЮЛЪРХ MOXA

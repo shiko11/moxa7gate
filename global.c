@@ -12,7 +12,7 @@ SEM-ENGINEERING
 //#define DEBUG_WORK //ЮЙУФП ДМС ПФМБДЛЙ ТБВПФЩ Ж-ГЙЙ *run_work 
 
 ///-------------------------------------------------------------------------
-void	help_print (void) //ЧЩЧПД УРТБЧЛЙ
+void	help_print (void) /* вывод справки */
 {
 printf("%s\n", "\
 Usage: moxa7gate [OPTIONS] [PORTx mode speed parity timeout GATEWAY tcp_port]...\n\n\
@@ -37,7 +37,7 @@ return;
 }
 
 ///-------------------------------------------------------------------------
-void version_print (void) //ЧЩЧПД ЛТБФЛПЗП ПРЙУБОЙС РТПЗТБННЩ
+void version_print (void) /* вывод информации о программе */
 {
 printf("%s\n", "\
 MOXA7GATE R1.00\n\
@@ -55,105 +55,133 @@ www.semgroup.ru\n\
 int get_command_line (int 	argc,
 											char	*argv[],
 											input_cfg *ptr_iDATA,
+											input_cfg_502 *ptr_gate502,
 											RT_Table_Entry *vslave,
 											Query_Table_Entry *query_table,
-											u8	*show_data_flow,
-											u8	*show_sys_messages,
-											u8	*single_gateway_port_502,
-											u8  *single_address_space,
-											u8  *proxy_mode
-											) //ПВТБВПФЛБ РБТБНЕФТПЧ ЛПНБОДОПК УФТПЛЙ
+											GW_TCP_Server *tcp_servers
+											) //обработка параметров командной строки
 {
-	//РТПЧЕТЛБ ОБ РХУФХА ЛПНБОДОХА УФТПЛХ
+	//проверка на пустую командную строку
 	if (argc == 1) return CL_ERR_NONE_PARAM;
 
 	u16		i;
 	u16		j;
-	u16		k;
+	unsigned		k;
 	u16		p_cnt	= 0;
 	u16		key_cnt	= 0;
 	u16		id_p_argc[MAX_MOXA_PORTS];
 	u16		id_key_argc[MAX_KEYS];
 	
 	memset(id_p_argc,0,sizeof(id_p_argc));
-	*show_data_flow=0;
-	*show_sys_messages=0;
-	*single_gateway_port_502=0;
-	*single_address_space=0;
-	*proxy_mode=0;
+///	*single_gateway_port_502=0;
+///	*single_address_space=0;
+///	*proxy_mode=0;
 	
 	//-----------------------------------
-	//РПЙУЛ Й ПВТБВПФЛБ ЛМАЮЕК ЛПНБОДОПК УФТПЛЙ
-	for (i=0;i<argc;i++) {
+	//поиск и обработка ключей командной строки, задающих глобальные параметры шлюза
+
+	for (i=0; i<argc; i++) {
 		if (strncmp(argv[i],"--",2)==0) {
+			if(key_cnt==MAX_KEYS) return CL_ERR_NOT_ALLOWED;
 			id_key_argc[key_cnt++] = i;
 //			printf("key %d index %d\n", key_cnt-1, i);
 		}
+//  printf("%s\n", argv[i]);
 	}
-	
-	for (i=0;i<key_cnt;i++) {
+
+//  printf("stopping program...\n"); exit(1);
+	for (i=0; i<key_cnt; i++) {
 //		printf("%s\n", argv[id_key_argc[i]]);
 		if (strcmp(argv[id_key_argc[i]],"--help")==0) {help_print(); return CL_INFO;}
 		if (strcmp(argv[id_key_argc[i]],"--version")==0) {version_print(); return CL_INFO;}
-		if (strcmp(argv[id_key_argc[i]],"--show_data_flow")==0) *show_data_flow=1;
-		if (strcmp(argv[id_key_argc[i]],"--show_sys_messages")==0) *show_sys_messages=1;
-		if (strcmp(argv[id_key_argc[i]],"--single_gateway_port_502")==0) *single_gateway_port_502=1;
-		if (strcmp(argv[id_key_argc[i]],"--single_address_space")==0) *single_address_space=1;
-		if (strcmp(argv[id_key_argc[i]],"--proxy_mode")==0) *proxy_mode=1;
+
+		if (strcmp(argv[id_key_argc[i]],"--show_data_flow")==0) ptr_gate502->show_data_flow=1;
+		if (strcmp(argv[id_key_argc[i]],"--show_sys_messages")==0) ptr_gate502->show_sys_messages=1;
+		if (strcmp(argv[id_key_argc[i]],"--watchdog_timer")==0) ptr_gate502->watchdog_timer=1;
+		if (strcmp(argv[id_key_argc[i]],"--use_buzzer")==0) ptr_gate502->use_buzzer=1;
+
+//		if (strcmp(argv[id_key_argc[i]],"--single_gateway_port_502")==0) *single_gateway_port_502=1;
+		if (strcmp(argv[id_key_argc[i]],"--single_gateway_port_502")==0) return CL_ERR_NOT_ALLOWED;
+//		if (strcmp(argv[id_key_argc[i]],"--single_address_space")==0) *single_address_space=1;
+		if (strcmp(argv[id_key_argc[i]],"--single_address_space")==0) return CL_ERR_NOT_ALLOWED;
+//		if (strcmp(argv[id_key_argc[i]],"--proxy_mode")==0) *proxy_mode=1;
+		if (strcmp(argv[id_key_argc[i]],"--proxy_mode")==0) return CL_ERR_NOT_ALLOWED;
+
+		if (strcmp(argv[id_key_argc[i]],"--tcp_port")==0) {
+			ptr_gate502->tcp_port=atoi(argv[id_key_argc[i]+1]);
+			if(ptr_gate502->tcp_port==0) return CL_ERR_IN_MAP;					
+			}
+		if (strcmp(argv[id_key_argc[i]],"--modbus_address")==0) {
+			ptr_gate502->modbus_address=atoi(argv[id_key_argc[i]+1]);
+			if(ptr_gate502->modbus_address==0) return CL_ERR_IN_MAP;					
+			}
+		if (strcmp(argv[id_key_argc[i]],"--status_info")==0) {
+			ptr_gate502->status_info=atoi(argv[id_key_argc[i]+1]);
+			if(ptr_gate502->status_info==0) return CL_ERR_IN_MAP;					
+			}
+
+		if (strcmp(argv[id_key_argc[i]],"--Object")==0)
+			strcpy(ptr_gate502->object, argv[id_key_argc[i]+1]);
+		if (strcmp(argv[id_key_argc[i]],"--Location")==0)
+			strcpy(ptr_gate502->location, argv[id_key_argc[i]+1]);
+		if (strcmp(argv[id_key_argc[i]],"--confVersion")==0)
+			strcpy(ptr_gate502->version, argv[id_key_argc[i]+1]);
+		if (strcmp(argv[id_key_argc[i]],"--NetworkName")==0)
+			strcpy(ptr_gate502->networkName, argv[id_key_argc[i]+1]);
+		if (strcmp(argv[id_key_argc[i]],"--NetworkAddress")==0)
+			get_ip_from_string(argv[id_key_argc[i]+1], &ptr_gate502->IPAddress, &k);
 	}
 
-	if(
-			((*single_gateway_port_502==1)&&(*single_address_space==1)) ||
-			((*single_gateway_port_502==1)&&(*proxy_mode==1)) ||
-			((*single_address_space==1)&&(*proxy_mode==1))
-			) return CL_ERR_MUTEX_PARAM;
-
-  if(*proxy_mode==1) *single_address_space=1; // используем пока уже готовые маханизмы в программе
-
-	//printf("single_gateway_port_502=\n", (*single_gateway_port_502));
-	//printf("single_address_space=\n", (*single_address_space));
-	//printf("proxy_mode=\n", (*proxy_mode));
-
 	//------------------------------------
-	//РПЙУЛ ЛМАЮЕЧЩИ УМПЧ PORTx (Ф.Е. ОБЮБМБ УЕЛГЙК)
+	//поиск ключевых слов PORTx (т.е. начала секций)
 	char		dest[16];
 	char		tmp[2];
 
-	for (i=0;i<MAX_MOXA_PORTS;i++){
+	for (i=0; i<MAX_MOXA_PORTS; i++){
 		memcpy(dest,NAME_MOXA_PORT,5);
 		sprintf(tmp,"%d",i+1);
 		strcat(dest,tmp);
 		for (j=0;j<argc;j++)
 			if (strncmp(argv[j],dest,5)==0){
 				id_p_argc[p_cnt]=j;
-				if(p_cnt!=0) if(id_p_argc[p_cnt]-id_p_argc[p_cnt-1]<7) return CL_ERR_MIN_PARAM;
+				if(p_cnt!=0) if(id_p_argc[p_cnt]-id_p_argc[p_cnt-1]<6) return CL_ERR_MIN_PARAM;
 //				printf("port %d position %d\n", p_cnt, j);
 				p_cnt++;
 				break;
 			}
 	}
 
-//РТПЧЕТЛБ ОБ ОБМЙЮЙЕ Й РТБЧЙМШОПУФШ ЛМАЮЕЧЩИ УМПЧ ЛПНБОДОПК УФТПЛЙ
+//проверка на наличие и правильность ключевых слов командной строки
 	if (p_cnt==0) return CL_ERR_PORT_WORD;
 
 	/// читаем таблицу виртуральных устройств и таблицу опроса
 	int id_vslaves=0, vslaves_num;
 	int id_qt=0, qt_entries_num;
+	int id_tcpsrv=0, tcpsrv_entries_num;
 
 	for (j=0;j<argc;j++) {
-		if (strcmp(argv[j],"VSLAVES")==0) {
+		if (strcmp(argv[j],"RTM_TABLE")==0) {
 			if(id_vslaves==0) id_vslaves=j;
 				else return CL_ERR_VSLAVES_CFG;
 			}
-		if (strcmp(argv[j],"QUERY_TABLE")==0) {
+		if (strcmp(argv[j],"PROXY_TABLE")==0) {
 			if(id_qt==0) id_qt=j;
 				else return CL_ERR_QT_CFG;
+			}
+		if (strcmp(argv[j],"TCP_SERVERS")==0) {
+			if(id_tcpsrv==0) id_tcpsrv=j;
+				else return CL_ERR_TCPSRV_CFG;
 			}
 		}
 
 	/// parsing serial port parameters
 	int p_num;
 	char *arg;
+	int shift_counter;
+		int temp;
+		int port, client;
+
+
 	for(i=0; i<p_cnt; i++) {
 
 		//port number
@@ -165,7 +193,11 @@ int get_command_line (int 	argc,
 //		printf("p_num %d\n", p_num);
 		//port mode
 		arg=argv[id_p_argc[i]+1];
-		strcpy(ptr_iDATA[p_num-1].serial.p_mode, arg);
+///		strcpy(ptr_iDATA[p_num-1].serial.p_mode, arg);
+		k=strlen(arg);
+		for(j=0; j<k; j++) ptr_iDATA[p_num-1].serial.p_mode[j]=toupper(arg[j]);
+		ptr_iDATA[p_num-1].serial.p_mode[j-1]=tolower(ptr_iDATA[p_num-1].serial.p_mode[j-1]);
+		ptr_iDATA[p_num-1].serial.p_mode[j]=0;
 //		printf("%s\n", ptr_iDATA[p_num-1].serial.p_mode);
 		//port speed
 		arg=argv[id_p_argc[i]+2];
@@ -181,6 +213,7 @@ int get_command_line (int 	argc,
 		// timeout
 		arg=argv[id_p_argc[i]+4];
 		sscanf(arg, "%d", &ptr_iDATA[p_num-1].serial.timeout);
+		ptr_iDATA[p_num-1].serial.timeout*=1000;
 //		printf("%d\n", ptr_iDATA[p_num-1].serial.timeout);
 
 		// GATE MODE
@@ -188,23 +221,27 @@ int get_command_line (int 	argc,
 		//strcpy(ptr_iDATA[p_num-1].serial.parity, arg);
 		k=strlen(arg);
 		for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
-		if(strcmp(arg, "GATEWAY")==0) ptr_iDATA[p_num-1].modbus_mode=MODBUS_GATEWAY_MODE; else
-		if(strcmp(arg, "BRIDGE")==0) ptr_iDATA[p_num-1].modbus_mode=MODBUS_BRIDGE_MODE; else
-		if(strcmp(arg, "MASTER")==0) ptr_iDATA[p_num-1].modbus_mode=MODBUS_PROXY_MODE; else return CL_ERR_GATEWAY_MODE;
+
+		if(strcmp(arg, "GATEWAY_SIMPLE")==0) 	ptr_iDATA[p_num-1].modbus_mode=GATEWAY_SIMPLE;
+		if(strcmp(arg, "GATEWAY_ATM")==0) 		ptr_iDATA[p_num-1].modbus_mode=GATEWAY_ATM;
+		if(strcmp(arg, "GATEWAY_RTM")==0) 		ptr_iDATA[p_num-1].modbus_mode=GATEWAY_RTM;
+		if(strcmp(arg, "GATEWAY_PROXY")==0) 	ptr_iDATA[p_num-1].modbus_mode=GATEWAY_PROXY;
+		if(strcmp(arg, "BRIDGE_PROXY")==0) 		ptr_iDATA[p_num-1].modbus_mode=BRIDGE_PROXY;
+		if(strcmp(arg, "BRIDGE_SIMPLE")==0) 	ptr_iDATA[p_num-1].modbus_mode=BRIDGE_SIMPLE;
+
+		if(ptr_iDATA[p_num-1].modbus_mode==MODBUS_PORT_OFF) return CL_ERR_GATEWAY_MODE;
 //		printf("%s\n", ptr_iDATA[p_num-1].serial.parity);
 
-		int temp;
-		int dot, colon, digit, port, client;
-		unsigned char ip1, ip2, ip3, ip4;
-		char addr[16];
-		int shift_counter;
+		k=check_gate_settings(&ptr_iDATA[p_num-1]);
+//printf("NOOP2 p_num=%d, k=%d\n", p_num, k);
+		if(k) return CL_ERR_IN_PORT_SETT;
+//printf("NOOP3 key_cnt=%d\n", key_cnt);
 
-		if(check_gate_settings(&ptr_iDATA[p_num-1])) return CL_ERR_IN_PORT_SETT;
 
 		printf("parsing port %d, mode %d\n", p_num, ptr_iDATA[p_num-1].modbus_mode);
 
 		switch(ptr_iDATA[p_num-1].modbus_mode) {
-			case MODBUS_GATEWAY_MODE:
+			case GATEWAY_SIMPLE:
 				// tcp_port
 				arg=argv[id_p_argc[i]+6];
 				sscanf(arg, "%d", &temp);
@@ -213,7 +250,7 @@ int get_command_line (int 	argc,
 		//		printf("%d\n", ptr_iDATA[p_num-1].tcp_port);
 				break;
 
-			case MODBUS_BRIDGE_MODE:
+ /*			case BRIDGE_SIMPLE:
 				
 				shift_counter=0;
 				for(client=0; client<MAX_TCP_CLIENTS_PER_PORT; client++) {
@@ -231,45 +268,9 @@ int get_command_line (int 	argc,
 					//int inet_pton(...);
 
 					arg=argv[id_p_argc[i]+6+2*client+shift_counter];
-					//printf("arg:%s\n", arg);
-					dot=colon=digit=0;
-					k=strlen(arg);
-					for(j=0; j<k; j++)
-					  if((arg[j]>=48)&&(arg[j]<=57)) digit++; else
-					    if(arg[j]=='.') dot++; else
-					      if(arg[j]==':') colon++; else return CL_ERR_IN_MAP;
-					if((dot!=3)||(colon!=1))  return CL_ERR_IN_MAP;
-					
-					digit=0;
-					for(j=digit; j<k; j++) if(arg[j]=='.') {arg[j]=0; break;}
-					strcpy(addr, &arg[digit]);
-					ip4=(unsigned char) atoi(addr);
-					digit=j+1;
-					arg[j]='.';
-					
-					for(j=digit; j<k; j++) if(arg[j]=='.') {arg[j]=0; break;}
-					strcpy(addr, &arg[digit]);
-					ip3=(unsigned char) atoi(addr);
-					digit=j+1;
-					arg[j]='.';
-					
-					for(j=digit; j<k; j++) if(arg[j]=='.') {arg[j]=0; break;}
-					strcpy(addr, &arg[digit]);
-					ip2=(unsigned char) atoi(addr);
-					digit=j+1;
-					arg[j]='.';
-					
-					for(j=digit; j<k; j++) if(arg[j]==':') {arg[j]=0; break;}
-					strcpy(addr, &arg[digit]);
-					ip1=(unsigned char) atoi(addr);
-					digit=j+1;
-					arg[j]=':';
-					
-					strcpy(addr, &arg[digit]);
-					port=atoi(addr);
-	
-					ptr_iDATA[p_num-1].clients[client].ip=ip1+(ip2<<8)+(ip3<<16)+(ip4<<24);
-					ptr_iDATA[p_num-1].clients[client].port=port;
+
+					temp=get_ip_from_string(arg, &ptr_iDATA[p_num-1].clients[client].ip, &ptr_iDATA[p_num-1].clients[client].port);
+					if(temp!=CL_OK) return CL_ERR_IN_MAP;
 					
 					printf("I:  %s\n", arg);
 					printf("II: %X:%d\n", ptr_iDATA[p_num-1].clients[client].ip, ptr_iDATA[p_num-1].clients[client].port);
@@ -297,9 +298,8 @@ int get_command_line (int 	argc,
 					}
 				
 				break;
-
-			case MODBUS_PROXY_MODE: ///!!!
-			default: ptr_iDATA[p_num-1].modbus_mode=MODBUS_PORT_OFF;
+*/
+			default:;
 		}
 
 		strcpy(ptr_iDATA[p_num-1].bridge_status, "INI");
@@ -309,27 +309,47 @@ int get_command_line (int 	argc,
 	/// читаем таблицу виртуральных устройств и таблицу опроса
 
 	if(id_vslaves!=0) {
-	
+
 		sscanf(argv[id_vslaves+1], "%d", &vslaves_num);
 		if((vslaves_num<1)||(vslaves_num>MAX_VIRTUAL_SLAVES)) return CL_ERR_VSLAVES_CFG;
+		shift_counter=0;
 	
 		for(i=0; i<vslaves_num; i++) {
 	
-			arg=argv[id_vslaves+i*4+2];
+			arg=argv[id_vslaves+i*5+2+shift_counter];
 			sscanf(arg, "%d", &vslave[i].start);
+			vslave[i].start--;
 	//		printf("%d\n", ptr_iDATA[p_num-1].serial.timeout);
 	
-			arg=argv[id_vslaves+i*4+3];
+			arg=argv[id_vslaves+i*5+3+shift_counter];
 			sscanf(arg, "%d", &vslave[i].length);
 	//		printf("%d\n", ptr_iDATA[p_num-1].serial.timeout);
 	
-			arg=argv[id_vslaves+i*4+4];
+			arg=argv[id_vslaves+i*5+4+shift_counter];
 			vslave[i].port=arg[1]-48-1;
 	
-			arg=argv[id_vslaves+i*4+5];
+			arg=argv[id_vslaves+i*5+5+shift_counter];
 			sscanf(arg, "%d", &vslave[i].device);
 	//		printf("%d\n", ptr_iDATA[p_num-1].serial.timeout);
-	
+
+			arg=argv[id_vslaves+i*5+6+shift_counter];
+			//strcpy(ptr_iDATA[p_num-1].serial.parity, arg);
+			k=strlen(arg);
+			for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
+			if(strcmp(arg, "COIL_STATUS")==0) vslave[i].modbus_table=COIL_STATUS_TABLE; else
+			if(strcmp(arg, "INPUT_STATUS")==0) vslave[i].modbus_table=INPUT_STATUS_TABLE; else
+			if(strcmp(arg, "HOLDING_REGISTER")==0) vslave[i].modbus_table=HOLDING_REGISTER_TABLE; else
+			if(strcmp(arg, "INPUT_REGISTER")==0) vslave[i].modbus_table=INPUT_REGISTER_TABLE; else
+				return CL_ERR_VSLAVES_CFG;
+//		printf("%s\n", ptr_iDATA[p_num-1].serial.parity);
+
+			arg=argv[id_vslaves+i*5+6+shift_counter+1];
+			if(strcmp(arg, "--address_shift")==0) {
+				vslave[i].address_shift=atoi(argv[id_vslaves+i*5+6+shift_counter+2]);
+				shift_counter+=2;
+				}
+
+			if(argv[id_vslaves+i*5+6+shift_counter+1][0]=='-') shift_counter+=2;
 		  }
 
 	  int res=verify_vslaves();
@@ -340,54 +360,102 @@ int get_command_line (int 	argc,
 	
 		sscanf(argv[id_qt+1], "%d", &qt_entries_num);
 		if((qt_entries_num<1)||(qt_entries_num>MAX_QUERY_ENTRIES)) return CL_ERR_QT_CFG;
+		shift_counter=0;
 	
 		for(i=0; i<qt_entries_num; i++) {
 	
-			arg=argv[id_qt+i*9+2];
+			arg=argv[id_qt+i*8+2+shift_counter];
 			sscanf(arg, "%d", &query_table[i].start);
 	//		printf("%d\n", ptr_iDATA[p_num-1].serial.timeout);
 	
-			arg=argv[id_qt+i*9+3];
+			arg=argv[id_qt+i*8+3+shift_counter];
 			sscanf(arg, "%d", &query_table[i].length);
 	//		printf("%d\n", ptr_iDATA[p_num-1].serial.timeout);
 	
-			arg=argv[id_qt+i*9+4];
+			arg=argv[id_qt+i*8+4+shift_counter];
 			sscanf(arg, "%d", &query_table[i].offset);
 	//		printf("%d\n", ptr_iDATA[p_num-1].serial.timeout);
 	
-			arg=argv[id_qt+i*9+5];
-			query_table[i].port=arg[1]-48-1;
+			arg=argv[id_qt+i*8+5+shift_counter];
+			query_table[i].port=arg[1]=='T'?PROXY_TCP:arg[1]-48-1;
 	
-			arg=argv[id_qt+i*9+6];
+			arg=argv[id_qt+i*8+6+shift_counter];
 			sscanf(arg, "%d", &query_table[i].device);
 	//		printf("%d\n", ptr_iDATA[p_num-1].serial.timeout);
 	
-		arg=argv[id_qt+i*9+7];
+		arg=argv[id_qt+i*8+7+shift_counter];
 		//strcpy(ptr_iDATA[p_num-1].serial.parity, arg);
 		k=strlen(arg);
 		for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
+//sprintf("NOOP9 %s\n", arg);
 		if(strcmp(arg, "COIL_STATUS")==0) query_table[i].mbf=MBF_READ_COILS; else
 		if(strcmp(arg, "INPUT_STATUS")==0) query_table[i].mbf=MBF_READ_DECRETE_INPUTS; else
 		if(strcmp(arg, "HOLDING_REGISTER")==0) query_table[i].mbf=MBF_READ_HOLDING_REGISTERS; else
 		if(strcmp(arg, "INPUT_REGISTER")==0) query_table[i].mbf=MBF_READ_INPUT_REGISTERS; else return CL_ERR_QT_CFG;
 //		printf("%s\n", ptr_iDATA[p_num-1].serial.parity);
 
-			arg=argv[id_qt+i*9+8];
+			arg=argv[id_qt+i*8+8+shift_counter];
 			sscanf(arg, "%d", &query_table[i].delay);
-	//		printf("%d\n", ptr_iDATA[p_num-1].serial.timeout);
 	
-			arg=argv[id_qt+i*9+9];
-			sscanf(arg, "%d", &query_table[i].status_register);
-	//		printf("%d\n", ptr_iDATA[p_num-1].serial.timeout);
+			arg=argv[id_qt+i*8+9+shift_counter];
+			sscanf(arg, "%d", &query_table[i].critical);
 	
-			arg=argv[id_qt+i*9+10];
-			sscanf(arg, "%d", &query_table[i].status_bit);
-	//		printf("%d\n", ptr_iDATA[p_num-1].serial.timeout);
-	
+//				printf("i=%d, %d(%d), %s\n", i, id_qt+i*9+10+shift_counter, argc, argv[id_qt+i*9+10+shift_counter]);
+			if(argc>id_qt+i*8+10+shift_counter) {
+				if(argv[id_qt+i*8+10+shift_counter][0]=='-') shift_counter+=2;
+				}
 		  }
 
 	  int res=verify_proxy_queries();
 	  if(res!=0) return CL_ERR_QT_CFG;
+		}
+	
+/// ЧИТАЕМ ТАБЛИЦУ TCP_SERVERS
+
+	if(id_tcpsrv!=0) {
+	
+		sscanf(argv[id_tcpsrv+1], "%d", &tcpsrv_entries_num);
+		if((tcpsrv_entries_num<1)||(tcpsrv_entries_num>MAX_TCP_SERVERS)) return CL_ERR_TCPSRV_CFG;
+		shift_counter=0;
+	
+		for(i=0; i<tcpsrv_entries_num; i++) {
+
+					arg=argv[id_tcpsrv+i*4+2+shift_counter];
+
+					temp=get_ip_from_string(arg, &tcp_servers[i].ip, &tcp_servers[i].port);
+//					printf("noop temp=%d arg=\"%s\"\n", temp, arg);
+					if(temp!=CL_OK) return CL_ERR_IN_MAP;
+					
+					printf("I:  %s\n", arg);
+					printf("II: %X:%d\n", tcp_servers[i].ip, tcp_servers[i].port);
+
+					/// читаем modbus-адрес устройства
+					arg=argv[id_tcpsrv+i*4+3+shift_counter];
+					temp=atoi(arg);
+					if((temp<1)||(temp>247)) return CL_ERR_TCPSRV_CFG;
+					tcp_servers[i].mb_slave=temp;
+					
+					/// читаем смещение адреса
+					arg=argv[id_tcpsrv+i*4+4+shift_counter];
+					tcp_servers[i].address_shift=atoi(arg);
+					
+					arg=argv[id_tcpsrv+i*4+5+shift_counter];
+					tcp_servers[i].port=arg[1]=='T'?PROXY_TCP:arg[1]-48-1;
+	
+					/// Наименование устройства
+					arg=argv[id_tcpsrv+i*4+6+shift_counter];
+					//printf("%d-%d-%s\n", argc, id_p_argc[i]+6+2*client+2+shift_counter, arg);
+//printf("desc=%s\n", arg);
+					if(argc>id_tcpsrv+i*4+6+shift_counter)
+					if(strcmp(arg, "--desc")==0) {
+						arg=argv[id_tcpsrv+i*4+7+shift_counter];
+						strcpy(tcp_servers[i].device_name, arg);
+						shift_counter+=2;
+						}
+		  }
+
+	  //int res=verify_tcp_servers();
+	  //if(res!=0) return CL_TCPSRV_QT_CFG;
 		}
 
 	return CL_OK;
@@ -422,7 +490,7 @@ int check_gate_settings(input_cfg *data)
 			strcmp(data->serial.parity, "odd")==0
 		)) return 3;
 
-	if((data->serial.timeout<200000) || (data->serial.timeout>10000000)) return 4;
+	if((data->serial.timeout<100000) || (data->serial.timeout>10000000)) return 4;
 
 	return 0;
 	}
@@ -497,6 +565,36 @@ int translateProxyDevice(int start_address, int length, int *port_id, int *devic
   return 0;
   }
 
+int checkDiapason(int function, int start_address, int length)
+	{
+
+	switch(function) {
+
+		case MBF_READ_COILS:
+			break;
+
+		case MBF_READ_DECRETE_INPUTS:
+			break;
+
+		case MBF_READ_INPUT_REGISTERS:
+			break;
+
+		case MBF_READ_HOLDING_REGISTERS:
+			if(start_address >= offset4xRegisters) {
+				if(start_address + length <= offset4xRegisters + amount4xRegisters) return MOXA_DIAPASON_INSIDE;
+				if(start_address >= offset4xRegisters + amount4xRegisters) return MOXA_DIAPASON_OUTSIDE;
+				return MOXA_DIAPASON_OVERLAPPED;
+				} else {
+					if(start_address + length <= offset4xRegisters) return MOXA_DIAPASON_OUTSIDE;
+					return MOXA_DIAPASON_OVERLAPPED;
+					}
+			break;
+
+		default:;
+		}
+
+	return MOXA_DIAPASON_UNDEFINED;
+	}
 ///----------------------------------------------------------------------------------------------------------------
 ///----------------------------------------------------------------------------------------------------------------
 int verify_vslaves()
@@ -516,6 +614,7 @@ int verify_vslaves()
 			if((vslave[i].start+vslave[i].length)>65535) return 3;
 			if(vslave[i].port>SERIAL_P8) return 4;
 			if((vslave[i].device==0)||(vslave[i].device>247)) return 5;
+			if(vslave[i].address_shift<0) return 6;
 
 			}
   
@@ -535,13 +634,67 @@ int verify_proxy_queries()
 			) continue;
 
 			if(query_table[i].start>65534) return 11;
-			if((query_table[i].length==0)||(query_table[i].length>70)) return 12; ///!!!
+//  	if((query_table[i].length==0)||(query_table[i].length>70)) return 12; ///!!!
+			if((query_table[i].length==0)||(query_table[i].length>125)) return 12;
 			if((query_table[i].start+query_table[i].length)>65535) return 13;
-			if(query_table[i].port>SERIAL_P8) return 14;
+			if(query_table[i].port>PROXY_TCP) return 14;
 			if((query_table[i].device==0)||(query_table[i].device>247)) return 15;
-
-			if((query_table[i].offset+query_table[i].length)>=PROXY_MODE_REGISTERS) return 16;
+			if((query_table[i].offset+query_table[i].length)>=65535) return 16;
 			}
 	return 0;
   }
 ///----------------------------------------------------------------------------------------------------------------
+int get_ip_from_string(char *str, unsigned int *ip, unsigned int *port)
+  {
+	int dot, colon, digit, k, j;
+	char addr[16];
+	unsigned char ip1, ip2, ip3, ip4;
+
+	//printf("arg:%s\n", arg);
+	dot=colon=digit=0;
+	k=strlen(str);
+	for(j=0; j<k; j++) {
+//		printf("%c", str[j]);
+	  if((str[j]>=48)&&(str[j]<=57)) digit++; else
+	    if(str[j]=='.') dot++; else
+	      if(str[j]==':') {
+				if(dot!=3) return CL_ERR_IN_MAP;
+					colon++;
+			} else return CL_ERR_IN_MAP;
+		}
+	if((dot!=3)||(colon>1))  return CL_ERR_IN_MAP;
+	
+	digit=0;
+	for(j=digit; j<k; j++) if(str[j]=='.') {str[j]=0; break;}
+	strcpy(addr, &str[digit]);
+	ip4=(unsigned char) atoi(addr);
+	digit=j+1;
+	str[j]='.';
+	
+	for(j=digit; j<k; j++) if(str[j]=='.') {str[j]=0; break;}
+	strcpy(addr, &str[digit]);
+	ip3=(unsigned char) atoi(addr);
+	digit=j+1;
+	str[j]='.';
+	
+	for(j=digit; j<k; j++) if(str[j]=='.') {str[j]=0; break;}
+	strcpy(addr, &str[digit]);
+	ip2=(unsigned char) atoi(addr);
+	digit=j+1;
+	str[j]='.';
+	
+	for(j=digit; j<k; j++) if(str[j]==':') {str[j]=0; break;}
+	strcpy(addr, &str[digit]);
+	ip1=(unsigned char) atoi(addr);
+	digit=j+1;
+	str[j]=':';
+	
+	*ip=ip1+(ip2<<8)+(ip3<<16)+(ip4<<24);
+
+  if(colon!=0) {
+		strcpy(addr, &str[digit]);
+		*port=atoi(addr);
+		}
+
+	return CL_OK;
+  }

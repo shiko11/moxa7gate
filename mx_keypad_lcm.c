@@ -550,10 +550,10 @@ void show_system_info()
 //  for(i=1; i<MAX_MOXA_PORTS; i++)
 //  	if(start_time>iDATA[i].start_time) start_time=iDATA[i].start_time;
 
-	tmd=gmtime(&start_time);
+	tmd=gmtime(&gate502.start_time);
 
 	time(&moment);
-	int diff=difftime(moment, start_time);
+	int diff=difftime(moment, gate502.start_time);
 	
 	strcpy (screen.text[0], "System started  ");
 	sprintf(screen.text[1], "%2.2d.%2.2d.%4.4d %2.2d:%2.2d", tmd->tm_mday, tmd->tm_mon+1, tmd->tm_year+1900, tmd->tm_hour, tmd->tm_min);
@@ -908,31 +908,7 @@ int ctrl_reset_port_counters(int port)
 
 int ctrl_reboot_system()
   {
-	int i, j;
-
-	for(i=0; i<MAX_MOXA_PORTS; i++) {
-	  if(iDATA[i].ssd>=0) {
-			shutdown(iDATA[i].ssd, SHUT_RDWR);
-	  	close(iDATA[i].ssd);
-	  	}
-		for(j=0; j<MAX_TCP_CLIENTS_PER_PORT; j++)
-	  if(iDATA[i].clients[j].csd>=0) {
-			shutdown(iDATA[i].clients[j].csd, SHUT_RDWR);
-	  	close(iDATA[i].clients[j].csd);
-	  	}
-	  }
-
-  mxlcm_close(mxlcm_handle);
-  keypad_close(mxkpd_handle);
-  mxbuzzer_close(mxbzr_handle);
-
-	close_shm();
-	semctl(semaphore_id, MAX_MOXA_PORTS, IPC_RMID, NULL);
-
-  	
-	sysmsg(EVENT_SOURCE_SYSTEM, "Program stopped", 1);
-
-  exit(0);
+	gate502.halt=1;
   return 0;	
   }
 

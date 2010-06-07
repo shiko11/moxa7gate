@@ -45,6 +45,12 @@ SEM-ENGINEERING
 
 
 /* Коды функций */
+
+#define COIL_STATUS_TABLE	1
+#define INPUT_STATUS_TABLE	2
+#define HOLDING_REGISTER_TABLE	3
+#define INPUT_REGISTER_TABLE	4
+
 #define MBF_READ_DECRETE_INPUTS                        0x02
 #define MBF_READ_COILS                                 0x01
 #define MBF_WRITE_SINGLE_COIL                          0x05

@@ -20,9 +20,9 @@ int main(int argc, char *argv[])
 {
 	int				res_cl;
 //	u16				tcp_port;
-	memset(iDATA,0,sizeof(iDATA)); // must be standart constructor for each data structure
-	memset(vslave,0,sizeof(vslave)); // must be standart constructor for each data structure
-	memset(query_table,0,sizeof(query_table)); // must be standart constructor for each data structure
+	memset(iDATA,0,sizeof(iDATA));
+	memset(vslave,0,sizeof(vslave));
+	memset(query_table,0,sizeof(query_table));
 
 	int			i, j;
 	for(i=0; i<MAX_MOXA_PORTS; i++) {
@@ -74,17 +74,41 @@ int main(int argc, char *argv[])
 		gate502.ssd=-1;
 		gate502.tcp_port=502;
     gate502.current_client=0;
-//		gate502.start_time=0;
+		gate502.start_time=0;
+
+		gate502.show_data_flow=0;
+		gate502.show_sys_messages=0;
+		gate502.watchdog_timer=0;
+		gate502.use_buzzer=0;
+		gate502.tcp_port=502;
+		gate502.modbus_address=0;
+		gate502.status_info=0;
+
+		gate502.object[0]=0;
+		gate502.location[0]=0;
+		gate502.version[0]=0;
+		gate502.networkName[0]=0;
+		gate502.IPAddress=0;
+
+		gate502.app_log_current_entry=gate502.app_log_entries_total=0;
+		app_log=NULL;
+
+		gate502.halt=0;
+	
+		init_shm();
+
+		signal(SIGPIPE, sigpipe_handler);
+		signal(SIGIO, sigio_handler);
+
+/*** РАЗБОР ПАРАМЕТРОВ КОМАНДНОЙ СТРОКИ ***/
 
 	res_cl = get_command_line (argc, argv,
 								 						 iDATA,
+														 &gate502,
 														 vslave,
 														 query_table,
-														 &_show_data_flow,
-														 &_show_sys_messages,
-														 &_single_gateway_port_502,
-														 &_single_address_space,
-														 &_proxy_mode);
+														 tcp_servers
+														 );
 	switch(res_cl) {
 		case CL_ERR_NONE_PARAM:
 			printf("Command line parsing error: No Configuration Parameters\n");
@@ -113,10 +137,16 @@ int main(int argc, char *argv[])
 			printf("Command line parsing error: There are two mutualy ex(lusive) Parameters\n");
 			exit(1);
 		case CL_ERR_VSLAVES_CFG:
-			printf("Command line parsing error: There are incorrect VSLAVES parameters\n");
+			printf("Command line parsing error: There are incorrect RTM_TABLE entries\n");
 			exit(1);
 		case CL_ERR_QT_CFG:
-			printf("Command line parsing error: There are incorrect QUERY_TABLE entries\n");
+			printf("Command line parsing error: There are incorrect PROXY_TABLE entries\n");
+			exit(1);
+		case CL_ERR_TCPSRV_CFG:
+			printf("Command line parsing error: There are incorrect TCP_SERVERS entries\n");
+			exit(1);
+		case CL_ERR_NOT_ALLOWED:
+			printf("Command line parsing error: Parameter is not allowed\n");
 			exit(1);
 		case CL_OK:
 			printf("Command line parsed successfully\n"); ///!!! add as system message: sysmsg();
@@ -134,30 +164,107 @@ int main(int argc, char *argv[])
 		printf("Configuration read OK\n");
 */
 
-		if(_proxy_mode==1) {
-			printf("Memory allocation (%db)...", sizeof(u16)*PROXY_MODE_REGISTERS);
-			oDATA=(u16 *) malloc(sizeof(u16)*PROXY_MODE_REGISTERS);
-			if(oDATA==NULL) {
-				printf("error\n");
-				exit(1);
-				}
-			printf("OK\n");
-			memset(oDATA,0,sizeof(u16)*PROXY_MODE_REGISTERS);
-			}
+/*** ИНИЦИАЛИЗАЦИЯ МАССИВОВ ПАМЯТИ ПОД ТАБЛИЦЫ MODBUS ***/
 
-//-------------------------------------------------------	
+/* в результате разбора параметров командной строки получаем количество параметров,
+   которые нужно сохранять локально. соответственно производим выделение памяти под них */
+
+	unsigned k;
+
+	amount1xStatus=16;
+	amount2xStatus=16;
+	amount3xRegisters=1;
+
+	amount4xRegisters=0;
+	offset4xRegisters=0xffff;
+	for(i=0; i<MAX_QUERY_ENTRIES; i++) {																	
+		if((query_table[i].offset==0)||(query_table[i].length==0)) continue;
+		if(offset4xRegisters>query_table[i].offset) offset4xRegisters=query_table[i].offset;
+		if(amount4xRegisters<query_table[i].offset+query_table[i].length)
+			amount4xRegisters=query_table[i].offset+query_table[i].length;
+		}
+	//printf("offset4xRegisters=%d, amount4xRegisters=%d\n", offset4xRegisters, amount4xRegisters);
+	if((amount4xRegisters==0)&&(gate502.status_info!=0)) {
+		offset4xRegisters=gate502.status_info-1;
+		amount4xRegisters=gate502.status_info-1+GATE_STATUS_BLOCK_LENGTH;
+		} else if(	/// если диапазоны регистров не перекрываются
+				(gate502.status_info-1+GATE_STATUS_BLOCK_LENGTH <= offset4xRegisters) ||
+				(gate502.status_info-1 >= amount4xRegisters)) {
+	
+			if(gate502.status_info-1 >= amount4xRegisters)
+				amount4xRegisters=gate502.status_info-1+GATE_STATUS_BLOCK_LENGTH;
+				else offset4xRegisters=gate502.status_info-1;
+	
+			} else	{
+				printf("gate status info registers overlaps with others... so they are disabled\n");
+				gate502.status_info=0;
+				}
+
+	amount4xRegisters-=offset4xRegisters;
+
+  // выделение памяти под таблицу 1x
+	if(amount1xStatus>0) {
+		k=sizeof(u16)*((amount1xStatus-1)/16+1);
+		printf("Memory allocation 1x (%db)...", k);
+		wData1x=(u16 *) malloc(k);
+		if(wData1x==NULL) {
+			printf("error\n");
+			exit(1);
+			}
+		memset(wData1x,0, k);
+		printf("OK\n");
+		}
+
+  // выделение памяти под таблицу 2x
+	if(amount2xStatus>0) {
+		k=sizeof(u16)*((amount2xStatus-1)/16+1);
+		printf("Memory allocation 2x (%db)...", k);
+		wData2x=(u16 *) malloc(k);
+		if(wData2x==NULL) {
+			printf("error\n");
+			exit(1);
+			}
+		memset(wData2x,0, k);
+		printf("OK\n");
+		}
+
+  // выделение памяти под таблицу 3x
+	if(amount3xRegisters>0) {
+		printf("Memory allocation 3x (%db)...", sizeof(u16)*amount3xRegisters);
+		wData3x=(u16 *) malloc(sizeof(u16)*amount3xRegisters);
+		if(wData3x==NULL) {
+			printf("error\n");
+			exit(1);
+			}
+		memset(wData3x,0,sizeof(u16)*amount3xRegisters);
+		printf("OK\n");
+		}
+
+  // выделение памяти под таблицу 4x
+	if(amount4xRegisters>0) {
+		printf("Memory allocation 4x (%db)...", sizeof(u16)*amount4xRegisters);
+		wData4x=(u16 *) malloc(sizeof(u16)*amount4xRegisters);
+		if(wData4x==NULL) {
+			printf("error\n");
+			exit(1);
+			}
+		memset(wData4x,0,sizeof(u16)*amount4xRegisters);
+		printf("OK\n");
+		}
+
+/*** ИНИЦИАЛИЗАЦИЯ УСТРОЙСТВ КОНТРОЛЯ И МОНИТОРИНГА: LCM, KEYPAD, BUZZER (ДИСПЛЕЙ, КЛАВИАТУРА, ЗУММЕР) ***/
 	mxkpd_handle=keypad_open();
-	if (mxkpd_handle < 0 ) sysmsg(EVENT_SOURCE_SYSTEM, "Keypad init ERROR", 1);
-	  else sysmsg(EVENT_SOURCE_SYSTEM, "Keypad init OK", 1);
+	if (mxkpd_handle < 0 ) sysmsg(EVENT_SOURCE_SYSTEM, 0, "Keypad init ERROR", 1);
+	  else sysmsg(EVENT_SOURCE_SYSTEM, 0, "Keypad init OK", 1);
 
 	mxlcm_handle = mxlcm_open();
-	if (mxlcm_handle < 0 ) sysmsg(EVENT_SOURCE_SYSTEM, "LCM init ERROR", 1);
-	  else sysmsg(EVENT_SOURCE_SYSTEM, "LCM init OK", 1);
+	if (mxlcm_handle < 0 ) sysmsg(EVENT_SOURCE_SYSTEM, 0, "LCM init ERROR", 1);
+	  else sysmsg(EVENT_SOURCE_SYSTEM, 0, "LCM init OK", 1);
   mxlcm_control(mxlcm_handle, IOCTL_LCM_AUTO_SCROLL_OFF);
 
 	mxbzr_handle = mxbuzzer_open();
-	if (mxbzr_handle < 0 ) sysmsg(EVENT_SOURCE_SYSTEM, "Buzzer init ERROR", 1);
-	  else sysmsg(EVENT_SOURCE_SYSTEM, "Buzzer init OK", 1);
+	if (mxbzr_handle < 0 ) sysmsg(EVENT_SOURCE_SYSTEM, 0, "Buzzer init ERROR", 1);
+	  else sysmsg(EVENT_SOURCE_SYSTEM, 0, "Buzzer init OK", 1);
 
 	screen.current_screen=LCM_SCREEN_MAIN;
 
@@ -173,10 +280,7 @@ int main(int argc, char *argv[])
 	gettimeofday(&tv_mem, &tz);
 //	printf("tv_mem %d\n", tv_mem.tv_sec);
 
-	init_shm();
-	signal(SIGPIPE, sigpipe_handler);
-	signal(SIGIO, sigio_handler);
-
+/// запускаем поток для обработки ввода с клавиатуры и вывода на дисплей статусной информации
 	int			rc;
 	pthread_t		tstTH;
 	rc = pthread_create(
@@ -185,48 +289,52 @@ int main(int argc, char *argv[])
 		mx_keypad_lcm,
 		NULL);
 	//-------------------------------------------------------
-	//-------------------------------------------------------
+
+//  printf("stopping program...\n"); exit(1);
+
+
 	struct sockaddr_in	addr;
 	int csd, arg, P;
-	int ports[MAX_MOXA_PORTS]; // этот массив нужен для организации правильного порядка инициализации портов (сначала GATEWAY, затем остальные
-	for(j=0; j<MAX_MOXA_PORTS; j++) ports[j]=0;
 
-	if((_single_gateway_port_502==1)||(_single_address_space==1)) {
-		
+	// этот массив служит для организации порядка инициализации портов (сначала GATEWAY_SIMPLE, затем остальные)
+	int ports[MAX_MOXA_PORTS]; 
+	memset(ports, 0, sizeof(ports));
+
+/* ИНИЦИАЛИЗАЦИЯ СЕМАФОРОВ, НА КОТОРЫХ РАБОТАЮТ ОЧЕРЕДИ ПОРТОВ */
+
 		key_t sem_key=ftok("/tmp/app", 'b');
 		
-		//if(MAX_MOXA_PORTS > SEMMSL) {
-		//printf("Limit exceeded. Maximal semaphore amount reached: %d\n", SEMMSL);
-		//exit(1);
-		//}
-		if((semaphore_id = semget(sem_key, MAX_MOXA_PORTS, IPC_CREAT|IPC_EXCL|0666)) == -1) {
+		if((semaphore_id = semget(sem_key, MAX_MOXA_PORTS+1, IPC_CREAT|IPC_EXCL|0666)) == -1) {
 			printf("ERROR. Semaphore Set already exists?\n");
 			exit(1);
 		 	}
 		
-//		int c=0; /* счетчик */
 		union semun sems;
 		unsigned short values[1];
-		//	sems.val = MAX_GATEWAY_QUEUE_LENGTH;
+
 		values[0]=0;
 		sems.array = values;
 		/* Инициализируем все элементы одним значением */
 		semctl(semaphore_id, 0, SETALL, sems);
 		
-  	///-------------------
+		struct sembuf operations[1];
+		operations[0].sem_op=1;
+		operations[0].sem_flg=0;
+
+/*** ИНИЦИАЛИЗАЦИЯ TCP ПОРТА ШЛЮЗА, ПРИНИМАЮЩЕГО СОЕДИНЕНИЯ КО ВСЕМ ПОРТАМ, ЗА ИСКЛЮЧЕНИЕМ ПОРТОВ GATEWAY_SIMPLE ***/
 		sprintf(eventmsg, "Server socket 502 init ");
 		gate502.ssd = socket(AF_INET, SOCK_STREAM, 0);
 		if (gate502.ssd < 0) {
 			perror("csdet");
 	    strcat(eventmsg, "ERROR");
-	    sysmsg(EVENT_SOURCE_SYSTEM, eventmsg, 1);
+	    sysmsg(EVENT_SOURCE_SYSTEM, 0, eventmsg, 1);
 			exit(1);
 			}
     strcat(eventmsg, "OK");
-    sysmsg(EVENT_SOURCE_SYSTEM, eventmsg, 1);
+    sysmsg(EVENT_SOURCE_SYSTEM, 0, eventmsg, 1);
 		
 		addr.sin_family = AF_INET;
-		addr.sin_port = htons(502);
+		addr.sin_port = htons(gate502.tcp_port);
 		addr.sin_addr.s_addr = htonl(INADDR_ANY);
 		//РТЙЧСЪЩЧБЕН УПЛЕФ 
 		sprintf(eventmsg, "Bind Socket 502 ");
@@ -234,69 +342,37 @@ int main(int argc, char *argv[])
 			perror("bind");
 			close(gate502.ssd);
 	    strcat(eventmsg, "ERROR");
-	    sysmsg(EVENT_SOURCE_SYSTEM, eventmsg, 1);
+	    sysmsg(EVENT_SOURCE_SYSTEM, 0, eventmsg, 1);
 			exit(1);
 			}
     strcat(eventmsg, "OK");
-    sysmsg(EVENT_SOURCE_SYSTEM, eventmsg, 1);
+    sysmsg(EVENT_SOURCE_SYSTEM, 0, eventmsg, 1);
 
-		//УФБЧЙН Ч ПЮЕТЕДШ
 		listen(gate502.ssd, MAX_TCP_CLIENTS_PER_PORT*MAX_MOXA_PORTS);
 		
 		fcntl(gate502.ssd, F_SETFL, fcntl(gate502.ssd, F_GETFL, 0) | O_NONBLOCK);
 
-		for(j=0; j<MAX_MOXA_PORTS; j++)
-		  if(iDATA[j].modbus_mode==MODBUS_GATEWAY_MODE) {
-
-				iDATA[j].tcp_port=502;
-
-				if(_single_gateway_port_502==1) strcpy(iDATA[j].bridge_status, "00A");
-				if(_single_address_space==1) strcpy(iDATA[j].bridge_status, "00R");
-				if(_proxy_mode==1) strcpy(iDATA[j].bridge_status, "00P");
-
-			  int arg=(j<<8)&0xff00;
-				if(_proxy_mode!=1) {
-				  iDATA[j].clients[0].rc = pthread_create(
-					  &iDATA[j].clients[0].tid_srvr,
-					  NULL,
-					  srvr_tcp_child2,
-					  (void *) arg);
-					} else {
-				  iDATA[j].clients[0].rc = pthread_create(
-					  &iDATA[j].clients[0].tid_srvr,
-					  NULL,
-					  srvr_tcp_proxy,
-					  (void *) arg);
-						}
-			
-			  if (iDATA[j].clients[0].rc){
-				  iDATA[j].modbus_mode=MODBUS_PORT_ERROR;
-	        strcpy(iDATA[j].bridge_status, "ERR");
-				  sprintf(eventmsg, "pthread_create() ERROR %d", iDATA[j].clients[0].rc);
-		      sysmsg(j, eventmsg, 0);
-			    }
-
-				time(&iDATA[j].start_time);
-				}
-
-		}
-
-	/// semaphore
-	struct sembuf operations[1];
-	operations[0].sem_op=1;
-	operations[0].sem_flg=0;
+/* ЗАПУСК ПОТОКОВЫХ ФУНКЦИЙ, ИНИЦИАЛИЗАЦИЯ ПОСЛЕДОВАТЕЛЬНЫХ ПОРТОВ */
 
 	for(i=0; i<MAX_MOXA_PORTS; i++) {
 		
 		P=0xff;
-		for(j=0; j<MAX_MOXA_PORTS; j++)
-		  if((iDATA[j].modbus_mode==MODBUS_GATEWAY_MODE)&&(ports[j]==0)) {
-		  	ports[j]=1; P=j; break;
-		    }
+
 		if(P==0xff) for(j=0; j<MAX_MOXA_PORTS; j++)
-		  if((iDATA[j].modbus_mode==MODBUS_BRIDGE_MODE)&&(ports[j]==0)) {
+		  if(((iDATA[j].modbus_mode==GATEWAY_SIMPLE)||(iDATA[j].modbus_mode==GATEWAY_PROXY))&&(ports[j]==0)) {
 		  	ports[j]=1; P=j; break;
 		    }
+
+		if(P==0xff) for(j=0; j<MAX_MOXA_PORTS; j++)
+		  if(((iDATA[j].modbus_mode==GATEWAY_ATM)||(iDATA[j].modbus_mode==GATEWAY_RTM))&&(ports[j]==0)) {
+		  	ports[j]=1; P=j; break;
+		    }
+
+		if(P==0xff) for(j=0; j<MAX_MOXA_PORTS; j++)
+		  if(((iDATA[j].modbus_mode==BRIDGE_PROXY)||(iDATA[j].modbus_mode==BRIDGE_SIMPLE))&&(ports[j]==0)) {
+		  	ports[j]=1; P=j; break;
+		    }
+
 		if(P==0xff) continue;
 		
 		// opening serial ports
@@ -309,21 +385,55 @@ int main(int argc, char *argv[])
 	    
 	    if(0) {iDATA[P].modbus_mode=MODBUS_PORT_OFF; strcpy(iDATA[P].bridge_status, "ERR"); continue;} ///!!!
 	    sprintf(eventmsg, "Serial port P%d init OK; mode %d", P+1, iDATA[P].modbus_mode);
-			sysmsg(P, eventmsg, 1);
+			sysmsg(P, 0, eventmsg, 1);
 			} else continue;
 
 		switch(iDATA[P].modbus_mode) {
-			case MODBUS_GATEWAY_MODE:
+			case GATEWAY_ATM:
+
+				strcpy(iDATA[P].bridge_status, "00A");
+			  arg=(P<<8)&0xff00;
+				  iDATA[P].clients[0].rc = pthread_create(
+					  &iDATA[P].clients[0].tid_srvr,
+					  NULL,
+					  srvr_tcp_child2,
+					  (void *) arg);
+
+				operations[0].sem_num=P;
+  			semop(semaphore_id, operations, 1);
+				break;
+
+			case GATEWAY_RTM:
+
+				strcpy(iDATA[P].bridge_status, "00R");
+			  arg=(P<<8)&0xff00;
+				  iDATA[P].clients[0].rc = pthread_create(
+					  &iDATA[P].clients[0].tid_srvr,
+					  NULL,
+					  srvr_tcp_child2,
+					  (void *) arg);
+
+				operations[0].sem_num=P;
+  			semop(semaphore_id, operations, 1);
+				break;
+
+			case GATEWAY_PROXY:
+				strcpy(iDATA[P].bridge_status, "00P");
+			  arg=(P<<8)&0xff00;
+				  iDATA[P].clients[0].rc = pthread_create(
+					  &iDATA[P].clients[0].tid_srvr,
+					  NULL,
+					  srvr_tcp_proxy,
+					  (void *) arg);
+
+				operations[0].sem_num=P;
+  			semop(semaphore_id, operations, 1);
+				break;
+
+			case GATEWAY_SIMPLE:
 
 				pthread_mutex_init(&iDATA[P].serial_mutex, NULL);
 
-				if((_single_gateway_port_502==1)||(_single_address_space==1)) {
-				  //strcpy(iDATA[P].bridge_status, "00G");
-					operations[0].sem_num=P;
-	  			semop(semaphore_id, operations, 1);
-					break;
-					}
-				
 	    	sprintf(eventmsg, "Server socket init for P%d ", P+1);
 				iDATA[P].ssd = socket(AF_INET, SOCK_STREAM, 0);
 				if (iDATA[P].ssd < 0) {
@@ -331,11 +441,11 @@ int main(int argc, char *argv[])
 					iDATA[P].modbus_mode=MODBUS_PORT_ERROR;
 			    strcpy(iDATA[P].bridge_status, "ERR");
 			    strcat(eventmsg, "ERROR");
-			    sysmsg(P, eventmsg, 1);
+			    sysmsg(P, 0, eventmsg, 1);
 			    break;
 					}
 		    strcat(eventmsg, "OK");
-		    sysmsg(P, eventmsg, 1);
+		    sysmsg(P, 0, eventmsg, 1);
 				
 				addr.sin_family = AF_INET;
 				addr.sin_port = htons(iDATA[P].tcp_port);
@@ -351,11 +461,11 @@ int main(int argc, char *argv[])
 					iDATA[P].modbus_mode=MODBUS_PORT_ERROR;
 			    strcpy(iDATA[P].bridge_status, "ERR");
 			    strcat(eventmsg, "ERROR");
-			    sysmsg(P, eventmsg, 1);
+			    sysmsg(P, 0, eventmsg, 1);
 			    break;
 					}
 		    strcat(eventmsg, "OK");
-		    sysmsg(P, eventmsg, 1);
+		    sysmsg(P, 0, eventmsg, 1);
 
 				//УФБЧЙН Ч ПЮЕТЕДШ
 				listen(iDATA[P].ssd, MAX_TCP_CLIENTS_PER_PORT);
@@ -367,50 +477,79 @@ int main(int argc, char *argv[])
 
 			/// инициализация BRIDGE-соединений по ЛВС выполняется ПОСЛЕ инициализации
 			/// прослушивающих сокетов GATEWAY-портов
-			case MODBUS_BRIDGE_MODE:
-
+			case BRIDGE_SIMPLE:
 				//инициализацию сетевых соединений порта в режиме BRIDGE проиводим в потоке порта
+
+				strcpy(iDATA[P].bridge_status, "0BS");
 
 				arg=(P<<8)|(iDATA[P].current_client&0xff);
 				//printf("arg:%d\n", arg);
-				if(_proxy_mode==0)
 				iDATA[P].clients[0].rc = pthread_create(
 					&iDATA[P].clients[0].tid_srvr,
 					NULL,
 					srvr_tcp_bridge,
 					(void *) arg);
-					else
-					iDATA[P].clients[0].rc = pthread_create(
-						&iDATA[P].clients[0].tid_srvr,
-						NULL,
-						srvr_tcp_bridge_proxy,
-						(void *) arg);
-				
-				if (iDATA[P].clients[0].rc){
-					sprintf(eventmsg, "pthread_create() ERROR %d", iDATA[P].clients[0].rc);
-			    sysmsg(P, eventmsg, 1);
-					iDATA[P].modbus_mode=MODBUS_PORT_ERROR;
-		      strcpy(iDATA[P].bridge_status, "ERR");
-				  } else strcpy(iDATA[P].bridge_status, "00B");
 			  break;
 
-			case MODBUS_PROXY_MODE: ///!!!
+			case BRIDGE_PROXY: ///!!!
+				strcpy(iDATA[P].bridge_status, "BPR");
+
+				arg=(P<<8)|(iDATA[P].current_client&0xff);
+				iDATA[P].clients[0].rc = pthread_create(
+					&iDATA[P].clients[0].tid_srvr,
+					NULL,
+					srvr_tcp_bridge_proxy,
+					(void *) arg);
+				break;
+
 			default: iDATA[P].modbus_mode=MODBUS_PORT_OFF;
 			}
 		
+		if(	(iDATA[P].modbus_mode==GATEWAY_ATM)||
+				(iDATA[P].modbus_mode==GATEWAY_RTM)||
+				(iDATA[P].modbus_mode==GATEWAY_PROXY)||
+				(iDATA[P].modbus_mode==BRIDGE_SIMPLE)
+				)
+			if (iDATA[P].clients[0].rc){
+				sprintf(eventmsg, "pthread_create() ERROR %d", iDATA[P].clients[0].rc);
+		    sysmsg(P, 0, eventmsg, 1);
+				iDATA[P].modbus_mode=MODBUS_PORT_ERROR;
+	      strcpy(iDATA[P].bridge_status, "ERR");
+			  }
+
+/// ЗАПОМИНАЕМ ВРЕМЯ ЗАПУСКА ПОРТА
 		time(&iDATA[P].start_time);
 		}
 
-time(&start_time);
-//------------------------------------------------------
+/// ЗАПУСК ПОТОКА ДЛЯ ОБРАБОТКИ ЗАПРОСОВ НЕПОСРЕДСТВЕННО К MOXA
+
+	pthread_t		moxaTH;
+	rc = pthread_create(
+		&moxaTH,
+		NULL,
+		moxa_mb_thread,
+		NULL);
+	operations[0].sem_num=MOXA_MB_DEVICE;
+	semop(semaphore_id, operations, 1);
+
+/// ЗАПОМИНАЕМ ВРЕМЯ ЗАПУСКА ШЛЮЗА
+time(&gate502.start_time);
+/*/----------   Ш Л Ю З   В   Р А Б О Т Е   ------------
 if((_single_gateway_port_502==0)&&(_single_address_space==0)) gateway_common_processing();
-  else gateway_single_port_processing();
-//------------------------------------------------------
-	for(i=0; i<MAX_MOXA_PORTS; i++)
+  else gateway_single_port_processing();*/
+gateway_common_processing();
+//----------- ЗАВЕРШЕНИЕ РАБОТЫ ПРИЛОЖЕНИЯ -------------
+	for(i=0; i<MAX_MOXA_PORTS; i++) {
 	  if(iDATA[i].ssd>=0) {
 			shutdown(iDATA[i].ssd, SHUT_RDWR);
 	  	close(iDATA[i].ssd);
 	  	}
+		for(j=0; j<MAX_TCP_CLIENTS_PER_PORT; j++)
+	  if(iDATA[i].clients[j].csd>=0) {
+			shutdown(iDATA[i].clients[j].csd, SHUT_RDWR);
+	  	close(iDATA[i].clients[j].csd);
+	  	}
+	  }
 
   mxlcm_close(mxlcm_handle);
   keypad_close(mxkpd_handle);
@@ -419,9 +558,12 @@ if((_single_gateway_port_502==0)&&(_single_address_space==0)) gateway_common_pro
 	close_shm();
 	semctl(semaphore_id, MAX_MOXA_PORTS, IPC_RMID, NULL);
 
-	free(oDATA);
+	free(wData1x);
+	free(wData2x);
+	free(wData3x);
+	free(wData4x);
 
-	sysmsg(EVENT_SOURCE_SYSTEM, "Program stopped", 1);
+	sysmsg(EVENT_SOURCE_SYSTEM, 0, "Program stopped", 1);
 
 	return (0);
 }
@@ -431,11 +573,13 @@ int gateway_common_processing()
 	struct sockaddr_in	addr;
   int i, j, csd, rc;
 
+	FD_ZERO(&watchset);
+
 	while (1) {
 		//
 	  for(i=0; i<MAX_MOXA_PORTS; i++) {
 	  	
-		  if(iDATA[i].modbus_mode!=MODBUS_GATEWAY_MODE) continue;
+		  if(iDATA[i].modbus_mode!=GATEWAY_SIMPLE) continue;
 	  	
 		  for(j=0; j<MAX_TCP_CLIENTS_PER_PORT; j++)
 		    if(iDATA[i].clients[j].rc) break;
@@ -467,7 +611,7 @@ int gateway_common_processing()
 																		 (addr.sin_addr.s_addr >> 8) & 0xff,
 																		 addr.sin_addr.s_addr & 0xff);
 
-	     sysmsg(i, eventmsg, 0);
+	     sysmsg(i, 0, eventmsg, 0);
 			 
 			 close(csd);
 	   	 continue;
@@ -496,13 +640,21 @@ int gateway_common_processing()
 				iDATA[i].modbus_mode=MODBUS_PORT_ERROR;
 	      strcpy(iDATA[i].bridge_status, "ERR");
 				sprintf(eventmsg, "pthread_create() ERROR %d", iDATA[i].clients[iDATA[i].current_client].rc);
-		    sysmsg(i, eventmsg, 0);
+		    sysmsg(i, 0, eventmsg, 0);
 			  }
 		  iDATA[i].accepted_connections_number++;
 		  iDATA[i].current_connections_number++;
 	    }
-	  usleep(750000); // proverit' zaderzhku na obrabotku vseh klientov v rezhime MASTER
-	  }
+
+	  ///usleep(750000); ///!!!
+		/// обработка входящих соединений на порт 502
+		gateway_single_port_processing();
+		/// механизм трансляции запросов
+		query_translating();
+	  
+		// останов программы по внешней команде
+		if(gate502.halt==1) break;
+		}
 
 	return 0;
   }
@@ -512,16 +664,6 @@ int gateway_single_port_processing()
 	{
 	struct sockaddr_in	addr;
   int i, j, k, csd, rc;
-
-    fd_set watchset;
-		fd_set inset;
-
-		FD_ZERO(&watchset);
-
-	struct timeval stv;
-	stv.tv_sec=0; stv.tv_usec=0;
-
-	while (1) {
 
 			///### блок обработки входящих TCP-соединений
 			/// ищем свободный слот для нового соединения
@@ -536,7 +678,7 @@ int gateway_single_port_processing()
 			if(!((csd<0)&&(errno==EAGAIN)))			  
 			if (csd < 0) {
 				perror("accept");
-  	    sysmsg(EVENT_SOURCE_SYSTEM, "accept error", 1);
+  	    sysmsg(EVENT_SOURCE_SYSTEM, 0, "accept error", 1);
 			} else {
 
 	   if(gate502.current_client==MAX_MOXA_PORTS*MAX_TCP_CLIENTS_PER_PORT) {
@@ -548,7 +690,7 @@ int gateway_single_port_processing()
 																		 (addr.sin_addr.s_addr >> 8) & 0xff,
 																		 addr.sin_addr.s_addr & 0xff);
 
-	     sysmsg(i, eventmsg, 0);
+	     sysmsg(i, 0, eventmsg, 0);
 			 
 			 close(csd);
 	     } else {
@@ -556,12 +698,12 @@ int gateway_single_port_processing()
 
 				 FD_SET(gate502.clients[gate502.current_client].csd, &watchset);
 	  	
-			 printf("Slot %d connection for TCP502: %d.%d.%d.%d\n", gate502.current_client+1,
+			 	 sprintf(eventmsg, "Slot %d connection for TCP502: %d.%d.%d.%d\n", gate502.current_client+1,
 			 															 addr.sin_addr.s_addr >> 24,
 																		 (addr.sin_addr.s_addr >> 16) & 0xff,
 																		 (addr.sin_addr.s_addr >> 8) & 0xff,
 																		 addr.sin_addr.s_addr & 0xff);
-	     //sysmsg(i, eventmsg, 0);
+    		 sysmsg(EVENT_SOURCE_GATE502|(i<<8), 0, eventmsg, 1);
 			
 				 time(&gate502.clients[gate502.current_client].connection_time);
 				 time(&gate502.clients[gate502.current_client].last_activity_time);
@@ -576,209 +718,8 @@ int gateway_single_port_processing()
 				}
 		  }
 
-			//printf("input data processing...\n");
-
-		///### блок обработки входящих ModbusTCP запросов
-		u8			tcp_adu[MB_TCP_MAX_ADU_LENGTH];// TCP ADU
-		u16			tcp_adu_len;
-		u8			memory_adu[MB_SERIAL_MAX_ADU_LEN];
-		u16			memory_adu_len;
-		GW_StaticData tmpstat;
-		int port_id, device_id;
-		int status;
-
-		int maxfd;
-		maxfd=0;
-
-    int diff;
-	  time_t moment;
-    time(&moment);
-
-	  for(i=0; i<MAX_MOXA_PORTS*MAX_TCP_CLIENTS_PER_PORT; i++) { // принимаем данные от клиентов
-
-			if(gate502.clients[i].csd!=-1)
-			  if(FD_ISSET(gate502.clients[i].csd, &watchset)) {
-					diff=difftime(moment, gate502.clients[i].last_activity_time);
-	    		if(diff>=MAX_CLIENT_ACTIVITY_TIMEOUT) {
-					  FD_CLR(gate502.clients[i].csd, &watchset);
-					  gate502.clients[i].connection_status=MB_CONNECTION_CLOSED;
-					  shutdown(gate502.clients[i].csd, SHUT_RDWR);
-					  close(gate502.clients[i].csd);
-					  gate502.clients[i].csd=-1;
-						iDATA[0].current_connections_number--;
-			    sprintf(eventmsg, "Slot %d disc(tmt): %d.%d.%d.%d\n", i+1,
-			 															 addr.sin_addr.s_addr >> 24,
-																		 (addr.sin_addr.s_addr >> 16) & 0xff,
-																		 (addr.sin_addr.s_addr >> 8) & 0xff,
-																		 addr.sin_addr.s_addr & 0xff);
-		  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), eventmsg, 0);
-						};
-      }
-
-	    if(maxfd<gate502.clients[i].csd) maxfd=gate502.clients[i].csd;
-	    }
-
-			clear_stat(&tmpstat);
-			
-			inset=watchset;
-
-		int temp;
-			if((temp=select(maxfd+1, &inset, NULL, NULL, &stv))<0) {
-				perror("select");
-				continue;
-				}
-		if(temp==0) continue;
-																												 
-	  for(i=0; i<MAX_MOXA_PORTS*MAX_TCP_CLIENTS_PER_PORT; i++) 
-			if (gate502.clients[i].connection_status==MB_CONNECTION_ESTABLISHED)
-			if (FD_ISSET(gate502.clients[i].csd, &inset)) {
-	  	
-			if(_show_data_flow) printf("TCP%4.4d  IN: ", gate502.clients[i].port);
-			status = mb_tcp_receive_adu(gate502.clients[i].csd, &tmpstat, tcp_adu, &tcp_adu_len);
-	
-			switch(status) {
-			  case 0:
-			  	break;
-			  case TCP_COM_ERR_NULL:
-			  case TCP_ADU_ERR_MIN:
-			  case TCP_ADU_ERR_MAX:
-			  case TCP_ADU_ERR_PROTOCOL:
-			  case TCP_ADU_ERR_LEN:
-			  case TCP_ADU_ERR_UID:
-			  case TCP_PDU_ERR:
-			  	//tmpstat.errors++;
-					sprintf(eventmsg, "tcp receive error: %d", status);
-	  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), eventmsg, 0);
-					//update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
-					//update_stat(&iDATA[port_id].stat, &tmpstat);
-				  if(status==TCP_COM_ERR_NULL) {
-					  FD_CLR(gate502.clients[i].csd, &watchset);
-					  gate502.clients[i].connection_status=MB_CONNECTION_CLOSED;
-					  shutdown(gate502.clients[i].csd, SHUT_RDWR);
-					  close(gate502.clients[i].csd);
-					  gate502.clients[i].csd=-1;
-						iDATA[0].current_connections_number--;
-			    sprintf(eventmsg, "Slot %d disc(lnkoff): %d.%d.%d.%d\n", i+1,
-			 															 addr.sin_addr.s_addr >> 24,
-																		 (addr.sin_addr.s_addr >> 16) & 0xff,
-																		 (addr.sin_addr.s_addr >> 8) & 0xff,
-																		 addr.sin_addr.s_addr & 0xff);
-		  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), eventmsg, 0);
-						}
-					continue;
-			  	break;
-			  default:; ///!!! continue;
-			  };
-
-			time(&gate502.clients[i].last_activity_time);
-
-			/// отображение адреса modbus-slave и адресного пространства
-			if(_proxy_mode!=1) {
-			if(_single_address_space==1) {
-
-				switch(tcp_adu[7]) { ///!!!
-					case MBF_WRITE_SINGLE_REGISTER: temp=1; break;
-					default: temp=(tcp_adu[10]<<8)|tcp_adu[11];
-					}
-
-				status=translateRegisters(((tcp_adu[8]<<8)|tcp_adu[9])&0xffff, temp, &port_id, &device_id);
-			  if(status) {
-					sprintf(eventmsg, "Reg translation error %d P%d CL%d", status, port_id+1, i);
-	  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), eventmsg, 0);
-					continue;
-					}
-
-				//tcp_adu[8]=j&0xff;
-				//tcp_adu[9]=(j>>8)&0xff;
-
-				} else {
-
-					translateAddress(tcp_adu[6], &port_id, &device_id);
-					tcp_adu[6]=device_id;
-
-				  if(iDATA[port_id].modbus_mode!=MODBUS_GATEWAY_MODE) {
-						sprintf(eventmsg, "invalid Unit ID P%d CL%d", port_id+1, i);
-		  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), eventmsg, 0);
-						continue;
-						}
-					}
-					}
-
-			/// диагностические данные обновляются в потоке вывода на LCM
-
-			if(_proxy_mode!=1) {/// если нет режима PROXY, ставим запрос в очередь последовательного порта
-
-				if((status=enqueue_query(port_id, i, device_id, tcp_adu, tcp_adu_len))!=0) continue;
-
-				} else { // в режиме PROXY выдаем данные из локального буфера
-
-				switch(tcp_adu[7]) {
-
-					case MBF_READ_HOLDING_REGISTERS:
-				j=((tcp_adu[8]<<8)|tcp_adu[9])&0xffff;
-				k=((tcp_adu[10]<<8)|tcp_adu[11])&0xffff;
-			  if((j+k)>=PROXY_MODE_REGISTERS) {
-					sprintf(eventmsg, "Proxy mode error: query addressing\n");
-	  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), eventmsg, 0);
-					continue;
-					}
-
-			memory_adu[0]=tcp_adu[6]; //device ID
-			memory_adu[1]=tcp_adu[7]; //ModBus Function Code
-			memory_adu[2]=2*k; 				//bytes total
-			int n;
-//			for(n=0; n<(2*k); n++)
-//        memory_adu[3+n]=oDATA[2*j+n];
-			for(n=0; n<k; n++) {
-        memory_adu[3+2*n]=(oDATA[j+n]>>8)&0xff;
-        memory_adu[3+2*n+1]=oDATA[j+n]&0xff;
-				}
-			memory_adu_len=2*k+3+2;
-      	break;
-
-			case MBF_WRITE_SINGLE_REGISTER:
-				
-				status=translateProxyDevice(((tcp_adu[8]<<8)|tcp_adu[9])&0xffff, 1, &port_id, &device_id);
-			  if(status) {
-					sprintf(eventmsg, "Proxy translation error %d P%d CL%d", status, port_id+1, i);
-	  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), eventmsg, 0);
-					continue;
-					}
-
-				if((status=enqueue_query(port_id, i, device_id, tcp_adu, tcp_adu_len))!=0) continue;
-
-				continue;
-				break;
-
-			default:;
-					sprintf(eventmsg, "Proxy mode error: unsupported mbf\n");
-	  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), eventmsg, 0);
-					continue;
-			}
-
-			if(_show_data_flow) printf("TCP%4.4d OUT: ", gate502.clients[i].port);
-			status = mb_tcp_send_adu(gate502.clients[i].csd,
-																&tmpstat, memory_adu, memory_adu_len-2, tcp_adu, &tcp_adu_len);
-
-
-		switch(status) {
-		  case 0:
-		  	tmpstat.sended++; ///!!!
-		  	break;
-		  case TCP_COM_ERR_SEND:
-		  	tmpstat.errors++;
-				sprintf(eventmsg, "tcp send error: %d", status);
-  			sysmsg(port_id, eventmsg, 0);
-		  	break;
-		  default:;
-		  };
-
-
-					}
-	    }
 
 	  //usleep(500000); // proverit' zaderzhku na obrabotku vseh klientov v rezhime MASTER
-	  }
 
 	return 0;
 	}
@@ -786,9 +727,11 @@ int gateway_single_port_processing()
 int enqueue_query(int port_id, int client_id, int device_id, u8 *tcp_adu, u16 tcp_adu_len)
   {
 
+		if(port_id!=MOXA_MB_DEVICE) {
+
 			  if(iDATA[port_id].queue_len==MAX_GATEWAY_QUEUE_LENGTH) { ///!!! modbus exception response
 					sprintf(eventmsg, "queue overloaded P%d CL%d", port_id+1, client_id);
-	  			sysmsg(EVENT_SOURCE_GATE502|(client_id<<8), eventmsg, 0);
+	  			sysmsg(EVENT_SOURCE_GATE502|(client_id<<8), 0, eventmsg, 0);
 					return 1;
 					}
 	
@@ -824,6 +767,225 @@ int enqueue_query(int port_id, int client_id, int device_id, u8 *tcp_adu, u16 tc
 				operations[0].sem_num=port_id;
 		  	semop(semaphore_id, operations, 1);
 				//printf("semaphore passed\n");
+
+			} else { /// РАБОТА С ОЧЕРЕДЬЮ MOXA MODBUS DEVICE
+
+			  if(gate502.queue_len==MAX_GATEWAY_QUEUE_LENGTH) { ///!!! modbus exception response
+					sprintf(eventmsg, "queue overloaded moxa_mb_device CL%d", client_id);
+	  			sysmsg(EVENT_SOURCE_GATE502|(client_id<<8), 0, eventmsg, 0);
+					return 1;
+					}
+	
+		  	pthread_mutex_lock(&gate502.moxa_mutex);
+	
+				int j, queue_current=(gate502.queue_start+gate502.queue_len)%MAX_GATEWAY_QUEUE_LENGTH;
+	
+				//printf("query_queued ?%dP%d\n", queue_current, port_id+1);
+
+				for(j=0; j<tcp_adu_len; j++)
+					gate502.queue_adu[queue_current][j]=tcp_adu[j];
+				gate502.queue_adu_len[queue_current]=tcp_adu_len;
+				gate502.queue_clients[queue_current]=client_id;
+//				gate502.queue_slaves[queue_current]=device_id;
+	
+				gate502.queue_len++;
+	
+	///$$$	struct timeval tv1, tv2;
+	///$$$	struct timezone tz;
+	//(tv2.tv_sec%10)*1000+tv2.tv_usec/1000
+	///$$$		gettimeofday(&tv2, &tz);
+	///$$$			printf("\nP%d TCP%4.4d time%d query %d begin[%d]", port_id+1, gate502.clients[i].port, (tv2.tv_sec%10)*10+tv2.tv_usec/100000, iDATA[port_id].queue_len, queue_current);
+	
+		  	pthread_mutex_unlock(&gate502.moxa_mutex);
+				//printf("mutex passed\n");
+	
+	/// semaphore
+	struct sembuf operations[1];
+	operations[0].sem_op=1;
+	operations[0].sem_flg=0;
+
+				/// semaphore
+				operations[0].sem_num=MOXA_MB_DEVICE;
+		  	semop(semaphore_id, operations, 1);
+				//printf("semaphore passed\n");
+				}
+
+  return 0;
+  }
+///-----------------------------------------------------------------------------------------------------------------
+int query_translating()
+  {									
+  int i, j, k;
+	struct sockaddr_in	addr;
+
+	struct timeval stv;
+	stv.tv_sec=0; stv.tv_usec=0;
+
+		//printf("input data processing...\n");
+
+		///### блок обработки входящих ModbusTCP запросов
+		u8			tcp_adu[MB_TCP_MAX_ADU_LENGTH];// TCP ADU
+		u16			tcp_adu_len;
+		GW_StaticData tmpstat;
+		int port_id, device_id;
+		int status;
+
+		unsigned temp;
+		int maxfd;
+		maxfd=0;
+
+    int diff;
+	  time_t moment;
+    time(&moment);
+
+	  for(i=0; i<MAX_MOXA_PORTS*MAX_TCP_CLIENTS_PER_PORT; i++) { // принимаем данные от клиентов
+
+			if(gate502.clients[i].csd!=-1)
+			  if(FD_ISSET(gate502.clients[i].csd, &watchset)) {
+					diff=difftime(moment, gate502.clients[i].last_activity_time);
+	    		if(diff>=MAX_CLIENT_ACTIVITY_TIMEOUT) {
+					  FD_CLR(gate502.clients[i].csd, &watchset);
+					  gate502.clients[i].connection_status=MB_CONNECTION_CLOSED;
+					  shutdown(gate502.clients[i].csd, SHUT_RDWR);
+					  close(gate502.clients[i].csd);
+					  gate502.clients[i].csd=-1;
+						iDATA[0].current_connections_number--;
+			    sprintf(eventmsg, "Slot %d disc(tmt): %d.%d.%d.%d\n", i+1,
+			 															 addr.sin_addr.s_addr >> 24,
+																		 (addr.sin_addr.s_addr >> 16) & 0xff,
+																		 (addr.sin_addr.s_addr >> 8) & 0xff,
+																		 addr.sin_addr.s_addr & 0xff);
+		  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), 0, eventmsg, 0);
+						};
+      }
+
+	    if(maxfd<gate502.clients[i].csd) maxfd=gate502.clients[i].csd;
+	    }
+
+			clear_stat(&tmpstat);
+			
+			inset=watchset;
+
+			if((temp=select(maxfd+1, &inset, NULL, NULL, &stv))<0) {
+				perror("select");
+				return 0;
+				}
+		if(temp==0) return 0;
+																												 
+	  for(i=0; i<MAX_MOXA_PORTS*MAX_TCP_CLIENTS_PER_PORT; i++) 
+			if (gate502.clients[i].connection_status==MB_CONNECTION_ESTABLISHED)
+			if (FD_ISSET(gate502.clients[i].csd, &inset)) {
+	  	
+			if(_show_data_flow) printf("TCP%4.4d  IN: ", gate502.clients[i].port);
+			status = mb_tcp_receive_adu(gate502.clients[i].csd, &tmpstat, tcp_adu, &tcp_adu_len);
+	
+			switch(status) {
+			  case 0:
+			  	break;
+			  case TCP_COM_ERR_NULL:
+			  case TCP_ADU_ERR_MIN:
+			  case TCP_ADU_ERR_MAX:
+			  case TCP_ADU_ERR_PROTOCOL:
+			  case TCP_ADU_ERR_LEN:
+			  case TCP_ADU_ERR_UID:
+			  case TCP_PDU_ERR:
+			  	//tmpstat.errors++;
+					sprintf(eventmsg, "tcp receive error: %d", status);
+	  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), 0, eventmsg, 0);
+					//update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
+					//update_stat(&iDATA[port_id].stat, &tmpstat);
+				  if(status==TCP_COM_ERR_NULL) {
+					  FD_CLR(gate502.clients[i].csd, &watchset);
+					  gate502.clients[i].connection_status=MB_CONNECTION_CLOSED;
+					  shutdown(gate502.clients[i].csd, SHUT_RDWR);
+					  close(gate502.clients[i].csd);
+					  gate502.clients[i].csd=-1;
+						iDATA[0].current_connections_number--;
+			    sprintf(eventmsg, "Slot %d disc(lnkoff): %d.%d.%d.%d\n", i+1,
+			 															 addr.sin_addr.s_addr >> 24,
+																		 (addr.sin_addr.s_addr >> 16) & 0xff,
+																		 (addr.sin_addr.s_addr >> 8) & 0xff,
+																		 addr.sin_addr.s_addr & 0xff);
+		  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), 0, eventmsg, 0);
+						}
+					return 0;
+			  	break;
+			  default:; ///!!! continue;
+			  };
+
+			time(&gate502.clients[i].last_activity_time);
+
+
+/* разбор входящего запроса происходит в несколько этапов:
+	- проверяем modbus адрес, указанный в запросе;
+	- проверяем диапазон регистров, указанный в запросе;
+	- если и адрес и диапазон принадлежат устройству Moxa, ставим запрос в очередь внутренних запросов;
+	- если только адрес принадлежит устройству Moxa, ставим запрос в очередь одного из портов режима RTM;
+	- если адрес не принадлежит устройству Moxa, ставим запрос в очередь одного из портов режима ATM.
+ */
+
+			k=tcp_adu[TCPADU_ADDRESS]==gate502.modbus_address?GATEWAY_SIMPLE:GATEWAY_ATM;
+
+			if(k!=GATEWAY_ATM) {
+				switch(
+							checkDiapason(	tcp_adu[TCPADU_FUNCTION],
+															(tcp_adu[TCPADU_START_HI]<<8)|tcp_adu[TCPADU_START_LO],
+															(tcp_adu[TCPADU_LEN_HI]<<8)|tcp_adu[TCPADU_LEN_LO])
+					) {
+	
+					case 	MOXA_DIAPASON_INSIDE:
+						k=GATEWAY_PROXY;
+						/// ставим запрос в очередь MOXA MODBUS DEVICE
+						if((status=enqueue_query(MOXA_MB_DEVICE, i, device_id, tcp_adu, tcp_adu_len))!=0) continue;
+//						printf("GATE502 GATEWAY_PROXY\n");
+						break;
+					
+					case MOXA_DIAPASON_OUTSIDE:
+						k=GATEWAY_RTM;
+	
+						switch(tcp_adu[TCPADU_FUNCTION]) { ///!!!
+							case MBF_WRITE_SINGLE_REGISTER: temp=1; break;
+							default: temp=(tcp_adu[TCPADU_LEN_HI]<<8)|tcp_adu[TCPADU_LEN_LO];
+							}
+		
+						status=translateRegisters(
+							(tcp_adu[TCPADU_START_HI]<<8)|tcp_adu[TCPADU_START_LO],
+							temp, &port_id, &device_id);
+
+					  if(status) {
+							sprintf(eventmsg, "Reg translation error %d P%d CL%d", status, port_id+1, i);
+			  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), 0, eventmsg, 0);
+							return 0;
+							}
+
+						/// ставим запрос в очередь последовательного порта
+						if((status=enqueue_query(port_id, i, device_id, tcp_adu, tcp_adu_len))!=0) continue;
+//						printf("GATE502 GATEWAY_RTM\n");
+						break;
+					
+					case MOXA_DIAPASON_OVERLAPPED:
+						printf("GATE502 MOXA_DIAPASON_OVERLAPPED\n");
+						break;
+	
+					default:;
+					}
+				} else { /// обработка запроса в режиме ATM
+
+					translateAddress(tcp_adu[TCPADU_ADDRESS], &port_id, &device_id);
+					tcp_adu[TCPADU_ADDRESS]=device_id;
+
+				  if((iDATA[port_id].modbus_mode!=GATEWAY_ATM)&&(iDATA[port_id].modbus_mode!=GATEWAY_RTM)) {
+						sprintf(eventmsg, "invalid Unit ID P%d CL%d", port_id+1, i);
+		  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), 0, eventmsg, 0);
+						return 0;
+						}
+
+					/// ставим запрос в очередь последовательного порта
+//printf("enqueue_query port_id=%d, client_id=%d, device_id=%d\n", port_id, i, device_id);
+					if((status=enqueue_query(port_id, i, device_id, tcp_adu, tcp_adu_len))!=0) continue;
+					}
+
+	    }
 
   return 0;
   }

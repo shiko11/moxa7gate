@@ -119,13 +119,13 @@ int refresh_shm(void *arg)
 					break;
 
 				case GATEWAY_ATM:
-					k=iDATA[i].queue_len*100/MAX_GATEWAY_QUEUE_LENGTH;
+					k=iDATA[i].queue.queue_len*100/MAX_GATEWAY_QUEUE_LENGTH;
 					if(k<100) sprintf(iDATA[i].bridge_status, "%2.2dA", k);
 						else sprintf(iDATA[i].bridge_status, "ERR");
 					break;
 
 				case GATEWAY_RTM:
-					k=iDATA[i].queue_len*100/MAX_GATEWAY_QUEUE_LENGTH;
+					k=iDATA[i].queue.queue_len*100/MAX_GATEWAY_QUEUE_LENGTH;
 					if(k<100) sprintf(iDATA[i].bridge_status, "%2.2dR", k);
 						else sprintf(iDATA[i].bridge_status, "ERR");
 					break;
@@ -189,6 +189,8 @@ int refresh_shm(void *arg)
 	  strcpy(shared_memory[i].serial.parity, iDATA[i].serial.parity);
 	  shared_memory[i].serial.timeout=iDATA[i].serial.timeout;
 
+	  strcpy(shared_memory[i].description, iDATA[i].description);
+
 	    for(j=0; j<MAX_TCP_CLIENTS_PER_PORT; j++) {
 			  shared_memory[i].clients[j].connection_time=iDATA[i].clients[j].connection_time;
 			  shared_memory[i].clients[j].ip=iDATA[i].clients[j].ip;
@@ -198,47 +200,10 @@ int refresh_shm(void *arg)
 			  shared_memory[i].clients[j].mb_slave=iDATA[i].clients[j].mb_slave;
 			  shared_memory[i].clients[j].address_shift=iDATA[i].clients[j].address_shift;
 			
-			  shared_memory[i].clients[j].stat.accepted=iDATA[i].clients[j].stat.accepted;
-			  shared_memory[i].clients[j].stat.errors_input_communication= iDATA[i].clients[j].stat.errors_input_communication;
-			  shared_memory[i].clients[j].stat.errors_tcp_adu=iDATA[i].clients[j].stat.errors_tcp_adu;
-			  shared_memory[i].clients[j].stat.errors_tcp_pdu=iDATA[i].clients[j].stat.errors_tcp_pdu;
-			  shared_memory[i].clients[j].stat.errors_serial_sending=iDATA[i].clients[j].stat.errors_serial_sending;
-			  shared_memory[i].clients[j].stat.errors_serial_accepting=iDATA[i].clients[j].stat.errors_serial_accepting;
-			  shared_memory[i].clients[j].stat.timeouts=iDATA[i].clients[j].stat.timeouts;
-			  shared_memory[i].clients[j].stat.crc_errors=iDATA[i].clients[j].stat.crc_errors;
-			  shared_memory[i].clients[j].stat.errors_serial_adu=iDATA[i].clients[j].stat.errors_serial_adu;
-			  shared_memory[i].clients[j].stat.errors_serial_pdu=iDATA[i].clients[j].stat.errors_serial_pdu;
-			  shared_memory[i].clients[j].stat.errors_tcp_sending=iDATA[i].clients[j].stat.errors_tcp_sending;
-			  shared_memory[i].clients[j].stat.errors=iDATA[i].clients[j].stat.errors;
-				//if((i==SERIAL_P2)&&(j==0)) printf("shm_seral_p2_sended:%d", iDATA[i].clients[j].stat.sended);
-			  shared_memory[i].clients[j].stat.sended=iDATA[i].clients[j].stat.sended;
-			  shared_memory[i].clients[j].stat.request_time_min=iDATA[i].clients[j].stat.request_time_min;
-			  shared_memory[i].clients[j].stat.request_time_max=iDATA[i].clients[j].stat.request_time_max;
-			  shared_memory[i].clients[j].stat.request_time_average=iDATA[i].clients[j].stat.request_time_average;
-			  shared_memory[i].clients[j].stat.scan_rate=iDATA[i].clients[j].stat.scan_rate;
-				//unsigned int input_messages [MB_FUNCTIONS_IMPLEMENTED*2+1];
-				//unsigned int output_messages[MB_FUNCTIONS_IMPLEMENTED*2+1];
+				copy_stat(&shared_memory[i].clients[j].stat, &iDATA[i].clients[j].stat);
 		    }
 
-	  shared_memory[i].stat.accepted=iDATA[i].stat.accepted;
-	  shared_memory[i].stat.errors_input_communication=iDATA[i].stat.errors_input_communication;
-	  shared_memory[i].stat.errors_tcp_adu=iDATA[i].stat.errors_tcp_adu;
-	  shared_memory[i].stat.errors_tcp_pdu=iDATA[i].stat.errors_tcp_pdu;
-	  shared_memory[i].stat.errors_serial_sending=iDATA[i].stat.errors_serial_sending;
-	  shared_memory[i].stat.errors_serial_accepting=iDATA[i].stat.errors_serial_accepting;
-	  shared_memory[i].stat.timeouts=iDATA[i].stat.timeouts;
-	  shared_memory[i].stat.crc_errors=iDATA[i].stat.crc_errors;
-	  shared_memory[i].stat.errors_serial_adu=iDATA[i].stat.errors_serial_adu;
-	  shared_memory[i].stat.errors_serial_pdu=iDATA[i].stat.errors_serial_pdu;
-	  shared_memory[i].stat.errors_tcp_sending=iDATA[i].stat.errors_tcp_sending;
-	  shared_memory[i].stat.errors=iDATA[i].stat.errors;
-	  shared_memory[i].stat.sended=iDATA[i].stat.sended;
-	  shared_memory[i].stat.request_time_min=iDATA[i].stat.request_time_min;
-	  shared_memory[i].stat.request_time_max=iDATA[i].stat.request_time_max;
-	  shared_memory[i].stat.request_time_average=iDATA[i].stat.request_time_average;
-	  shared_memory[i].stat.scan_rate=iDATA[i].stat.scan_rate;
-		//unsigned int input_messages [MB_FUNCTIONS_IMPLEMENTED*2+1];
-		//unsigned int output_messages[MB_FUNCTIONS_IMPLEMENTED*2+1];
+		copy_stat(&shared_memory[i].stat, &iDATA[i].stat);
 	  }
 		 
 	gate->app_log_current_entry=gate502.app_log_current_entry;
@@ -257,7 +222,17 @@ int refresh_shm(void *arg)
 	gate->show_data_flow=gate502.show_data_flow;
 	gate->show_sys_messages=gate502.show_sys_messages;
 	gate->watchdog_timer=gate502.watchdog_timer;
-	gate->use_buzzer=gate502.use_buzzer;
+//	gate->use_buzzer=gate502.use_buzzer;
+//	gate->back_light=gate502.back_light;
+
+	gate->offset1xStatus=gate502.offset1xStatus;
+	gate->offset2xStatus=gate502.offset2xStatus;
+	gate->offset3xRegisters=gate502.offset3xRegisters;
+	gate->offset4xRegisters=gate502.offset4xRegisters;
+	gate->amount1xStatus=gate502.amount1xStatus;
+	gate->amount2xStatus=gate502.amount2xStatus;
+	gate->amount3xRegisters=gate502.amount3xRegisters;
+	gate->amount4xRegisters=gate502.amount4xRegisters;
   ///--------------------------------------------------
 	time(&gate->timestamp);
   ///--------------------------------------------------
@@ -269,6 +244,19 @@ int refresh_shm(void *arg)
 		mxlcm_write(mxlcm_handle, 0, 3, "                ", MAX_LCM_COLS); // 16 characters
 		mxlcm_write(mxlcm_handle, 0, 4, " program stopped", MAX_LCM_COLS); // 16 characters
 		mxlcm_write(mxlcm_handle, 0, 5, "by web-interface", MAX_LCM_COLS); // 16 characters
+		mxlcm_write(mxlcm_handle, 0, 6, "                ", MAX_LCM_COLS); // 16 characters
+		}
+
+	if(gate->back_light!=gate502.back_light) {
+		gate502.back_light = screen.back_light = gate->back_light;
+	  if(screen.back_light) {	mxlcm_control(mxlcm_handle, IOCTL_LCM_BACK_LIGHT_ON);
+	    } else { 							mxlcm_control(mxlcm_handle, IOCTL_LCM_BACK_LIGHT_OFF);}
+		}
+
+	if(gate->use_buzzer!=gate502.use_buzzer) {
+//		gate502.use_buzzer = screen.buzzer_control = gate->use_buzzer;
+		gate502.use_buzzer = gate->use_buzzer;
+		mxbuzzer_beep(mxbzr_handle, 400);
 		}
 
   ///--------------------------------------------------

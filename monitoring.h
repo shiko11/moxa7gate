@@ -1,21 +1,40 @@
+
+#ifndef MONITORING_H
+#define MONITORING_H
+
 #include "global.h"
 
 #define EVENT_LOG_LENGTH			64
 #define EVENT_MESSAGE_LENGTH	32
 
 #define MAX_LATENCY_HISTORY_POINTS	8
-
 #define GATE_WEB_INTERFACE_TIMEOUT	2
+
+#define STAT_FUNC_0x01		0
+#define STAT_FUNC_0x02		1
+#define STAT_FUNC_0x03		2
+#define STAT_FUNC_0x04		3
+#define STAT_FUNC_0x05		4
+#define STAT_FUNC_0x06		5
+#define STAT_FUNC_0x0f		6
+#define STAT_FUNC_0x10		7
+#define STAT_FUNC_OTHER		8
+#define STAT_FUNC_AMOUNT	9
+
+#define STAT_RES_OK			0
+#define STAT_RES_ERR		1
+#define STAT_RES_EXP		2
+#define STAT_RES_AMOUNT 3
 
 typedef struct { // net initsializatsii polej structury
 	unsigned int accepted;
 
-	unsigned int errors_input_communication;
+	unsigned int errors_input_communication; //#
 	unsigned int errors_tcp_adu;
 	unsigned int errors_tcp_pdu;						// est' detalisatsiya po modbus-funktsiyam v zhurnale
 
-	unsigned int errors_serial_sending;				// MB_SERIAL_WRITE_ERR
-	unsigned int errors_serial_accepting;
+	unsigned int errors_serial_sending;				//# MB_SERIAL_WRITE_ERR
+	unsigned int errors_serial_accepting;  //#
 
 	unsigned int timeouts;
 
@@ -37,10 +56,7 @@ typedef struct { // net initsializatsii polej structury
 	unsigned int latency_history[MAX_LATENCY_HISTORY_POINTS];
 	unsigned int clp; // current latensy point
 	
-	unsigned int ok_0x01, ok_0x02, ok_0x03, ok_0x04, ok_0x05, ok_0x06, ok_0x0f, ok_0x10, ok_0xXX;
-	unsigned int err_0x01, err_0x02, err_0x03, err_0x04, err_0x05, err_0x06, err_0x0f, err_0x10, err_0xXX;
-	unsigned int exp_0x01, exp_0x02, exp_0x03, exp_0x04, exp_0x05, exp_0x06, exp_0x0f, exp_0x10, exp_0xXX;
-
+	unsigned int func[STAT_FUNC_AMOUNT][STAT_RES_AMOUNT];
 	} GW_StaticData;
 
 #define EVENT_SOURCE_P1				0
@@ -67,5 +83,10 @@ GW_EventLog *app_log;
 char eventmsg[2*EVENT_MESSAGE_LENGTH]; /// создать список сообщений, генерируемых системой
 
 void sysmsg(int source, int code, char *string, int show_anyway);
+void copy_stat(GW_StaticData *dst, GW_StaticData *src);
 void update_stat(GW_StaticData *dst, GW_StaticData *src);
 void clear_stat(GW_StaticData *dst);
+void func_res_ok(int mbf, GW_StaticData *dst);
+void func_res_err(int mbf, GW_StaticData *dst);
+
+#endif  /* MONITORING_H */

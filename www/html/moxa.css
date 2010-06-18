@@ -4,6 +4,7 @@ body {
 	margin: 0 5% 0 5%;
 	padding: 0px;
 	color:#333333;
+	background: url(img/BgContentBlock8.gif) no-repeat right bottom;
 }
 
 img {padding:0;margin:0}
@@ -11,7 +12,6 @@ img {padding:0;margin:0}
 a {text-decoration:none; color:#0066cc;}
 
 #hdr {
-	border-bottom:1px solid #009a82;
 	height:210px;
 	padding:0 0 20px 0;
 	margin-bottom:0px;
@@ -51,14 +51,18 @@ a {text-decoration:none; color:#0066cc;}
 #seming	img {float: left; padding:0 10px 0 10px;}
 #mv_linux	{float: right; padding:11px 0 0 10px;}
 #countdown {text-align:right; margin:0 0 10px 0; clear:both; padding-top:15px;}
+
+#p_status {margin: 20px 0;}
+#p_status td {padding:10px; white-space:nowrap;}
 /*--------------------------------------------------------------------------------*/
 a img {border:none;}
 
 h1 {
-	font-size: 12pt;
+	font-size: 14pt;
 	font-weight: bold;
 	color: #0066CC;
-	padding:10px 0 15px 0;
+	padding:42px 0 15px 0;
+	text-align: center;
 	}
 
 table {
@@ -70,39 +74,67 @@ table th, table td {
 	border-bottom:1px solid #009a82;
 	border-right:1px solid #009a82;
 	}
-table th {font-weight:normal; border-bottom:2px solid #009a82;}
+table th {font-weight:normal;}
 table th.internal {border-bottom:1px solid #009a82;}
 table td {text-align:center;}
 table td.pstatus {text-align:left; padding-left:12px;}
-table caption {color:white; font-weight:bold; text-align:left; padding:0 0 0 8pt; background-color:#009a82;}
+table caption, #p_counters th {color:white; font-weight:bold; text-align:left; padding:2pt 0 2pt 8pt; background-color:#009a82;}
+
 .p_on  {background-color:#eeffee;}
-span.p_on {color:white; background-color:#009a82;}
 .p_off {background-color:#eeeeee;}
-span.p_off {color:white; background-color:#333333;}
 .p_err {background-color:#ffdddd;}
-span.p_err, .err_block {color:white; background-color:#dd5555;}
-span.p_on, span.p_off, span.p_err {padding:2px 4px;}
+td.p_on  {background-color:#44ff44;}
+td.p_off {background-color:#444444;}
+td.p_err {background-color:#ff4444;}
+td.p_on, td.p_off, td.p_err {letter-spacing:4pt; text-align: center; padding-left: 8pt; font-weight:bold; color: white;}
+
 span.hstatus {font-size: 10pt;}
 
-#uc7410 {border-left:1px solid #009a82; border-top:none; margin:0 0 10px 10px;}
-#uc7410 th, #uc7410 td {
+#uc7410 {border-left:1px solid #009a82; border-top:8px solid white; margin:0 0 10px 0; width:16%; padding:0;}
+#uc7410 td {
 	border-bottom:1px solid #009a82;
 	border-right:1px solid #009a82;
 	text-align:left;
+	padding:8px 10px;
 	}
+#uc7410 th {font-weight: bold;background-color: #009a82;}
+#uc7410 .val {font-weight: normal; text-align: center;}
 
-#p_counters {float:left; margin:0 10px 0 0;}
+#mode {
+	width: 100%;
+	margin: 0;
+	padding:0;
+	border:none;
+	color: white;
+	background-color: #009a82;
+	}
+#mode td {font-weight: bold; border-right: 1px solid white;}
+
+#p_counters {border-left:1px solid #009a82; border-top:8px solid white; margin:0 0 10px 0; padding:0;}
 #p_counters td {text-align:left;}
-/*#p_counters tr.main_prm {font-weight:bold;}*/
 
-#p_clients {float:left;}
+#p_clients {margin-top: 10px; margin-bottom: 10px;}
 
-table.psett {float:left; margin:20px 20px 0 0; padding:0;}
-table.psett td {white-space:nowrap;}
+table.psett {float:left; margin:0 20px 0 0; padding:0; border-left:none;}
+table.psett td {white-space:nowrap; border-left:1px solid #009a82;}
 table.psett select {width:68pt;}
 table.psett input {padding:0; margin:0;}
+table.psett td.cpt {color:white; font-weight:bold; text-align:left; padding:2pt 0 2pt 8pt; background-color:#009a82;}
+table.psett td.f {border-right:none;}
 
-div.err_block {float:left;	font-size: 12pt; font-weight: bold; padding:20px; margin:10% 0 20% 16%;}
+#events_table td {text-align:left;}
+
+div.err_block {font-size: 12pt; font-weight: bold; padding:10px 0; margin:4% 0 8% 0; width:100%; text-align:center; border: 2px solid red; background-color: #ff4444; color: white;}
+
+#p_mbfunc .row_th {text-align: left;}
+
+#gw_sett td {text-align: left;}
+#gw_sett td.f {text-align: right; border-right:none; padding-right:12pt;}
+
+#proxy_table, #tcp_servers, #rtm_table {margin-top: 10px; margin-bottom: 10px;}
+
+#m_stat_tbl {width:80%; border: none;}
+#m_stat_tbl .f {border-left: 1px solid #009a82;}
 /*--------------------------------------------------------------------------------*/
 /*
 body p{

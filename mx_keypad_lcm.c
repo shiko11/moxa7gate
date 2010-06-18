@@ -187,6 +187,9 @@ void process_key_main(int key)
   	  		screen.current_screen==LCM_SCREEN_MAIN2) {
   	  	screen.menu_scr_mode=1;
   	    new_screen=LCM_SCREEN_MENU;
+//printf("internal %d, external %d\n", t_tcpsrv[0].port, tcp_servers[0].port);
+//printf("internal %d, external %d\n", t_tcpsrv[1].port, tcp_servers[1].port);
+//printf("internal %d, external %d\n", t_tcpsrv[2].port, tcp_servers[2].port);
   	  	}
   	  if(new_screen!=-1) show_screen(new_screen);
   		break;

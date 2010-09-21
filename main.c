@@ -317,6 +317,7 @@ int main(int argc, char *argv[])
 
 /// для удобства в дальнейшей работе переводим номера регистров и битов в смещения, когда нумерация идет с нуля
 	for(i=0; i<MAX_QUERY_ENTRIES; i++) { query_table[i].offset--; query_table[i].start--; }
+  gate502.status_info--;
 
 /*** ИНИЦИАЛИЗАЦИЯ УСТРОЙСТВ КОНТРОЛЯ И МОНИТОРИНГА: LCM, KEYPAD, BUZZER (ДИСПЛЕЙ, КЛАВИАТУРА, ЗУММЕР) ***/
 	mxkpd_handle=keypad_open();
@@ -541,7 +542,7 @@ int main(int argc, char *argv[])
 			/// инициализация BRIDGE-соединений по ЛВС выполняется ПОСЛЕ инициализации
 			/// прослушивающих сокетов GATEWAY-портов
 			case BRIDGE_SIMPLE:
-				//инициализацию сетевых соединений порта в режиме BRIDGE проиводим в потоке порта
+				//инициализацию сетевых соединений порта в режиме BRIDGE производим в потоке порта
 
 				strcpy(iDATA[P].bridge_status, "00B");
 
@@ -601,7 +602,7 @@ time(&gate502.start_time);
 
 gateway_common_processing();
 
-//----------- ЗАВЕРШЕНИЕ РАБОТЫ ПРИЛОЖЕНИЯ -------------
+//----------------- ЗАВЕРШЕНИЕ РАБОТЫ -----------------
 
 	for(i=0; i<MAX_MOXA_PORTS; i++) {
 	  if(iDATA[i].ssd>=0) {

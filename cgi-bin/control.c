@@ -405,7 +405,7 @@ void settings()
 	gate->IPAddress>>24, gate->IPAddress>>16&0xff, gate->IPAddress>>8&0xff, gate->IPAddress&0xff,
 	gate->tcp_port,
 	gate->modbus_address,
-	gate->status_info,																 
+	gate->status_info+1,																 
 	wdt, buz, bl);
 
 	printf("\
@@ -631,6 +631,7 @@ void show_proxy_queries(char port)
 	{
 	int i;
 	char mbtbl[20];
+	char sClass[32];
 	char any_entry=0;
 
 printf("\
@@ -662,7 +663,11 @@ printf("\
 
 		if((t_proxy[i].port!=port)&&(port!=SERIAL_STUB)) continue;
 
-printf("<tr>\n\
+		if(t_proxy[i].status_bit==1)
+			strcpy(sClass, "p_on");
+			else strcpy(sClass, "p_err");
+
+printf("<tr class=\"%s\">\n\
 <td>%d\n\
 <td>%d\n\
 <td>%s\n\
@@ -673,6 +678,7 @@ printf("<tr>\n\
 <td>%d\n\
 <td>%d\n\
 <td style=\"text-align: left;\">&nbsp;%s\n",
+		sClass,
 		i+1,
 		t_proxy[i].device,
 		mbtbl,

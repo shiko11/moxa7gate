@@ -796,7 +796,7 @@ void *gateway_proxy_thread(void *arg)
 		gettimeofday(&tv1, &tz);
 		tmpstat.accepted++;
 		///!!! статистику обновляем централизованно в функции int refresh_shm(void *arg) или подобной
-		gate502.wData4x[gate502.status_info+3*port_id+0]++;
+		//gate502.wData4x[gate502.status_info+3*port_id+0]++;
 
 		if(_show_data_flow) printf("PORT%d   OUT: ", port_id+1);
 		status = mb_serial_send_adu(fd, &tmpstat, &tcp_adu[6], tcp_adu_len-6, serial_adu, &serial_adu_len);
@@ -814,6 +814,10 @@ void *gateway_proxy_thread(void *arg)
 
 		///!!! Место-положение этого бита находится в области памяти 4x шлюза
 		//gate502.wData4x[query_table[i].status_register]&=(~query_table[i].status_bit);
+				query_table[i].err_counter++;
+				if(i!=MAX_QUERY_ENTRIES)
+					if(query_table[i].err_counter >= query_table[i].critical)
+						query_table[i].status_bit=0;
 				continue;
 		  	break;
 		  default:;
@@ -842,6 +846,10 @@ void *gateway_proxy_thread(void *arg)
 //				if(status==MB_SERIAL_READ_FAILURE) goto EndRun; ///!!!
 		///!!! Место-положение этого бита находится в области памяти 4x шлюза
 		//gate502.wData4x[query_table[i].status_register]&=(~query_table[i].status_bit);
+				query_table[i].err_counter++;
+				if(i!=MAX_QUERY_ENTRIES)
+					if(query_table[i].err_counter >= query_table[i].critical)
+						query_table[i].status_bit=0;
 				continue;
 		  	break;
 		  default:;
@@ -893,6 +901,8 @@ void *gateway_proxy_thread(void *arg)
 			}
 		///!!! Место-положение этого бита находится в области памяти 4x шлюза
 		//gate502.wData4x[query_table[i].status_register]|=query_table[i].status_bit;
+		query_table[i].status_bit=1;
+		query_table[i].err_counter=0;
 
   	tmpstat.sended++;
 		func_res_ok(serial_adu[RTUADU_FUNCTION], &tmpstat);
@@ -1018,8 +1028,10 @@ void *bridge_proxy_thread(void *arg)
   			sysmsg(port_id|(client_id<<8), 0, eventmsg, 0);
 				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 				update_stat(&iDATA[port_id].stat, &tmpstat);
-				iDATA[port_id].modbus_mode=MODBUS_PORT_ERROR;
-				if(status==MB_SERIAL_READ_FAILURE) goto EndRun;
+				if(status==MB_SERIAL_READ_FAILURE) {
+					iDATA[port_id].modbus_mode=MODBUS_PORT_ERROR;
+					goto EndRun;
+					}
 		  	break;
 		  default:;
 		  };
@@ -1029,19 +1041,19 @@ void *bridge_proxy_thread(void *arg)
 		u8			memory_adu[MB_SERIAL_MAX_ADU_LEN];
 		u16			memory_adu_len;
 
-		switch(serial_adu[1]) {
+		switch(serial_adu[RTUADU_FUNCTION]) {
 
 					case MBF_READ_HOLDING_REGISTERS:
-				j=((serial_adu[2]<<8)|serial_adu[3])&0xffff;
-				k=((serial_adu[4]<<8)|serial_adu[5])&0xffff;
-			  if((j+k>=gate502.offset4xRegisters+gate502.amount4xRegisters)||(j<gate502.offset4xRegisters)) {
+				j=((serial_adu[RTUADU_START_HI]<<8)|serial_adu[RTUADU_START_LO])&0xffff;
+				k=((serial_adu[RTUADU_LEN_HI]<<8)|serial_adu[RTUADU_LEN_LO])&0xffff;
+			  if((j+k>gate502.offset4xRegisters+gate502.amount4xRegisters)||(j<gate502.offset4xRegisters)) {
 					sprintf(eventmsg, "Proxy mode error: query addressing\n");
 	  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), 0, eventmsg, 0);
 					continue;
 					}
 
-			memory_adu[0]=serial_adu[0]; //device ID
-			memory_adu[1]=serial_adu[1]; //ModBus Function Code
+			memory_adu[0]=serial_adu[RTUADU_ADDRESS]; //device ID
+			memory_adu[1]=serial_adu[RTUADU_FUNCTION]; //ModBus Function Code
 			memory_adu[2]=2*k; 				//bytes total
 			int n;
 //			for(n=0; n<(2*k); n++)

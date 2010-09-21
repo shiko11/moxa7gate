@@ -80,7 +80,7 @@ table td {text-align:center;}
 table td.pstatus {text-align:left; padding-left:12px;}
 table caption, #p_counters th {color:white; font-weight:bold; text-align:left; padding:2pt 0 2pt 8pt; background-color:#009a82;}
 
-.p_on  {background-color:#eeffee;}
+.p_on  {background-color:#ccffcc;}
 .p_off {background-color:#eeeeee;}
 .p_err {background-color:#ffdddd;}
 td.p_on  {background-color:#44ff44;}
@@ -113,7 +113,7 @@ span.hstatus {font-size: 10pt;}
 #p_counters {border-left:1px solid #009a82; border-top:8px solid white; margin:0 0 10px 0; padding:0;}
 #p_counters td {text-align:left;}
 
-#p_clients {margin-top: 10px; margin-bottom: 10px;}
+#p_clients {margin:10px;}
 
 table.psett {float:left; margin:0 20px 0 0; padding:0; border-left:none;}
 table.psett td {white-space:nowrap; border-left:1px solid #009a82;}
@@ -124,14 +124,17 @@ table.psett td.f {border-right:none;}
 
 #events_table td {text-align:left;}
 
-div.err_block {font-size: 12pt; font-weight: bold; padding:10px 0; margin:4% 0 8% 0; width:100%; text-align:center; border: 2px solid red; background-color: #ff4444; color: white;}
+div.err_block {float:left;	font-size: 12pt; font-weight: bold; padding:10px 0; margin:10px 0 20% 0; width:100%; text-align:center; border: 2px solid red; background-color: #ff4444; color: white;}
 
 #p_mbfunc .row_th {text-align: left;}
 
 #gw_sett td {text-align: left;}
 #gw_sett td.f {text-align: right; border-right:none; padding-right:12pt;}
 
-#proxy_table, #tcp_servers, #rtm_table {margin-top: 10px; margin-bottom: 10px;}
+#gw_sett_form {margin:0 0 0 8%; padding:0; float:left;}
+#gw_memory {margin-left: 20px; float:left;}
+
+#proxy_table, #tcp_servers, #rtm_table {margin-top:10px; margin-bottom:10px;}
 
 #m_stat_tbl {width:80%; border: none;}
 #m_stat_tbl .f {border-left: 1px solid #009a82;}

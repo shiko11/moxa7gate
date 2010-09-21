@@ -101,6 +101,8 @@ int refresh_shm(void *arg)
   input_cfg *iDATA=(input_cfg *) arg;
   
   int i, j, k;
+  int stat1, stat2;
+
   for(i=0; i<MAX_MOXA_PORTS; i++) {
 
 //		iDATA[i].stat.request_time_average=0;
@@ -121,19 +123,25 @@ int refresh_shm(void *arg)
 				case GATEWAY_ATM:
 					k=iDATA[i].queue.queue_len*100/MAX_GATEWAY_QUEUE_LENGTH;
 					if(k<100) sprintf(iDATA[i].bridge_status, "%2.2dA", k);
-						else sprintf(iDATA[i].bridge_status, "ERR");
+						else sprintf(iDATA[i].bridge_status, "OVR"); /// отладочный код
 					break;
 
 				case GATEWAY_RTM:
 					k=iDATA[i].queue.queue_len*100/MAX_GATEWAY_QUEUE_LENGTH;
 					if(k<100) sprintf(iDATA[i].bridge_status, "%2.2dR", k);
-						else sprintf(iDATA[i].bridge_status, "ERR");
+						else sprintf(iDATA[i].bridge_status, "OVR"); /// отладочный код
 					break;
 
 				case GATEWAY_PROXY:
-					k=01; /// количество успешно выполняемых запросов из таблицы QUERY_TABLE для этого порта (00-99%)
-//			    sprintf(iDATA[i].bridge_status, "%2.2dP", k);
-			    sprintf(iDATA[i].bridge_status, "xxP");
+					/// количество успешно выполняемых запросов из таблицы QUERY_TABLE для этого порта (00-99%)
+				  stat1=stat2=0;
+				  for(j=0; j<MAX_QUERY_ENTRIES; j++)
+						if(query_table[j].port==i) {
+							stat1++;
+							if(query_table[j].status_bit==1) stat2++;
+							}
+					k=stat1==stat2?99:stat2*100/stat1;
+			    sprintf(iDATA[i].bridge_status, "%2.2dP", k);
 					break;
 
 				case BRIDGE_PROXY:
@@ -280,7 +288,7 @@ int refresh_shm(void *arg)
 		t_proxy[i].mbf=query_table[i].mbf;
 		t_proxy[i].delay=query_table[i].delay;
 		t_proxy[i].critical=query_table[i].critical;
-		t_proxy[i].status_register=query_table[i].status_register;
+		t_proxy[i].err_counter=query_table[i].err_counter;
 		t_proxy[i].status_bit=query_table[i].status_bit;
 		strcpy(t_proxy[i].device_name, query_table[i].device_name);
 	  }
@@ -293,6 +301,22 @@ int refresh_shm(void *arg)
 		t_tcpsrv[i].p_num=tcp_servers[i].p_num;
 		strcpy(t_tcpsrv[i].device_name, tcp_servers[i].device_name);
 	  }
+
+  ///*** Заполняем массив диагностической информации, если он был инициализирован
+
+  for(i=0; i<MAX_MOXA_PORTS; i++) {
+    gate502.wData4x[gate502.status_info+3*i+0]=iDATA[i].stat.accepted;
+    gate502.wData4x[gate502.status_info+3*i+1]=iDATA[i].stat.sended;
+    gate502.wData4x[gate502.status_info+3*i+2]=iDATA[i].stat.request_time_average;
+	  }
+
+  for(i=0; i<MAX_QUERY_ENTRIES; i++) {
+		j = 0x01 << (i % 16);
+    if(query_table[i].status_bit==0)
+			gate502.wData4x[gate502.status_info+3*MAX_MOXA_PORTS+(i/16)]&=~j;
+			else
+			gate502.wData4x[gate502.status_info+3*MAX_MOXA_PORTS+(i/16)]|=j;
+    }
 
 	return 0;
 	}

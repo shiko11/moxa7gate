@@ -241,9 +241,9 @@ typedef struct {			// modbus-запрос для циклического опроса ведомого устройства 
 
   unsigned mbf; 			// одна из стандартных функций протокола MODBUS (см. файл modbus_rtu.h)
   unsigned delay;  // задержка перед отправкой запроса при работе в режиме PROXY в милисекундах
-	unsigned critical;
-  unsigned status_register;  // номер регистра статуса опроса
-  unsigned status_bit;  // номер бита статуса
+	unsigned critical;			// количество ошибок до изменения бита статуса связи
+  unsigned err_counter;  // счетчик текущего количества ошибок
+  unsigned status_bit;  // бит статуса связи (первый в переменной)
 	char device_name[DEVICE_NAME_LENGTH]; // наименование устройства
   } Query_Table_Entry;
 

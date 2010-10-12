@@ -81,7 +81,8 @@ typedef struct { // параметры последовательного порта
 	} GW_SerialLine;
 
 #define   MAX_MOXA_PORTS		8
-#define   MOXA_MB_DEVICE		8
+//#define EVENT_SRC_MOXAMB	0x0A
+#define   MOXA_MB_DEVICE		0x0A
 
 //#define MODBUS_GATEWAY_MODE	1	///###obsolete
 //#define MODBUS_PROXY_MODE		2	///###obsolete
@@ -110,8 +111,16 @@ typedef struct { // очередь на семафорах
 #define MODBUS_PORT_ERROR		4
 #define MODBUS_PORT_OFF			5
 
+/*--- Всего возможны 5 различных типа клиентов шлюза:
+	1. Клиент на стороне TCP, подключенный к порту GATEWAY_SIMPLE;
+	2. Клиент на стороне TCP, подключенный к шлюзу через общий TCP порт (обычно 502);
+	3. Клиент на стороне RTU, подключенный к порту BRIDGE_PROXY или BRIDGE_SIMPLE;
+	4. Потоковая функция moxa7gate, реализующая режим TCP_PROXY;
+	5. Устройства ModBus TCP Server, с которыми работает порт в режиме BRIDGE_SIMPLE;
+*/
+
 typedef struct { // параметры клиентского устройства
-	u8        mb_slave;					// адрес modbus-устройства для перенаправления запросов в режиме BRIDGE
+	u8        mb_slave;					// адрес modbus-устройства для перенаправления запросов в режиме BRIDGE_SIMPLE
 	unsigned int ip;						
 	unsigned int port;
 	int address_shift;
@@ -125,8 +134,8 @@ typedef struct { // параметры клиентского устройства
 	int connection_status;	// состояние TCP-соединения
 	int csd;								// TCP-сокет принятого или созданного соединения
 
-	int rc;									// результат функции создания потока (только режим GATEWAY)
-	pthread_t	tid_srvr; 		// идентификатор потока в системе (только режим GATEWAY)
+	int rc;									// результат функции создания потока (только режим GATEWAY_SIMPLE)
+	pthread_t	tid_srvr; 		// идентификатор потока в системе (только режим GATEWAY_SIMPLE)
 
 	GW_StaticData stat;
 	
@@ -174,6 +183,7 @@ u8 back_light;				// Состояние подсветки дисплея
 	time_t start_time;  // время запуска программы
 	time_t timestamp;  // время последнего обновления данных для web-интерфейса
 	unsigned app_log_current_entry, app_log_entries_total;
+	unsigned msg_filter;
 	char halt;
 
 	// начало блока внутренних регистров Moxa (смещение)
@@ -281,7 +291,7 @@ GW_TCP_Server tcp_servers[MAX_TCP_SERVERS];
 #define	BASIC_STAT_GATEWAY_INFO	24
 #define	GATE_STATUS_BLOCK_LENGTH	BASIC_STAT_GATEWAY_INFO+MAX_QUERY_ENTRIES/16
 
-u8					_show_data_flow;		/// obsolete
+//u8					_show_data_flow;		/// obsolete
 u8					_show_sys_messages;	/// obsolete
 
 #define   MAX_KEYS                 64        //максимальное количество параметров командной строки с префиксом "--"

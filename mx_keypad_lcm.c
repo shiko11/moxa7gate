@@ -597,7 +597,7 @@ void show_uart_detail(int uart)
 	sprintf(screen.text[2], "Timeouts    %4.4d", iDATA[uart].stat.timeouts%10000);
 	sprintf(screen.text[3], "CRC Errors  %4.4d", iDATA[uart].stat.crc_errors%10000);
 	sprintf(screen.text[4], "Errors      %4.4d", iDATA[uart].stat.errors%10000);
-	sprintf(screen.text[5], "Time delay  %4.4d", iDATA[uart].stat.request_time_average);
+	sprintf(screen.text[5], "Time delay  %4.4d", iDATA[uart].stat.request_time);
 	strcpy (screen.text[6], "F3-Reset counter");
 	strcpy (screen.text[7], "F4-RSALL F2-BACK");
 
@@ -894,10 +894,7 @@ int ctrl_reset_port_counters(int port)
   iDATA[port].stat.errors_serial_pdu=\
   iDATA[port].stat.errors_tcp_sending=\
   iDATA[port].stat.errors=\
-  iDATA[port].stat.sended=\
-  iDATA[port].stat.request_time_min=\
-  iDATA[port].stat.request_time_max=\
-  iDATA[port].stat.request_time_average=0;
+  iDATA[port].stat.sended=0;
 
 //  iDATA[port].stat.latency_history[MAX_LATENCY_HISTORY_POINTS];
 //  iDATA[port].stat.clp; // current latensy point

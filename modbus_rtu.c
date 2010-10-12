@@ -86,10 +86,10 @@ int mb_serial_send_adu(int ttyfd, GW_StaticData *stat, u8 *pdu, u16 pdu_len, u8 
           adu[cur_pos++] = temp_crc & 0x00FF;               //   ДПВБЧМСЕН CRC Ч ЛПОЕГ
 //     }
 
-	if(_show_data_flow) {
-    for (i=0;i<cur_pos;i++) printf("[%0.2X]",adu[i]);
-    printf("\n");
-		}
+//	if(gate502.show_data_flow==1) {
+//    for (i=0;i<cur_pos;i++) printf("[%0.2X]",adu[i]);
+//    printf("\n");
+//		}
 
 	tcflush(ttyfd,TCIOFLUSH);     /* flush the input & output streams */
 	write_stat = write(ttyfd,adu,*adu_len);
@@ -127,9 +127,10 @@ int receive_response(int ttyfd, u8 *received_string,int timeout,int ch_interval_
 #endif
      /* wait for a response */
      data_avail = select(FD_SETSIZE,&rfds,NULL,NULL,&tv );
-     if( !data_avail ) {
-          printf("Comms time out\n");
-     }
+
+//     if( !data_avail ) { /// 07.10.2010: в программе уже есть код для выдачи сообщения по таймауту
+//          printf("Comms time out\n");
+//     }
 
      tv.tv_sec = 0;
 	  tv.tv_usec = ch_interval_timeout;
@@ -203,11 +204,11 @@ int mb_serial_receive_adu(int fd, GW_StaticData *stat, u8 *adu, u16 *adu_len, u8
 		return MB_SERIAL_ADU_ERR_MAX;
 		}
 	
-	if(_show_data_flow) {
-    int i;
-    for (i=0;i<mb_received_adu_len;i++) printf("[%0.2X]",adu[i]);
-		printf("\n");
-	  }
+//	if(gate502.show_data_flow==1) {
+//    int i;
+//    for (i=0;i<mb_received_adu_len;i++) printf("[%0.2X]",adu[i]);
+//		printf("\n");
+//	  }
 
     crc_calc = crc(adu, 0, mb_received_adu_len - 2);
     recv_crc_hi = (u16) adu[mb_received_adu_len - 1];
@@ -457,11 +458,11 @@ int serial_receive_adu(int fd, GW_StaticData *stat, u8 *adu, u16 *adu_len, u8 *r
 		return MB_SERIAL_ADU_ERR_MAX;
 		}
 	
-	if(_show_data_flow) {
-    int i;
-    for (i=0;i<mb_received_adu_len;i++) printf("[%0.2X]",adu[i]);
-		printf("\n");
-	  }
+//	if(gate502.show_data_flow==1) {
+//    int i;
+//    for (i=0;i<mb_received_adu_len;i++) printf("[%0.2X]",adu[i]);
+//		printf("\n");
+//	  }
 
     crc_calc = crc(adu, 0, mb_received_adu_len - 2);
     recv_crc_hi = (u16) adu[mb_received_adu_len - 1];

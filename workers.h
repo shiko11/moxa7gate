@@ -23,6 +23,9 @@ SEM-ENGINEERING
 #define MB_ADDRESS_NO_SHIFT				0
 #define MB_SCAN_RATE_INFINITE			100000
 
+// Набор семафоров. Используется для синхронизации работы потоков с очередями.
+int semaphore_id;
+
 union semun {
 	int val;
 	struct semid_ds *buf;
@@ -30,13 +33,11 @@ union semun {
 	struct seminfo *__buf;
   };
 
-int semaphore_id;
-
-void *srvr_tcp_child(void *arg); //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
-void *srvr_tcp_child2(void *arg); //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
-void *srvr_tcp_bridge(void *arg); //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
-void *gateway_proxy_thread(void *arg); //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
-void *bridge_proxy_thread(void *arg); //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
-void *moxa_mb_thread(void *arg); // обработчик запросов непосредственно к памяти MOXA
+void *srvr_tcp_child(void *arg); /// Потоковая функция режима GATEWAY_SIMPLE
+void *srvr_tcp_child2(void *arg); /// Потоковая функция режимов GATEWAY_ATM, GATEWAY_RTM
+void *srvr_tcp_bridge(void *arg); /// Потоковая функция режима BRIDGE_SIMPLE
+void *gateway_proxy_thread(void *arg); /// Потоковая функция режима GATEWAY_PROXY
+void *bridge_proxy_thread(void *arg); /// Потоковая функция режима BRIDGE_PROXY
+void *moxa_mb_thread(void *arg); /// Потоковая функция обработки запросов к MOXA
 
 #endif  /* WORKERS_H */

@@ -256,7 +256,7 @@ int get_command_line (int 	argc,
 			shift_counter+=2;
 			}
 
-		printf("parsing port %d, mode %d\n", p_num, ptr_iDATA[p_num-1].modbus_mode);
+//		printf("parsing port %d, mode %d\n", p_num, ptr_iDATA[p_num-1].modbus_mode);
 		strcpy(ptr_iDATA[p_num-1].bridge_status, "INI");
 	  }
 
@@ -404,8 +404,8 @@ int get_command_line (int 	argc,
 //					printf("noop temp=%d arg=\"%s\"\n", temp, arg);
 					if(temp!=CL_OK) return CL_ERR_IN_MAP;
 					
-					printf("I:  %s\n", arg);
-					printf("II: %X:%d\n", tcp_servers[i].ip, tcp_servers[i].port);
+//					printf("I:  %s\n", arg);
+//					printf("II: %X:%d\n", tcp_servers[i].ip, tcp_servers[i].port);
 
 					/// читаем modbus-адрес устройства
 					arg=argv[id_tcpsrv+i*4+3+shift_counter];
@@ -729,102 +729,13 @@ int get_ip_from_string(char *str, unsigned int *ip, unsigned int *port)
 
 	return CL_OK;
   }
-/*//-----------------------------------------------------------------------------------------------------------------
-int enqueue_query(int port_id, int client_id, int device_id, u8 *tcp_adu, u16 tcp_adu_len)
-  {
-
-		if(port_id!=MOXA_MB_DEVICE) {
-
-			  if(iDATA[port_id].queue_len==MAX_GATEWAY_QUEUE_LENGTH) { ///!!! modbus exception response
-					sprintf(eventmsg, "queue overloaded P%d CL%d", port_id+1, client_id);
-	  			sysmsg(EVENT_SOURCE_GATE502|(client_id<<8), 0, eventmsg, 0);
-					return 1;
-					}
-	
-		  	pthread_mutex_lock(&iDATA[port_id].serial_mutex);
-	
-				int j, queue_current=(iDATA[port_id].queue_start+iDATA[port_id].queue_len)%MAX_GATEWAY_QUEUE_LENGTH;
-	
-				//printf("query_queued ?%dP%d\n", queue_current, port_id+1);
-
-				for(j=0; j<tcp_adu_len; j++)
-					iDATA[port_id].queue_adu[queue_current][j]=tcp_adu[j];
-				iDATA[port_id].queue_adu_len[queue_current]=tcp_adu_len;
-				iDATA[port_id].queue_clients[queue_current]=client_id;
-				iDATA[port_id].queue_slaves[queue_current]=device_id; ///!!! ATM & PROXY uses this field
-	
-				iDATA[port_id].queue_len++;
-	
-	///$$$	struct timeval tv1, tv2;
-	///$$$	struct timezone tz;
-	//(tv2.tv_sec%10)*1000+tv2.tv_usec/1000
-	///$$$		gettimeofday(&tv2, &tz);
-	///$$$			printf("\nP%d TCP%4.4d time%d query %d begin[%d]", port_id+1, gate502.clients[i].port, (tv2.tv_sec%10)*10+tv2.tv_usec/100000, iDATA[port_id].queue_len, queue_current);
-	
-		  	pthread_mutex_unlock(&iDATA[port_id].serial_mutex);
-				//printf("mutex passed\n");
-	
-	/// semaphore
-	struct sembuf operations[1];
-	operations[0].sem_op=1;
-	operations[0].sem_flg=0;
-
-				/// semaphore
-				operations[0].sem_num=port_id;
-		  	semop(semaphore_id, operations, 1);
-				//printf("semaphore passed\n");
-
-			} else { /// РАБОТА С ОЧЕРЕДЬЮ MOXA MODBUS DEVICE
-
-			  if(gate502.queue_len==MAX_GATEWAY_QUEUE_LENGTH) { ///!!! modbus exception response
-					sprintf(eventmsg, "queue overloaded moxa_mb_device CL%d", client_id);
-	  			sysmsg(EVENT_SOURCE_GATE502|(client_id<<8), 0, eventmsg, 0);
-					return 1;
-					}
-	
-		  	pthread_mutex_lock(&gate502.moxa_mutex);
-	
-				int j, queue_current=(gate502.queue_start+gate502.queue_len)%MAX_GATEWAY_QUEUE_LENGTH;
-	
-				//printf("query_queued ?%dP%d\n", queue_current, port_id+1);
-
-				for(j=0; j<tcp_adu_len; j++)
-					gate502.queue_adu[queue_current][j]=tcp_adu[j];
-				gate502.queue_adu_len[queue_current]=tcp_adu_len;
-				gate502.queue_clients[queue_current]=client_id;
-//				gate502.queue_slaves[queue_current]=device_id;
-	
-				gate502.queue_len++;
-	
-	///$$$	struct timeval tv1, tv2;
-	///$$$	struct timezone tz;
-	//(tv2.tv_sec%10)*1000+tv2.tv_usec/1000
-	///$$$		gettimeofday(&tv2, &tz);
-	///$$$			printf("\nP%d TCP%4.4d time%d query %d begin[%d]", port_id+1, gate502.clients[i].port, (tv2.tv_sec%10)*10+tv2.tv_usec/100000, iDATA[port_id].queue_len, queue_current);
-	
-		  	pthread_mutex_unlock(&gate502.moxa_mutex);
-				//printf("mutex passed\n");
-	
-	/// semaphore
-	struct sembuf operations[1];
-	operations[0].sem_op=1;
-	operations[0].sem_flg=0;
-
-				/// semaphore
-				operations[0].sem_num=MOXA_MB_DEVICE;
-		  	semop(semaphore_id, operations, 1);
-				//printf("semaphore passed\n");
-				}
-
-  return 0;
-  }
-*///-----------------------------------------------------------------------------------------------------------------
+///-----------------------------------------------------------------------------------------------------------------
 int enqueue_query_ex(GW_Queue *queue, int client_id, int device_id, u8 *adu, u16 adu_len)
   {
 
-			  if(queue->queue_len==MAX_GATEWAY_QUEUE_LENGTH) { ///!!! modbus exception response
-					sprintf(eventmsg, "queue overloaded P%d CL%d", queue->port_id+1, client_id);
-	  			sysmsg(EVENT_SOURCE_GATE502|(client_id<<8), 0, eventmsg, 0);
+			  if(queue->queue_len==MAX_GATEWAY_QUEUE_LENGTH) { ///!!! modbus exception response, reset queue
+			 		// QUEUE OVERLOADED
+			 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|queue->port_id, 149, queue->port_id, client_id, 0, 0);
 					return 1;
 					}
 	
@@ -874,9 +785,8 @@ int get_query_from_queue(GW_Queue *queue, int *client_id, int *device_id, u8 *ad
 //		printf("query_accepted P%d, len=%d\n", queue->port_id+1, queue->queue_len);
 
 	  if(queue->queue_len==0) { /// внутренняя ошибка в программе
-			sprintf(eventmsg, "queue is empty P%d", queue->port_id+1);
-			printf("queue is empty P%d\n", queue->port_id+1);
-			sysmsg(EVENT_SOURCE_GATE502, 0, eventmsg, 0);
+	 		// QUEUE EMPTY
+	 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|queue->port_id, 148, queue->port_id, 0, 0, 0);
 			return 1;
 			}
 
@@ -985,9 +895,8 @@ int process_moxamb_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu, 
 				n, &port_id, &device_id);
 
 		  if(status) {
-				sprintf(eventmsg, "Proxy translation error %d P%d CL%d", status, port_id+1, client_id);
-				printf("Proxy translation error %d P%d CL%d\n", status, port_id+1, client_id);
-  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), 0, eventmsg, 0);
+		 		// FRWD: PROXY TRANSLATION
+		 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|EVENT_SRC_MOXAMB, 130, status, port_id, client_id, 0);
 				return 1;
 				}
 														
@@ -1004,9 +913,9 @@ int process_moxamb_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu, 
 //				return 0;
 			break;
 
-		default: // уже не первая проверка по пути пакета
-				sprintf(eventmsg, "Proxy mode error: unsupported mbf\n");
-  			sysmsg(EVENT_SOURCE_GATE502|(i<<8), 0, eventmsg, 0);
+		default: //!!! добавить код счетчика статистики. уже не первая проверка по пути пакета
+		 		// POLLING: FUNC NOT SUPPORTED
+		 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|EVENT_SRC_MOXAMB, 180, adu[TCPADU_FUNCTION], 0, 0, 0);
 				return 2;
 		}
 

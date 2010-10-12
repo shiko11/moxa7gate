@@ -55,17 +55,16 @@ int init_shm()
 	if(shm_segment_id==-1) {
 
 		switch(errno) {
-			case ENOENT: printf("shmget error: ENOENT\n"); break;
-			case EACCES: printf("shmget error: EACCES\n"); break;
-			case EINVAL: printf("shmget error: EINVAL\n"); break;
-			case ENOMEM: printf("shmget error: ENOMEM\n"); break;
-			case EEXIST: printf("shmget error: EEXIST\n"); break;
-			default: printf("shmget error: unknown %d\n", errno);
+			case ENOENT: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 34, 0, 0, 0, 0); break;
+			case EACCES: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 31, 0, 0, 0, 0); break;
+			case EINVAL: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 33, 0, 0, 0, 0); break;
+			case ENOMEM: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 35, 0, 0, 0, 0); break;
+			case EEXIST: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 32, 0, 0, 0, 0); break;
+			default: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 36, 0, 0, 0, 0); break;
 			}
 
 		return shm_segment_id;
 	  }
-	printf("shmget OK.");
 
   ///--- permission mode-------
 	struct shmid_ds mds;
@@ -73,7 +72,6 @@ int init_shm()
 	shmctl(shm_segment_id, IPC_SET, &mds);
 
 	shmctl(shm_segment_id, IPC_STAT, &shmbuffer);
-	printf(" segment size: %d\n", shmbuffer.shm_segsz);
 
 	pointer=shmat(shm_segment_id, 0, 0);
 
@@ -91,6 +89,8 @@ int init_shm()
 
 ///  printf("%d %d %d\n", shm_data, shared_memory, app_log);
 ///  printf("%p %p %p\n", shm_data, shared_memory, app_log);
+	// SHARED MEM: OK
+	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_SYSTEM, 37, shmbuffer.shm_segsz, 0, 0, 0);
 
   return 0;
   }
@@ -136,11 +136,16 @@ int refresh_shm(void *arg)
 					/// количество успешно выполняемых запросов из таблицы QUERY_TABLE для этого порта (00-99%)
 				  stat1=stat2=0;
 				  for(j=0; j<MAX_QUERY_ENTRIES; j++)
-						if(query_table[j].port==i) {
+						if(	(query_table[j].port==i) 		&&
+								(query_table[j].length!=0) 	&&
+								(query_table[j].mbf!=0)			&&
+								(query_table[j].device!=0)	) {
+
 							stat1++;
 							if(query_table[j].status_bit==1) stat2++;
 							}
-					k=stat1==stat2?99:stat2*100/stat1;
+					k=(stat1==stat2)?99:((stat2*100)/stat1);
+//					printf("stat1=%d; stat2=%d;\n", stat1, stat2);
 			    sprintf(iDATA[i].bridge_status, "%2.2dP", k);
 					break;
 
@@ -307,7 +312,7 @@ int refresh_shm(void *arg)
   for(i=0; i<MAX_MOXA_PORTS; i++) {
     gate502.wData4x[gate502.status_info+3*i+0]=iDATA[i].stat.accepted;
     gate502.wData4x[gate502.status_info+3*i+1]=iDATA[i].stat.sended;
-    gate502.wData4x[gate502.status_info+3*i+2]=iDATA[i].stat.request_time_average;
+    gate502.wData4x[gate502.status_info+3*i+2]=iDATA[i].stat.request_time;
 	  }
 
   for(i=0; i<MAX_QUERY_ENTRIES; i++) {
@@ -326,7 +331,8 @@ int close_shm()
 	{
 	shmdt(pointer);
 	shmctl(shm_segment_id, IPC_RMID, 0);
-	printf("shmget CLOSED\n");
+	// SHARED MEM: CLOSED
+	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 30, 0, 0, 0, 0);
 	return 0;
 	}
 ///--------------------------------------------------------------------------

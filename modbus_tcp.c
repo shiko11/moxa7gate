@@ -31,11 +31,11 @@ int		mb_tcp_receive_adu(int sfd, GW_StaticData *stat, u8 *mb_received_adu, u16 *
 		return TCP_ADU_ERR_MAX;
 		}
 
-	if(_show_data_flow) {
-		int	i;
-		for (i=0;i<mb_received_adu_len;i++) printf("{%0.2X}",mb_received_adu[i]);
-		printf("\n");
-	  }
+//	if(gate502.show_data_flow==1) {
+//		int	i;
+//		for (i=0;i<mb_received_adu_len;i++) printf("{%0.2X}",mb_received_adu[i]);
+//		printf("\n");
+//	  }
 
 	//unsigned int	ti=	(mb_received_adu[0]<<8)|mb_received_adu[1]; //any value
 	unsigned int	pi=	(mb_received_adu[2]<<8)|mb_received_adu[3];
@@ -190,10 +190,10 @@ int mb_tcp_send_adu(int sfd, GW_StaticData *stat, u8 *pdu, u16 pdu_len, u8 *requ
 	request[5]=pdu_len; // unsigned char
 	*tcp_len=pdu_len-1+MB_TCP_ADU_HEADER_LEN;
 
-	if(_show_data_flow) {
-		for (i=0;i<*tcp_len;i++) printf("{%0.2X}",request[i]);
-		printf("\n");
-	  }
+//	if(gate502.show_data_flow==1) {
+//		for (i=0;i<*tcp_len;i++) printf("{%0.2X}",request[i]);
+//		printf("\n");
+//	  }
 
 	sended_bytes=send(sfd, request, *tcp_len, 0);
 	if(sended_bytes!=*tcp_len) {

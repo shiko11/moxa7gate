@@ -81,8 +81,6 @@ typedef struct { // параметры последовательного порта
 	} GW_SerialLine;
 
 #define   MAX_MOXA_PORTS		8
-//#define EVENT_SRC_MOXAMB	0x0A
-#define   MOXA_MB_DEVICE		0x0A
 
 //#define MODBUS_GATEWAY_MODE	1	///###obsolete
 //#define MODBUS_PROXY_MODE		2	///###obsolete
@@ -105,8 +103,13 @@ typedef struct { // очередь на семафорах
 #define GATEWAY_ATM					7
 #define GATEWAY_RTM					8
 #define GATEWAY_PROXY				9
-#define BRIDGE_PROXY				10
+
+//#define EVENT_SRC_MOXAMB	0x0A
+// это число исп. также для идентификации семафора!
+#define   MOXA_MB_DEVICE		0x0A
+
 #define BRIDGE_SIMPLE				11
+#define BRIDGE_PROXY				12
 
 #define MODBUS_PORT_ERROR		4
 #define MODBUS_PORT_OFF			5

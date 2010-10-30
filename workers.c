@@ -49,7 +49,7 @@ void *srvr_tcp_child(void *arg)
 		status = mb_tcp_receive_adu(tcsd, &tmpstat, tcp_adu, &tcp_adu_len);
 
 		if(gate502.show_data_flow==1)
-			show_traffic(TRAFFIC_TCP_RECV, inputDATA->clients[client_id].p_num, client_id, tcp_adu, tcp_adu_len);
+			show_traffic(TRAFFIC_TCP_RECV, port_id, client_id, tcp_adu, tcp_adu_len);
 
 		gettimeofday(&tv2, &tz);
 		inputDATA->clients[client_id].stat.scan_rate=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
@@ -75,7 +75,7 @@ void *srvr_tcp_child(void *arg)
 				//update_stat(&iDATA[port_id].stat, &tmpstat);
 				if(status==TCP_COM_ERR_NULL) {
 					inputDATA->clients[client_id].connection_status=MB_CONNECTION_CLOSED;
-					inputDATA->modbus_mode=MODBUS_PORT_ERROR;
+					// inputDATA->modbus_mode=MODBUS_PORT_ERROR; /// нельзя так делать
 					goto EndRun;
 					}
 				continue;
@@ -110,8 +110,20 @@ void *srvr_tcp_child(void *arg)
 
 	  pthread_mutex_unlock(&inputDATA->serial_mutex);
 	  
+/*//---------- специальный случай при подаче команд на СКС-7 Диоген, обрабатываем
+///--- убираем третий с конца байт в полученном ответе на запрос
+		if((port_id==SERIAL_P3) && (serial_adu[RTUADU_FUNCTION]==0x06)) {
+			serial_adu[serial_adu_len-3]=serial_adu[serial_adu_len-2];
+			serial_adu[serial_adu_len-2]=serial_adu[serial_adu_len-1];
+			serial_adu_len--;
+			if(status==MB_SERIAL_PDU_ERR) status=0;
+			}
+*///-----------------------------------------------------------------------------
+
 		if(gate502.show_data_flow==1)
 			show_traffic(TRAFFIC_RTU_RECV, port_id, client_id, serial_adu, serial_adu_len);
+
+//		printf("status: %d\n", status);
 
 		switch(status) {
 		  case 0:
@@ -130,7 +142,7 @@ void *srvr_tcp_child(void *arg)
 				update_stat(&iDATA[port_id].stat, &tmpstat);
 				if(status==MB_SERIAL_READ_FAILURE) {
 					inputDATA->clients[client_id].connection_status=MB_CONNECTION_CLOSED;
-					inputDATA->modbus_mode=MODBUS_PORT_ERROR;
+					// inputDATA->modbus_mode=MODBUS_PORT_ERROR; /// нельзя так делать
 					goto EndRun;
 					}
 				continue;
@@ -837,8 +849,21 @@ void *gateway_proxy_thread(void *arg)
     /// kazhetsya net zaschity ot perepolneniya bufera priema "serial_adu[]"
 	  status = mb_serial_receive_adu(fd, &tmpstat, serial_adu, &serial_adu_len, &tcp_adu[MB_TCP_ADU_HEADER_LEN], inputDATA->serial.timeout, inputDATA->serial.ch_interval_timeout);
 
+/*//---------- специальный случай при подаче команд на СКС-7 Диоген, обрабатываем
+///--- убираем третий с конца байт в полученном ответе на запрос
+		if((port_id==SERIAL_P3) && (serial_adu[RTUADU_FUNCTION]==0x06)) {
+			serial_adu[serial_adu_len-3]=serial_adu[serial_adu_len-2];
+			serial_adu[serial_adu_len-2]=serial_adu[serial_adu_len-1];
+			serial_adu_len--;
+			//if(status==MB_SERIAL_PDU_ERR) status=0;
+			status=0;
+			}
+*///-----------------------------------------------------------------------------
+
 		if(gate502.show_data_flow==1)
 			show_traffic(TRAFFIC_RTU_RECV, port_id, i, serial_adu, serial_adu_len);
+
+//		printf("status: %d\n", status);
 
 		switch(status) {
 		  case 0:
@@ -1229,7 +1254,7 @@ void *moxa_mb_thread(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
 //	int fd=inputDATA->serial.fd;
 
   // THREAD STARTED
-	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_MOXAMB, 42, DEFAULT_CLIENT, 0, 0, 0);
+	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_MOXAMB, 42, MOXA_MB_DEVICE, DEFAULT_CLIENT, 0, 0);
 
 	while (1) {
 		

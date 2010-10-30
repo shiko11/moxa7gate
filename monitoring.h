@@ -80,7 +80,7 @@ void func_res_err(int mbf, GW_StaticData *dst);
 
 ///******************* Ã ≈ ’ ¿ Õ » « Ã   — Œ Œ ¡ Ÿ ≈ Õ » … ***************************
 #define EVENT_LOG_LENGTH			100
-#define EVENT_MESSAGE_LENGTH	64
+#define EVENT_MESSAGE_LENGTH	81
 #define EVENT_TEMPLATE_AMOUNT	0x100
 
 #define EVENT_CAT_MONITOR			0x40
@@ -128,7 +128,7 @@ typedef struct {				// «¿œ»—‹ ∆”–Õ¿À¿ —Œ¡€“»… ÿÀﬁ«¿
 
 
 GW_EventLog *app_log;
-char eventmsg[2*EVENT_MESSAGE_LENGTH];
+char eventmsg[EVENT_MESSAGE_LENGTH];
 char message_template[EVENT_TEMPLATE_AMOUNT][EVENT_MESSAGE_LENGTH];
 
 void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,

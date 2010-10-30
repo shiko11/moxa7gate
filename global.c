@@ -735,7 +735,7 @@ int enqueue_query_ex(GW_Queue *queue, int client_id, int device_id, u8 *adu, u16
 
 			  if(queue->queue_len==MAX_GATEWAY_QUEUE_LENGTH) { ///!!! modbus exception response, reset queue
 			 		// QUEUE OVERLOADED
-			 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|queue->port_id, 149, queue->port_id, client_id, 0, 0);
+			 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|queue->port_id, 149, client_id, 0, 0, 0);
 					return 1;
 					}
 	
@@ -754,7 +754,6 @@ int enqueue_query_ex(GW_Queue *queue, int client_id, int device_id, u8 *adu, u16
 				queue->queue_slaves[queue_current]=device_id; ///!!! ATM & PROXY uses this field
 	
 				queue->queue_len++;
-	//			printf("query_queued %d P%d, len=%d\n", queue_current, queue->port_id+1, queue->queue_len);
 	
 	///$$$	struct timeval tv1, tv2;
 	///$$$	struct timezone tz;
@@ -764,6 +763,9 @@ int enqueue_query_ex(GW_Queue *queue, int client_id, int device_id, u8 *adu, u16
 	
 	pthread_mutex_unlock(&queue->queue_mutex);
 	//printf("mutex passed\n");
+
+//	printf("query_queued %d P%d, len=%d\n", queue_current, queue->port_id+1, queue->queue_len);
+	sysmsg_ex(EVENT_CAT_TRAFFIC|EVENT_TYPE_INF|queue->port_id, 220, client_id, queue->queue_len, 0, 0);
 
 	queue->operations[0].sem_op=1;
 //	printf("semaphore inc: port=%d\n", queue->port_id+1);
@@ -782,11 +784,9 @@ int get_query_from_queue(GW_Queue *queue, int *client_id, int *device_id, u8 *ad
 				 
 		if(status==-1) return status;
 
-//		printf("query_accepted P%d, len=%d\n", queue->port_id+1, queue->queue_len);
-
 	  if(queue->queue_len==0) { /// внутренн€€ ошибка в программе
 	 		// QUEUE EMPTY
-	 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|queue->port_id, 148, queue->port_id, 0, 0, 0);
+	 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|queue->port_id, 148, 0, 0, 0, 0);
 			return 1;
 			}
 
@@ -810,6 +810,9 @@ int get_query_from_queue(GW_Queue *queue, int *client_id, int *device_id, u8 *ad
 
   	pthread_mutex_unlock(&queue->queue_mutex);
 	
+//		printf("query_accepted P%d, len=%d\n", queue->port_id+1, queue->queue_len);
+	sysmsg_ex(EVENT_CAT_TRAFFIC|EVENT_TYPE_INF|queue->port_id, 221, *client_id, queue->queue_len, 0, 0);
+
   return 0;
   }
 ///-----------------------------------------------------------------------------------------------------------------
@@ -896,7 +899,7 @@ int process_moxamb_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu, 
 
 		  if(status) {
 		 		// FRWD: PROXY TRANSLATION
-		 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|EVENT_SRC_MOXAMB, 130, status, port_id, client_id, 0);
+		 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|EVENT_SRC_MOXAMB, 130, client_id, ((adu[TCPADU_START_HI]<<8)|adu[TCPADU_START_LO])&0xffff, n, 0);
 				return 1;
 				}
 														

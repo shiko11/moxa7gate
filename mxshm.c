@@ -151,7 +151,7 @@ int refresh_shm(void *arg)
 
 				case BRIDGE_PROXY:
 					//k=iDATA[i].current_connections_number;
-			    sprintf(iDATA[i].bridge_status, "BPR");
+			    // sprintf(iDATA[i].bridge_status, "BPR");
 					break;
 
 				case BRIDGE_SIMPLE:

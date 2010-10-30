@@ -6,6 +6,7 @@
 #include <errno.h>
 
 #include "../global.h"
+#include "../monitoring.h"
 
 #define DISPLAY_MAIN_TABLE		1
 #define DISPLAY_PORT_X				2
@@ -289,7 +290,7 @@ printf("\
 
 	  printf("<td>%d\n", shared_memory[i].stat.sended);
 	  printf("<td>%d\n", shared_memory[i].stat.errors);
-	  printf("<td>%d\n", shared_memory[i].stat.request_time_average);
+	  printf("<td>%d\n", shared_memory[i].stat.request_time);
 //	  printf("<td>%d\n", shared_memory[i].accepted_connections_number);
 //	  printf("<td>%d\n", shared_memory[i].current_connections_number);
 //	  printf("<td>%d\n", shared_memory[i].rejected_connections_number);
@@ -440,52 +441,62 @@ void show_events(GW_EventLog *app_log, input_cfg_502 *gate)
 <tr>\n\
 <th>№\n\
 <th>Время\n\
+<th>Тип\n\
 <th>Источник\n\
-<th>Код ошибки\n\
 <th>Сообщение\n\
 \n");
 
 	struct tm *tmd;
   int i, j;
-	char timestr[32], sourcestr[16];
+	char timestr[32], sourcestr[16], typestr[8];
+	char eventmsg[EVENT_MESSAGE_LENGTH];
 
   j=gate->app_log_current_entry;
 	for(i=0; i<EVENT_LOG_LENGTH; i++) {
 
-	if(app_log[j].desc[0]==0) {
+	if(app_log[j].msgtype==0) {
 		j=j==EVENT_LOG_LENGTH-1?0:j+1;
 		continue;
 		}
 
 	tmd=gmtime(&app_log[j].time);
-	sprintf(timestr, "%2.2d.%2.2d.%4.4d %2.2d:%2.2d:%2.2d\t", tmd->tm_mday, tmd->tm_mon+1, tmd->tm_year+1900, tmd->tm_hour, tmd->tm_min, tmd->tm_sec);
+	sprintf(timestr, "%2.2d.%2.2d.%4.4d %2.2d:%2.2d:%2.2d", tmd->tm_mday, tmd->tm_mon+1, tmd->tm_year+1900, tmd->tm_hour, tmd->tm_min, tmd->tm_sec);
 
-	switch(app_log[j].source) {
-			case EVENT_SOURCE_P1:
-			case EVENT_SOURCE_P2:
-			case EVENT_SOURCE_P3:
-			case EVENT_SOURCE_P4:
-			case EVENT_SOURCE_P5:
-			case EVENT_SOURCE_P6:
-			case EVENT_SOURCE_P7:
-			case EVENT_SOURCE_P8:
-				sprintf(sourcestr, "PORT%d\t", (app_log[j].source&0xff)+1);
-	 			break;
-			case EVENT_SOURCE_GATE502:
-				sprintf(sourcestr, "GATE502\t");
-				break;
-			default:
-				sprintf(sourcestr, "SYSTEM\t");
+	switch(app_log[j].msgtype & EVENT_TYPE_MASK) {
+			case EVENT_TYPE_INF: sprintf(typestr, "INF"); break;
+			case EVENT_TYPE_WRN: sprintf(typestr, "WRN"); break;
+			case EVENT_TYPE_ERR: sprintf(typestr, "ERR"); break;
+			default: sprintf(typestr, "***");
 			}
+
+	switch(app_log[j].msgtype & EVENT_SRC_MASK) {
+			case EVENT_SRC_SYSTEM: 	sprintf(sourcestr, "SYSTEM"); 	break;
+			case EVENT_SRC_GATE502: sprintf(sourcestr, "GATE502"); 	break;
+			case EVENT_SRC_P1: 			sprintf(sourcestr, "PORT1"); 		break;
+			case EVENT_SRC_P2: 			sprintf(sourcestr, "PORT2"); 		break;
+			case EVENT_SRC_P3: 			sprintf(sourcestr, "PORT3"); 		break;
+			case EVENT_SRC_P4: 			sprintf(sourcestr, "PORT4"); 		break;
+			case EVENT_SRC_P5: 			sprintf(sourcestr, "PORT5"); 		break;
+			case EVENT_SRC_P6: 			sprintf(sourcestr, "PORT6"); 		break;
+			case EVENT_SRC_P7: 			sprintf(sourcestr, "PORT7"); 		break;
+			case EVENT_SRC_P8: 			sprintf(sourcestr, "PORT8"); 		break;
+			case EVENT_SRC_MOXAMB: 	sprintf(sourcestr, "MOXAMB"); 	break;
+			case EVENT_SRC_MOXATCP: sprintf(sourcestr, "MOXATCP"); 	break;
+
+			default: 								sprintf(sourcestr, "NONAME");
+			}
+
+	eventmsg[0]=0;
+	make_msgstr(app_log[j].msgcode, eventmsg, app_log[j].prm[0], app_log[j].prm[1], app_log[j].prm[2], app_log[j].prm[3]);
 
 	printf("\
 <tr>\n\
 <td>%d\n\
 <td>%s\n\
 <td>%s\n\
-<td>&nbsp;\n\
 <td>%s\n\
-\n", j+1, timestr, sourcestr, app_log[j].desc);
+<td>%s\n\
+\n", j+1, timestr, typestr, sourcestr, eventmsg);
 
 	j=j==EVENT_LOG_LENGTH-1?0:j+1;
   }
@@ -751,9 +762,9 @@ printf("\
 	shared_memory[p_num].stat.errors_tcp_sending,
 	shared_memory[p_num].stat.errors,
 	shared_memory[p_num].stat.sended,
-	shared_memory[p_num].stat.request_time_min,
-	shared_memory[p_num].stat.request_time_average,
-	shared_memory[p_num].stat.request_time_max,
+	0,
+	shared_memory[p_num].stat.request_time,
+	0,
 	shared_memory[p_num].stat.scan_rate
 	);
 
@@ -1076,7 +1087,7 @@ printf("\
 ",	  (diff/86400)%1000, (diff/3600)%24, (diff/60)%60, diff%60,
   		shared_memory[P].clients[i].stat.sended,
   		shared_memory[P].clients[i].stat.errors,
-  		shared_memory[P].clients[i].stat.request_time_average,
+  		shared_memory[P].clients[i].stat.request_time,
   		pstatus);
   		
 	}

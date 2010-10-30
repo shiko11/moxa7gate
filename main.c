@@ -380,7 +380,7 @@ int main(int argc, char *argv[])
 
 		key_t sem_key=ftok("/tmp/app", 'b');
 		
-		if((semaphore_id = semget(sem_key, MAX_MOXA_PORTS+1, IPC_CREAT|IPC_EXCL|0666)) == -1) {
+		if((semaphore_id = semget(sem_key, MAX_MOXA_PORTS*2, IPC_CREAT|IPC_EXCL|0666)) == -1) {
 			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 29, 0, 0, 0, 0);
 			exit(1);
 		 	}
@@ -554,6 +554,15 @@ int main(int argc, char *argv[])
 				//инициализацию сетевых соединений порта в режиме BRIDGE производим в потоке порта
 
 				strcpy(iDATA[P].bridge_status, "00B");
+
+				/// ищем свободный слот для modbus-rtu клиента
+			  for(j=0; j<MAX_MOXA_PORTS*MAX_TCP_CLIENTS_PER_PORT; j++)
+			    if(gate502.clients[j].csd==-1) break;
+			  iDATA[P].current_client=j;
+
+			  gate502.clients[j].connection_status=MB_CONNECTION_ESTABLISHED;
+			  gate502.clients[j].p_num=P;
+			  gate502.clients[j].csd=1;
 
 				arg=(P<<8)|(iDATA[P].current_client&0xff);
 				//printf("arg:%d\n", arg);
@@ -931,7 +940,7 @@ int query_translating()
 		
 				default: ///!!! функция не поддерживается шлюзом, добавить счетчик статистики
 					// POLLING: FUNC NOT SUPPORTED
-			 		sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|EVENT_SRC_GATE502, 180, (unsigned) tcp_adu[TCPADU_FUNCTION], 0, 0, 0);
+			 		sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|EVENT_SRC_GATE502, 180, i, (unsigned) tcp_adu[TCPADU_FUNCTION], 0, 0);
 					continue;
 				}
 	

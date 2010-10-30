@@ -1,4 +1,6 @@
 #include "global.h"
+#include "modbus_rtu.h"
+#include "modbus_tcp.h"
 
 void copy_stat(GW_StaticData *dst, GW_StaticData *src)
 	{
@@ -157,6 +159,7 @@ strcpy(message_template[ 36], "SHARED MEM: UNKNOWN");
 strcpy(message_template[ 37], "SHARED MEM: OK SIZE %db");
 strcpy(message_template[ 38], ""); // –≈«≈–¬
 strcpy(message_template[ 39], "STATUS INFO OVERLAPS");
+
 strcpy(message_template[ 40], "SERIAL PORT INITIALIZED MODE %s");
 strcpy(message_template[ 41], "THREAD INITIALIZED CODE %d");
 strcpy(message_template[ 42], "THREAD STARTED MODE %s CLIENT %s");
@@ -173,25 +176,27 @@ strcpy(message_template[ 70], "CONNECTION REJECTED FROM %d.%d.%d.%d");
 strcpy(message_template[ 71], "CONNECTION CLOSED (LINK DOWN) CLIENT %d");
 strcpy(message_template[ 72], "CONNECTION CLOSED (TIMEOUT) CLIENT %d");
 	
-	/// FORWARDING (œ≈–≈Õ¿œ–¿¬À≈Õ»≈) [128..147, 20]
-	strcpy(message_template[128], "FRWD: ADDRESS TRANSLATION [CLIENT %d ADDRESS %d]");
-	strcpy(message_template[129], "FRWD: BLOCK OVERLAPS [CLIENT %d START %d LEN %d]");
-	strcpy(message_template[130], "FRWD: PROXY TRANSLATION [STATUS %d PORT %d CLIENT %d]");
-	strcpy(message_template[131], "FRWD: REGISTERS TRANSLATION [CLIENT %d START %d LEN %d]");
-	
-	/// QUEUE (Œ◊≈–≈ƒ‹) [148..179, 32]
-	strcpy(message_template[148], "QUEUE EMPTY %s");
-	strcpy(message_template[149], "QUEUE OVERLOADED %s [CLIENT %d]");
-	
-	/// POLLING (Œœ–Œ—) [180..191, 12]
-	strcpy(message_template[180], "POLLING: FUNC NOT SUPPORTED [FUNC %d]");
-	strcpy(message_template[181], "POLLING: REQUEST TIMED OUT"); ///!!! ÒÓÓ·˘ÂÌËÂ ÓÚÒÛÚÒÚ‚ÛÂÚ, ‰Ó·‡‚ËÚ¸ ÍÓ‰
-	strcpy(message_template[182], "POLLING: RTU RECV [CODE %d CLIENT %d]");
-	strcpy(message_template[183], "POLLING: RTU SEND [CODE %d CLIENT %d]");
-	strcpy(message_template[184], "POLLING: TCP RECV [CODE %d CLIENT %d]");
-	strcpy(message_template[185], "POLLING: TCP SEND [CODE %d CLIENT %d]");
-	strcpy(message_template[186], "POLLING: QUEUE IN [CODE %d CLIENT %d]");
-	strcpy(message_template[187], "POLLING: QUEUE OUT [CODE %d CLIENT %d]");
+/// FORWARDING (œ≈–≈Õ¿œ–¿¬À≈Õ»≈) [128..147, 20]
+strcpy(message_template[128], "CLIENT\tFRWD: ADDRESS [%d] NOT TRANSLATED");
+strcpy(message_template[129], "CLIENT\tFRWD: BLOCK OVERLAPS [%d, %d]");
+strcpy(message_template[130], "CLIENT\tFRWD: PROXY TRANSLATION [%d, %d]");
+strcpy(message_template[131], "CLIENT\tFRWD: REGISTERS TRANSLATION [%d, %d]");
+
+/// QUEUE (Œ◊≈–≈ƒ‹) [148..179, 32]
+strcpy(message_template[148], "QUEUE EMPTY");
+strcpy(message_template[149], "QUEUE OVERLOADED CLIENT %d");
+
+/// POLLING (Œœ–Œ—) [180..219, 40]
+strcpy(message_template[180], "CLIENT\tPOLLING: FUNCTION [%d] NOT SUPPORTED");
+strcpy(message_template[181], ""); // –≈«≈–¬
+strcpy(message_template[182], "CLIENT\tPOLLING: RTU  RECV - %s");
+strcpy(message_template[183], "CLIENT\tPOLLING: RTU  SEND - %s");
+strcpy(message_template[184], "CLIENT\tPOLLING: TCP  RECV - %s");
+strcpy(message_template[185], "CLIENT\tPOLLING: TCP  SEND - %s");
+
+/// TRAFFIC (ƒ¿ÕÕ€≈) [220..239, 20]
+strcpy(message_template[220], "CLIENT\tTRAFFIC: QUEUE  IN [%d]");
+strcpy(message_template[221], "CLIENT\tTRAFFIC: QUEUE OUT [%d]");
 
   return;
   }
@@ -208,13 +213,14 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 	//int i;
 	
 	/// ÙËÎ¸ÚÛÂÏ ÒÓÓ·˘ÂÌËˇ
-	if((
-		gate502.msg_filter & 
-		(0x01 << ((msgtype & EVENT_SRC_MASK)-1))
-		)==0) return;
-	if((msgtype & EVENT_CAT_MASK)==EVENT_CAT_TRAFFIC) return;
-	
+
+//	if((
+//		gate502.msg_filter & 
+//		(0x01 << ((msgtype & EVENT_SRC_MASK)-1))
+//		)==0) return;
+
 	if(gate502.show_sys_messages==0 && (msgtype & EVENT_CAT_MASK)==EVENT_CAT_DEBUG) return;
+	if(gate502.show_data_flow==0    && (msgtype & EVENT_CAT_MASK)==EVENT_CAT_TRAFFIC) return;
 	
 	/// ÒÓÁ‰‡ÂÏ Á‡ÔËÒ¸ ‚ ÊÛÌ‡ÎÂ
 	time(&curtime);
@@ -229,7 +235,7 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 		app_log[gate502.app_log_current_entry].prm[3]=prm4;
 		
 		gate502.app_log_entries_total++;
-	  } else printf("Event log isn't initialized!\n");
+	  } else printf("!");
 	
 	/// ‚˚‚Ó‰ËÏ ÒÓ·˚ÚËÂ Ì‡ ÍÓÌÒÓÎ¸
 	
@@ -259,9 +265,10 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 			case EVENT_SRC_MOXAMB: 	printf("MOXAMB\t"); 	break;
 			case EVENT_SRC_MOXATCP: printf("MOXATCP\t"); 	break;
 
-			default: 								printf("***\t");
+			default: 								printf("NONAME\t");
 			}
 
+	eventmsg[0]=0;
 	make_msgstr(msgcode, eventmsg, prm1, prm2, prm3, prm4);
 	printf("%s\n", eventmsg);
 
@@ -278,21 +285,22 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 
 void show_traffic(int traffic, int port_id, int client_id, u8 *adu, u16 adu_len)
   {
+///	if(port_id!=SERIAL_P3) return; ///!!!
 
-	/// POLLING (Œœ–Œ—) [180..191, 12]
+  int i;
+	char str[8];
+	strcpy(str, "[%0.2X]");
 
-//  printf("TCP%4.4d  IN: ", inputDATA->clients[client_id].port);	
+	switch(traffic) {
+		case TRAFFIC_TCP_RECV: printf("TCP  IN: ");	strcpy(str, "{%0.2X}"); break;
+		case TRAFFIC_RTU_SEND: printf("RTU OUT: ");	break;
+		case TRAFFIC_RTU_RECV: printf("RTU  IN: ");	break;
+		case TRAFFIC_TCP_SEND: printf("TCP OUT: ");	strcpy(str, "{%0.2X}"); break;
+		default: printf("show_traffic() error\n");	return;
+		}
 
-//	if(gate502.show_data_flow==1) {
-//    for (i=0;i<cur_pos;i++) printf("[%0.2X]",adu[i]);
-//    printf("\n");
-//		}
-
-//	if(gate502.show_data_flow==1) {
-//    int i;
-//    for (i=0;i<mb_received_adu_len;i++) printf("[%0.2X]",adu[i]);
-//		printf("\n");
-//	  }
+  for(i=0; i<adu_len; i++) printf(str, adu[i]);
+  printf("\n");
 
 	return;
   }
@@ -308,6 +316,12 @@ void make_msgstr(	unsigned char msgcode, char *str,
 	char aux[24];
 
 ///--- COMAND LINE ( ŒÃ¿ÕƒÕ¿ﬂ —“–Œ ¿) [1..24, 24]
+///--- —ŒŒ¡Ÿ≈Õ»ﬂ ¡≈« œ¿–¿Ã≈“–Œ¬
+  if(	msgcode==43 || msgcode==39 ||
+		  (msgcode<=36 && msgcode>=29) ||
+		  (msgcode<=27 && msgcode>=25) ||
+		  (msgcode<=14 && msgcode>=1))
+		sprintf(str, message_template[msgcode]);
 
 ///--- SYSTEM (—»—“≈ÃÕ€≈) [25..64, 40]
 
@@ -343,6 +357,7 @@ void make_msgstr(	unsigned char msgcode, char *str,
 			case GATEWAY_PROXY: 	sprintf(str, message_template[msgcode], "GATEWAY PROXY", "MOXA"); break;
 			case BRIDGE_PROXY: 		sprintf(str, message_template[msgcode], "BRIDGE PROXY", "RTU"); break;
 			case BRIDGE_SIMPLE: 	sprintf(str, message_template[msgcode], "BRIDGE SIMPLE", "RTU"); break;
+			case MOXA_MB_DEVICE: 	sprintf(str, message_template[msgcode], "MOXA DEVICE", "MOXA"); break;
 			case MODBUS_PORT_ERROR: sprintf(str, message_template[msgcode], "PORT ERROR", "N/A"); break;
 			default: 							sprintf(str, message_template[msgcode], "PORT OFF", "N/A");
 			}
@@ -372,16 +387,95 @@ void make_msgstr(	unsigned char msgcode, char *str,
 			msgcode==72) 		// CONNECTION CLOSED (TIMEOUT) CLIENT %d
 		sprintf(str, message_template[msgcode], prm1);
 
-///--- FORWARDING (œ≈–≈Õ¿œ–¿¬À≈Õ»≈) [128..147, 20]
-
 ///--- QUEUE (Œ◊≈–≈ƒ‹) [148..179, 32]
-
-///--- ¬—≈ œ–Œ◊»≈ —ŒŒ¡Ÿ≈Õ»ﬂ ¡≈« œ¿–¿Ã≈“–Œ¬
-  if(	msgcode==43 || msgcode==39 ||
-		  (msgcode<=36 && msgcode>=29) ||
-		  (msgcode<=27 && msgcode>=25) ||
-		  (msgcode<=14 && msgcode>=1))
+	if(msgcode==148) // QUEUE EMPTY
 		sprintf(str, message_template[msgcode]);
+
+	if(msgcode==149)  // QUEUE OVERLOADED CLIENT %d
+		sprintf(str, message_template[msgcode], prm1);
+
+///--- FORWARDING (œ≈–≈Õ¿œ–¿¬À≈Õ»≈) [128..147, 20]
+	if(msgcode==128) // CLIENT\tFRWD: ADDRESS [%d] NOT TRANSLATED
+		sprintf(str, message_template[msgcode], prm2);
+
+	if(msgcode==129) // CLIENT\tFRWD: BLOCK OVERLAPS [%d, %d]
+		sprintf(str, message_template[msgcode], prm2, prm3);
+
+	if(msgcode==130) // CLIENT\tFRWD: PROXY TRANSLATION [%d, %d]
+		sprintf(str, message_template[msgcode], prm2, prm3);
+
+	if(msgcode==131) // CLIENT\tFRWD: REGISTERS TRANSLATION [%d, %d]
+		sprintf(str, message_template[msgcode], prm2, prm3);
+
+///--- POLLING (Œœ–Œ—) [180..191, 12]
+	if(msgcode==180) // CLIENT\tPOLLING: FUNCTION [%d] NOT SUPPORTED
+		sprintf(str, message_template[msgcode], prm2);
+
+	if(	(msgcode==182) ||	// CLIENT\tPOLLING: RTU  RECV - %s
+			(msgcode==183))  	// CLIENT\tPOLLING: RTU  SEND - %s
+		switch(prm1) {
+			case MB_SERIAL_WRITE_ERR:
+				sprintf(str, message_template[msgcode], "COM FAILURE");
+				break;
+			case MB_SERIAL_READ_FAILURE:
+				sprintf(str, message_template[msgcode], "COM FAILURE");
+				break;
+			case MB_SERIAL_COM_TIMEOUT:
+				sprintf(str, message_template[msgcode], "TIMEOUT");
+				break;
+			case MB_SERIAL_ADU_ERR_MIN:
+				sprintf(str, message_template[msgcode], "ADU MIN LEN");
+				break;
+			case MB_SERIAL_ADU_ERR_MAX:
+				sprintf(str, message_template[msgcode], "ADU MAX LEN");
+				break;
+			case MB_SERIAL_CRC_ERROR:
+				sprintf(str, message_template[msgcode], "WRONG CRC");
+				break;
+			case MB_SERIAL_PDU_ERR:
+				sprintf(str, message_template[msgcode], "WRONG PDU");
+				break;
+			default:
+				sprintf(str, message_template[msgcode], "UNKNOWN");
+			}
+
+	if(	(msgcode==184) ||	// CLIENT\tPOLLING: TCP  RECV - %s
+			(msgcode==185))  	// CLIENT\tPOLLING: TCP  SEND - %s
+		switch(prm1) {
+			case TCP_COM_ERR_NULL:
+				sprintf(str, message_template[msgcode], "NO INPUT DATA");
+				break;
+			case TCP_ADU_ERR_MIN:
+				sprintf(str, message_template[msgcode], "ADU MIN LEN");
+				break;
+			case TCP_ADU_ERR_MAX:
+				sprintf(str, message_template[msgcode], "ADU MAX LEN");
+				break;
+			case TCP_ADU_ERR_PROTOCOL:
+				sprintf(str, message_template[msgcode], "WRONG PROTOCOL");
+				break;
+			case TCP_ADU_ERR_LEN:
+				sprintf(str, message_template[msgcode], "WRONG ADU LEN");
+				break;
+			case TCP_ADU_ERR_UID:
+				sprintf(str, message_template[msgcode], "WRONG UID");
+				break;
+			case TCP_PDU_ERR:
+				sprintf(str, message_template[msgcode], "WRONG PDU");
+				break;
+			case TCP_COM_ERR_SEND:
+				sprintf(str, message_template[msgcode], "COM FAILURE");
+				break;
+			default:
+				sprintf(str, message_template[msgcode], "UNKNOWN");
+			}
+
+	/// TRAFFIC (ƒ¿ÕÕ€≈) [220..239, 20]
+	if(msgcode==220) // CLIENT\tTRAFFIC: QUEUE  IN [%d]
+		sprintf(str, message_template[msgcode], prm2);
+
+	if(msgcode==221) // CLIENT\tTRAFFIC: QUEUE OUT [%d]
+		sprintf(str, message_template[msgcode], prm2);
 
 	return;
 	}

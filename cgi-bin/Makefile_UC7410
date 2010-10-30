@@ -3,7 +3,7 @@ CC=$(PREFIXPATH)/mxscaleb-gcc
 STRIP=$(PREFIXPATH)/mxscaleb-strip
 
 moxa:
-	$(CC) -o control control.c
+	$(CC) -o control control.c ../monitoring.c
 	$(STRIP) -s control
 
 clean:

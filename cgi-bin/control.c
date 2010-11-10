@@ -451,6 +451,8 @@ void show_events(GW_EventLog *app_log, input_cfg_502 *gate)
 	char timestr[32], sourcestr[16], typestr[8];
 	char eventmsg[EVENT_MESSAGE_LENGTH];
 
+	init_message_templates();
+
   j=gate->app_log_current_entry;
 	for(i=0; i<EVENT_LOG_LENGTH; i++) {
 

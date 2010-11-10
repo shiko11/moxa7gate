@@ -190,6 +190,11 @@ int main(int argc, char *argv[])
 		}
 
 //printf("\n\nCOMMAND LINE TESTING\n");
+
+//for(i=0; i<16; i++)
+//  if((exceptions&(1<<i))!=0)
+//		printf("exception %d, prm=%d\n", i+1, except_prm[i]);
+
 //exit (1);
 
 /*		res_cl=read_conf();
@@ -296,7 +301,8 @@ int main(int argc, char *argv[])
 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_SYSTEM, 28, 1, k, 0, 0);
 		}
 
-  // выделение памяти под таблицу 2x
+	// отображаем таблицу дискретных входов на таблицу holding-регистров
+  /*/ выделение памяти под таблицу 2x
 	if(gate502.amount2xStatus>0) {
 		k=sizeof(u8)*((gate502.amount2xStatus-1)/8+1);
 		gate502.wData2x=(u8 *) malloc(k);
@@ -306,7 +312,7 @@ int main(int argc, char *argv[])
 			}
 		memset(gate502.wData2x,0, k);
 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_SYSTEM, 28, 2, k, 0, 0);
-		}
+		}*/
 
   // выделение памяти под таблицу 3x
 	if(gate502.amount3xRegisters>0) {
@@ -330,6 +336,12 @@ int main(int argc, char *argv[])
 			}
 		memset(gate502.wData4x, 0, k);
 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_SYSTEM, 28, 4, k, 0, 0);
+
+		// отображаем таблицу дискретных входов на таблицу holding-регистров
+		gate502.offset2xStatus=gate502.offset4xRegisters*sizeof(u16)*8;
+		gate502.amount2xStatus=gate502.amount4xRegisters*sizeof(u16)*8;
+		gate502.wData2x=(u8 *) gate502.wData4x;
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_SYSTEM, 28, 2, k, 0, 0);
 		}
 
 /// для удобства в дальнейшей работе переводим номера регистров и битов в смещения, когда нумерация идет с нуля

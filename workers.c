@@ -849,16 +849,18 @@ void *gateway_proxy_thread(void *arg)
     /// kazhetsya net zaschity ot perepolneniya bufera priema "serial_adu[]"
 	  status = mb_serial_receive_adu(fd, &tmpstat, serial_adu, &serial_adu_len, &tcp_adu[MB_TCP_ADU_HEADER_LEN], inputDATA->serial.timeout, inputDATA->serial.ch_interval_timeout);
 
-/*//---------- специальный случай при подаче команд на СКС-7 Диоген, обрабатываем
+///---------- специальный случай при подаче команд на СКС-7 Диоген, обрабатываем
 ///--- убираем третий с конца байт в полученном ответе на запрос
-		if((port_id==SERIAL_P3) && (serial_adu[RTUADU_FUNCTION]==0x06)) {
+if((exceptions&EXCEPTION_DIOGEN)!=0)					
+		if(serial_adu[RTUADU_FUNCTION]==0x06)
+		if((except_prm[0]&(1 << port_id))!=0) {
 			serial_adu[serial_adu_len-3]=serial_adu[serial_adu_len-2];
 			serial_adu[serial_adu_len-2]=serial_adu[serial_adu_len-1];
 			serial_adu_len--;
 			//if(status==MB_SERIAL_PDU_ERR) status=0;
 			status=0;
 			}
-*///-----------------------------------------------------------------------------
+///-----------------------------------------------------------------------------
 
 		if(gate502.show_data_flow==1)
 			show_traffic(TRAFFIC_RTU_RECV, port_id, i, serial_adu, serial_adu_len);
@@ -1084,7 +1086,7 @@ void *bridge_proxy_thread(void *arg)
 ///-----------------------------------
     /// kazhetsya net zaschity ot perepolneniya bufera priema "serial_adu[]"
 	  status = serial_receive_adu(fd, &tmpstat, &tcp_adu[TCPADU_ADDRESS], &tcp_adu_len, NULL, inputDATA->serial.timeout, inputDATA->serial.ch_interval_timeout);
-
+//printf("noop1\n");
 		if(gate502.show_data_flow==1)
 			show_traffic(TRAFFIC_RTU_RECV, port_id, client_id, &tcp_adu[TCPADU_ADDRESS], tcp_adu_len);
 		// так как прием данных ведется в буфер tcp_adu, приводим его содержимое в соответствие
@@ -1108,7 +1110,7 @@ void *bridge_proxy_thread(void *arg)
 //	  pthread_mutex_unlock(&inputDATA->serial_mutex);
 	  
 //		tmpstat.accepted++;
-
+//printf("noop2\n");
 		switch(status) {
 		  case 0:
 		  	break;
@@ -1127,15 +1129,16 @@ void *bridge_proxy_thread(void *arg)
 					iDATA[port_id].modbus_mode=MODBUS_PORT_ERROR;
 					goto EndRun;
 					}
+				continue;
 		  	break;
 		  default:;
 		  };
 
 ///###-----------------------------			
 // в режиме PROXY выдаем данные из локального буфера
-
+//printf("noop3\n");
 			status = process_moxamb_request(client_id, tcp_adu, tcp_adu_len, memory_adu, &memory_adu_len);
-
+//printf("noop4\n");
 			if(status!=0) { // запрос был перенаправлен на другой порт
 				if(status!=3) { // учет ошибочных запросов
 					tmpstat.accepted++;
@@ -1154,9 +1157,9 @@ void *bridge_proxy_thread(void *arg)
 
 		if(gate502.show_data_flow==1)
 			show_traffic(TRAFFIC_RTU_SEND, port_id, client_id, memory_adu, memory_adu_len-2);
-
+//printf("noop5\n");
 		status = mb_serial_send_adu(fd, &tmpstat, memory_adu, memory_adu_len-2, serial_adu, &serial_adu_len);
-
+//printf("noop6\n");
 		switch(status) {
 		  case 0:
 		  	if(exception_adu_len==0) tmpstat.sended++;
@@ -1204,6 +1207,7 @@ void *bridge_proxy_thread(void *arg)
 //	gettimeofday(&tv2, &tz);
 //	inputDATA->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
 //	printf("cycle ended after %d msec\n", inputDATA->clients[client_id].stat.request_time_average);
+//printf("noop7\n");
 	}
 
 	EndRun: ;

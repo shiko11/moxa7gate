@@ -119,6 +119,12 @@ int get_command_line (int 	argc,
 			ptr_gate502->status_info=atoi(argv[id_key_argc[i]+1]);
 			if(ptr_gate502->status_info==0) return CL_ERR_IN_MAP;					
 			}
+		if (strcmp(argv[id_key_argc[i]],"--exception")==0) {
+			j=atoi(argv[id_key_argc[i]+1]);
+			if(j<1 || j>16) return CL_ERR_IN_MAP;
+			exceptions|= 1 << (j-1);
+			except_prm[j-1]=atoi(argv[id_key_argc[i]+2]);
+			}
 
 		if (strcmp(argv[id_key_argc[i]],"--Object")==0)
 			strcpy(ptr_gate502->object, argv[id_key_argc[i]+1]);
@@ -829,11 +835,14 @@ int process_moxamb_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu, 
 	switch(adu[TCPADU_FUNCTION]) {
 
 		case MBF_READ_COILS:
+			if(gate502.amount1xStatus==0) return 4;
 			m_start=gate502.wData1x;
 
 		case MBF_READ_DECRETE_INPUTS:
-			if(adu[TCPADU_FUNCTION]==MBF_READ_DECRETE_INPUTS)
-				m_start=gate502.wData2x;
+			if(adu[TCPADU_FUNCTION]==MBF_READ_DECRETE_INPUTS) {
+				if(gate502.amount2xStatus==0) return 5;
+				m_start=gate502.wData2x;												 
+				}
 
 			j=(adu[TCPADU_START_HI]<<8)|adu[TCPADU_START_LO];
 			k=(adu[TCPADU_LEN_HI]<<8)|adu[TCPADU_LEN_LO];
@@ -851,6 +860,11 @@ int process_moxamb_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu, 
 					mask_src = 0x01 << (j + i + n*8) % 8; // битовая маска в исходном байте
 					status = (j + i + n*8) / 8;						// индекс исходного байта в массиве
 
+				// в связи с отображением таблицы 2х на таблицу 4х требуется иной порядок формирования ответа.
+				// надо реализовать перемещение по байтам в памяти, учитывая что данные хранятся в блоках по
+				// 16 бит, т.е. нужно отправлять сначала младшие 8 бит, затем старшие 8 бит. добавлена 1 строка:
+					status=status%2?status-1:status+1;
+
 	        memory_adu[3+n] = m_start[status] & mask_src ?\
 						memory_adu[3+n] | mask_dst:\
 						memory_adu[3+n] & (~mask_dst);
@@ -862,11 +876,14 @@ int process_moxamb_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu, 
     	break;
 
 		case MBF_READ_HOLDING_REGISTERS:
+			if(gate502.amount4xRegisters==0) return 7;
 			mem_start=gate502.wData4x;
 
 		case MBF_READ_INPUT_REGISTERS:
-			if(adu[TCPADU_FUNCTION]==MBF_READ_INPUT_REGISTERS)
-				mem_start=gate502.wData3x;
+			if(adu[TCPADU_FUNCTION]==MBF_READ_INPUT_REGISTERS) {
+				if(gate502.amount3xRegisters==0) return 6;
+				mem_start=gate502.wData3x;												
+				}
 
 			j=(adu[TCPADU_START_HI]<<8)|adu[TCPADU_START_LO];
 			k=(adu[TCPADU_LEN_HI]<<8)|adu[TCPADU_LEN_LO];

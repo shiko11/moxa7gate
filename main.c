@@ -17,6 +17,7 @@ int main(int argc, char *argv[])
 {
 /*** ИНИЦИАЛИЗАЦИЯ ПЕРЕМЕННЫХ ПРОГРАММЫ ***/
 	memset(iDATA,0,sizeof(iDATA));
+	memset(iDATAtcp,0,sizeof(iDATAtcp));
 
 	memset(vslave,0,sizeof(vslave));
 	memset(query_table,0,sizeof(query_table));
@@ -65,6 +66,50 @@ int main(int argc, char *argv[])
 		pthread_mutex_init(&iDATA[i].queue.queue_mutex, NULL);
 		iDATA[i].queue.operations[0].sem_flg=0;
 		iDATA[i].queue.operations[0].sem_num=i;
+		}
+
+	for(i=0; i<MAX_TCP_SERVERS; i++) {
+
+		for(j=0; j<MAX_TCP_CLIENTS_PER_PORT; j++) {
+			iDATAtcp[i].clients[j].rc=1;
+			iDATAtcp[i].clients[j].csd=-1;
+			iDATAtcp[i].clients[j].connection_status=MB_CONNECTION_CLOSED;
+			iDATAtcp[i].clients[j].mb_slave=MB_SLAVE_NOT_DEFINED;
+			iDATAtcp[i].clients[j].address_shift=MB_ADDRESS_NO_SHIFT;
+		  }
+
+	  iDATAtcp[i].accepted_connections_number=0;
+	  iDATAtcp[i].current_connections_number=0;
+	  iDATAtcp[i].rejected_connections_number=0;
+
+		iDATAtcp[i].ssd=-1;
+		iDATAtcp[i].modbus_mode=MODBUS_PORT_OFF;
+		strcpy(iDATAtcp[i].bridge_status, "OFF");
+//		sprintf(iDATAtcp[i].serial.p_name, "/dev/ttyM%d", i);
+
+//		iDATA[i].serial.p_num=i+1;
+//		strcpy(iDATA[i].serial.p_mode, "RS485_2w");
+//		strcpy(iDATA[i].serial.speed, "9600");
+//		strcpy(iDATA[i].serial.parity, "none");
+//		iDATA[i].serial.timeout=1000000;
+		iDATAtcp[i].tcp_port=1000*i+502;
+		
+    iDATAtcp[i].current_client=0;
+
+		p_errors[i]=0; // this value for buzzer function
+		iDATAtcp[i].start_time=0;
+
+//		iDATA[i].queue_start=iDATA[i].queue_len=0; /// obsolete
+
+		iDATAtcp[i].queue.port_id=EVENT_SRC_TCPBRIDGE;
+		//queue.queue_adu[MAX_GATEWAY_QUEUE_LENGTH][MB_TCP_MAX_ADU_LENGTH];
+		memset(iDATAtcp[i].queue.queue_adu_len, 0, sizeof(iDATAtcp[i].queue.queue_adu_len));
+		//queue.queue_clients[MAX_GATEWAY_QUEUE_LENGTH];
+		//queue.queue_slaves[MAX_GATEWAY_QUEUE_LENGTH];
+		iDATAtcp[i].queue.queue_start = iDATAtcp[i].queue.queue_len = 0;
+		pthread_mutex_init(&iDATAtcp[i].queue.queue_mutex, NULL);
+		iDATAtcp[i].queue.operations[0].sem_flg=0;
+		iDATAtcp[i].queue.operations[0].sem_num=MAX_MOXA_PORTS*2+i;
 		}
 
 		for(j=0; j<MAX_MOXA_PORTS*MAX_TCP_CLIENTS_PER_PORT; j++) {
@@ -392,7 +437,7 @@ int main(int argc, char *argv[])
 
 		key_t sem_key=ftok("/tmp/app", 'b');
 		
-		if((semaphore_id = semget(sem_key, MAX_MOXA_PORTS*2, IPC_CREAT|IPC_EXCL|0666)) == -1) {
+		if((semaphore_id = semget(sem_key, MAX_MOXA_PORTS*2+MAX_TCP_SERVERS, IPC_CREAT|IPC_EXCL|0666)) == -1) {
 			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 29, 0, 0, 0, 0);
 			exit(1);
 		 	}
@@ -408,6 +453,8 @@ int main(int argc, char *argv[])
 		struct sembuf operations[1]; /// obsolete
 		operations[0].sem_op=1; /// obsolete
 		operations[0].sem_flg=0; /// obsolete
+
+//		printf("maximal semaphore amount %d\n", SEMMSL);
 
 /*** ИНИЦИАЛИЗАЦИЯ TCP ПОРТА ШЛЮЗА, ПРИНИМАЮЩЕГО СОЕДИНЕНИЯ КО ВСЕМ ПОРТАМ, ЗА ИСКЛЮЧЕНИЕМ ПОРТОВ GATEWAY_SIMPLE ***/
 	struct sockaddr_in	addr;
@@ -463,7 +510,7 @@ int main(int argc, char *argv[])
 		    }
 
 		if(P==0xff) for(j=0; j<MAX_MOXA_PORTS; j++)
-		  if(((iDATA[j].modbus_mode==BRIDGE_PROXY)||(iDATA[j].modbus_mode==BRIDGE_SIMPLE))&&(ports[j]==0)) {
+		  if((iDATA[j].modbus_mode==BRIDGE_PROXY)&&(ports[j]==0)) {
 		  	ports[j]=1; P=j; break;
 		    }
 
@@ -560,31 +607,6 @@ int main(int argc, char *argv[])
 		
 				break;
 
-			/// инициализация BRIDGE-соединений по ЛВС выполняется ПОСЛЕ инициализации
-			/// прослушивающих сокетов GATEWAY-портов
-			case BRIDGE_SIMPLE:
-				//инициализацию сетевых соединений порта в режиме BRIDGE производим в потоке порта
-
-				strcpy(iDATA[P].bridge_status, "00B");
-
-				/// ищем свободный слот для modbus-rtu клиента
-			  for(j=0; j<MAX_MOXA_PORTS*MAX_TCP_CLIENTS_PER_PORT; j++)
-			    if(gate502.clients[j].csd==-1) break;
-			  iDATA[P].current_client=j;
-
-			  gate502.clients[j].connection_status=MB_CONNECTION_ESTABLISHED;
-			  gate502.clients[j].p_num=P;
-			  gate502.clients[j].csd=1;
-
-				arg=(P<<8)|(iDATA[P].current_client&0xff);
-				//printf("arg:%d\n", arg);
-				iDATA[P].clients[0].rc = pthread_create(
-					&iDATA[P].clients[0].tid_srvr,
-					NULL,
-					srvr_tcp_bridge,
-					(void *) arg);
-			  break;
-
 			case BRIDGE_PROXY: ///!!!
 				strcpy(iDATA[P].bridge_status, "BPR");
 
@@ -610,8 +632,7 @@ int main(int argc, char *argv[])
 		
 		if(	(iDATA[P].modbus_mode==GATEWAY_ATM)||
 				(iDATA[P].modbus_mode==GATEWAY_RTM)||
-				(iDATA[P].modbus_mode==GATEWAY_PROXY)||
-				(iDATA[P].modbus_mode==BRIDGE_SIMPLE)
+				(iDATA[P].modbus_mode==GATEWAY_PROXY)
 				)
 			if (iDATA[P].clients[DEFAULT_CLIENT].rc!=0){
 				iDATA[P].modbus_mode=MODBUS_PORT_ERROR;
@@ -634,6 +655,33 @@ int main(int argc, char *argv[])
 		NULL);
 	operations[0].sem_num=MOXA_MB_DEVICE;
 	semop(semaphore_id, operations, 1);
+
+/// ЗАПУСК ПОТОКОВЫХ ФУНКЦИЙ ИНТЕРФЕЙСОВ В РЕЖИМЕ BRIDGE_TCP
+
+	/// инициализация BRIDGE-соединений по ЛВС выполняется ПОСЛЕ инициализации
+	/// прослушивающих сокетов GATEWAY-портов
+	for(i=0; i<MAX_TCP_SERVERS; i++) {
+		
+    if(tcp_servers[i].mb_slave==0) continue;
+
+		// case BRIDGE_SIMPLE:
+		//инициализацию сетевых соединений порта в режиме BRIDGE производим в потоке порта
+
+		//strcpy(iDATA[P].bridge_status, "00B");
+		iDATAtcp[i].modbus_mode=BRIDGE_TCP;
+		iDATAtcp[i].current_client=i;
+		//arg=i&0xff; ///!!! нужно сделать отдельно такую переменную для каждого интерфейса, т.к.
+								/// в потоковую функцию передается не значение, а ссылка на нее.
+		//printf("arg:%d\n", arg);
+		iDATAtcp[i].clients[0].rc = pthread_create(
+			&iDATAtcp[i].clients[0].tid_srvr,
+			NULL,
+			srvr_tcp_bridge,
+			&iDATAtcp[i]);
+
+		operations[0].sem_num=MAX_MOXA_PORTS*2+i;
+		semop(semaphore_id, operations, 1);
+		}
 
 /// ЗАПОМИНАЕМ ВРЕМЯ ЗАПУСКА ШЛЮЗА
 time(&gate502.start_time);

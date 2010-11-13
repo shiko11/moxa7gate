@@ -264,6 +264,7 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 			case EVENT_SRC_P8: 			printf("PORT8\t"); 		break;
 			case EVENT_SRC_MOXAMB: 	printf("MOXAMB\t"); 	break;
 			case EVENT_SRC_MOXATCP: printf("MOXATCP\t"); 	break;
+			case EVENT_SRC_TCPBRIDGE: printf("BRIDGE%d\t", prm2+1); 	break;
 
 			default: 								printf("NONAME\t");
 			}
@@ -338,7 +339,7 @@ void make_msgstr(	unsigned char msgcode, char *str,
 			case GATEWAY_RTM: 		sprintf(str, message_template[msgcode], "GATEWAY RTM"); break;
 			case GATEWAY_PROXY: 	sprintf(str, message_template[msgcode], "GATEWAY PROXY"); break;
 			case BRIDGE_PROXY: 		sprintf(str, message_template[msgcode], "BRIDGE PROXY"); break;
-			case BRIDGE_SIMPLE: 	sprintf(str, message_template[msgcode], "BRIDGE SIMPLE"); break;
+//			case BRIDGE_SIMPLE: 	sprintf(str, message_template[msgcode], "BRIDGE SIMPLE"); break;
 			case MODBUS_PORT_ERROR: sprintf(str, message_template[msgcode], "PORT ERROR"); break;
 			default: 							sprintf(str, message_template[msgcode], "PORT OFF");
 			}
@@ -356,7 +357,7 @@ void make_msgstr(	unsigned char msgcode, char *str,
 			case GATEWAY_RTM: 		sprintf(str, message_template[msgcode], "GATEWAY RTM", "MOXA"); break;
 			case GATEWAY_PROXY: 	sprintf(str, message_template[msgcode], "GATEWAY PROXY", "MOXA"); break;
 			case BRIDGE_PROXY: 		sprintf(str, message_template[msgcode], "BRIDGE PROXY", "RTU"); break;
-			case BRIDGE_SIMPLE: 	sprintf(str, message_template[msgcode], "BRIDGE SIMPLE", "RTU"); break;
+			case BRIDGE_TCP: 			sprintf(str, message_template[msgcode], "BRIDGE TCP", "MOXA"); break;
 			case MOXA_MB_DEVICE: 	sprintf(str, message_template[msgcode], "MOXA DEVICE", "MOXA"); break;
 			case MODBUS_PORT_ERROR: sprintf(str, message_template[msgcode], "PORT ERROR", "N/A"); break;
 			default: 							sprintf(str, message_template[msgcode], "PORT OFF", "N/A");

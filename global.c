@@ -233,7 +233,7 @@ int get_command_line (int 	argc,
 		if(strcmp(arg, "GATEWAY_RTM")==0) 		ptr_iDATA[p_num-1].modbus_mode=GATEWAY_RTM;
 		if(strcmp(arg, "GATEWAY_PROXY")==0) 	ptr_iDATA[p_num-1].modbus_mode=GATEWAY_PROXY;
 		if(strcmp(arg, "BRIDGE_PROXY")==0) 		ptr_iDATA[p_num-1].modbus_mode=BRIDGE_PROXY;
-		if(strcmp(arg, "BRIDGE_SIMPLE")==0) 	ptr_iDATA[p_num-1].modbus_mode=BRIDGE_SIMPLE;
+		// if(strcmp(arg, "BRIDGE_SIMPLE")==0) 	ptr_iDATA[p_num-1].modbus_mode=BRIDGE_SIMPLE; /// obsolete
 
 		if(ptr_iDATA[p_num-1].modbus_mode==MODBUS_PORT_OFF) return CL_ERR_GATEWAY_MODE;
 //		printf("%s\n", ptr_iDATA[p_num-1].serial.parity);
@@ -257,7 +257,8 @@ int get_command_line (int 	argc,
 		if(argc>id_p_argc[i]+6+shift_counter)
 		if(strcmp(arg, "--desc")==0) {
 			arg=argv[id_p_argc[i]+7+shift_counter];
-//			arg[DEVICE_NAME_LENGTH-1]=0;
+			if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
+				arg[DEVICE_NAME_LENGTH-1]=0;
 			strcpy(ptr_iDATA[p_num-1].description, arg);
 			shift_counter+=2;
 			}
@@ -315,7 +316,8 @@ int get_command_line (int 	argc,
 			if(argc>id_vslaves+i*5+7+shift_counter)
 			if(strcmp(arg, "--desc")==0) {
 				arg=argv[id_vslaves+i*5+8+shift_counter];
-//				arg[DEVICE_NAME_LENGTH-1]=0;
+				if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
+					arg[DEVICE_NAME_LENGTH-1]=0;
 				strcpy(vslave[i].device_name, arg);
 				shift_counter+=2;
 				}
@@ -348,7 +350,7 @@ int get_command_line (int 	argc,
 	//		printf("%d\n", ptr_iDATA[p_num-1].serial.timeout);
 	
 			arg=argv[id_qt+i*8+5+shift_counter];
-			query_table[i].port=arg[1]=='T'?PROXY_TCP:arg[1]-48-1;
+			query_table[i].port=arg[0]=='T'?arg[1]-48-1+MAX_MOXA_PORTS*2:arg[1]-48-1;
 	
 			arg=argv[id_qt+i*8+6+shift_counter];
 			sscanf(arg, "%d", &query_table[i].device);
@@ -383,7 +385,8 @@ int get_command_line (int 	argc,
 					if(argc>id_qt+i*8+10+shift_counter)
 					if(strcmp(arg, "--desc")==0) {
 						arg=argv[id_qt+i*8+11+shift_counter];
-//						arg[DEVICE_NAME_LENGTH-1]=0;
+						if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
+							arg[DEVICE_NAME_LENGTH-1]=0;
 						strcpy(query_table[i].device_name, arg);
 						shift_counter+=2;
 						}
@@ -423,8 +426,8 @@ int get_command_line (int 	argc,
 					arg=argv[id_tcpsrv+i*4+4+shift_counter];
 					tcp_servers[i].address_shift=atoi(arg);
 					
-					arg=argv[id_tcpsrv+i*4+5+shift_counter];
-					tcp_servers[i].p_num=arg[1]=='T'?PROXY_TCP:arg[1]-48-1;
+//					arg=argv[id_tcpsrv+i*4+5+shift_counter];
+//					tcp_servers[i].p_num=arg[1]=='T'?PROXY_TCP:arg[1]-48-1;
 	
 					/// Наименование устройства
 					arg=argv[id_tcpsrv+i*4+6+shift_counter];
@@ -433,14 +436,15 @@ int get_command_line (int 	argc,
 					if(argc>id_tcpsrv+i*4+6+shift_counter)
 					if(strcmp(arg, "--desc")==0) {
 						arg=argv[id_tcpsrv+i*4+7+shift_counter];
-//						arg[DEVICE_NAME_LENGTH-1]=0;
+						if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
+							arg[DEVICE_NAME_LENGTH-1]=0;
 						strcpy(tcp_servers[i].device_name, arg);
 						shift_counter+=2;
 						}
 		  }
 
-	  //int res=verify_tcp_servers();
-	  //if(res!=0) return CL_TCPSRV_QT_CFG;
+	  int res=verify_tcp_servers();
+	  if(res!=0) return CL_ERR_TCPSRV_CFG;
 		}
 
 	return CL_OK;
@@ -598,6 +602,37 @@ int checkDiapason(int function, int start_address, int length)
 	return MOXA_DIAPASON_UNDEFINED;
 	}
 ///----------------------------------------------------------------------------------------------------------------
+int verify_tcp_servers()
+  {
+	int i;
+
+  for(i=0; i<MAX_TCP_SERVERS; i++) {
+
+    if(tcp_servers[i].mb_slave==0) continue;
+
+		// адрес modbus-устройства для перенаправления запросов в режиме BRIDGE
+		if((tcp_servers[i].mb_slave<1) || (tcp_servers[i].mb_slave>247)) return 1;
+
+		// сетевой адрес
+		if(tcp_servers[i].ip==0) return 2;
+
+		// TCP порт
+		if(tcp_servers[i].port==0) return 3;
+
+		// смещение адресного пространства
+		//address_shift;
+
+		// номер порта, соотнесенного с этой записью
+		// if(	(tcp_servers[i].p_num<MAX_MOXA_PORTS*2) ||
+		//		(tcp_servers[i].p_num>=(MAX_MOXA_PORTS*2+MAX_TCP_SERVERS))
+		//	) return 5;
+
+		// наименование устройства
+		//device_name[DEVICE_NAME_LENGTH];
+		}
+
+	return 0;
+  }
 ///----------------------------------------------------------------------------------------------------------------
 int verify_vslaves()
   {

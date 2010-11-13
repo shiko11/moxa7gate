@@ -66,7 +66,7 @@ Dim first As Boolean
 Call CheckSH
 If ErrorCount <> 0 Then
   If Not MsgBox("Найдено" + CStr(ErrorCount) + "ошибок. Все равно продолжить?", vbYesNo, Внимание) Then
-    Exit Sub
+'    Exit Sub
     End If
   End If
 
@@ -91,11 +91,11 @@ ws.Cells(SETTConfVersionRow, 2).Value = CStr("1.") + CStr(CDec(Mid(ws.Cells(SETT
 
 Print #1, "#! /bin/sh"
 Print #1, "#"
-Print #1, "# MOXA7GATE MODBUS GATEWAY SOFTWARE VERSION 1.1"
+Print #1, "# MOXA7GATE MODBUS GATEWAY SOFTWARE VERSION 1.2"
 Print #1, "# SEM-ENGINEERING, BRYANSK " + CStr(Year(Date))
 Print #1, "#"
 Print #1, "# THIS CONFIGURATION FILE GENERATED AUTOMATICALLY"
-Print #1, "# AT " + CStr(Time) + " " + CStr(Date)
+Print #1, "# AT " + CStr(Time) + " " + CStr(Date) '!!! добавить аналогичный код в переменную для передачи в программу
 Print #1, "#"
 Print #1, "# Object: " + ws.Cells(SETTObjectRow, 2).Value
 Print #1, "# Location: " + ws.Cells(SETTLocationRow, 2).Value + " " + ws.Cells(SETTDesignationRow, 2).Value
@@ -176,7 +176,7 @@ Next i
 
 '**** ЗАПИСЬ ПАРАМЕТРОВ КОНФИГУРАЦИИ ПОСЛЕДОВАТЕЛЬНЫХ ИНТЕРФЕЙСОВ ****
 
-Set ws = Worksheets("Интерфейсы")
+Set ws = Worksheets("Serial интерфейсы")
 ws.Activate
 
 For i = 2 To 9
@@ -297,7 +297,7 @@ Next i
 
 '**** ЗАПИСЬ ТАБЛИЦЫ MOBBUS TCP-СЕРВЕРОВ ****
 
-Set ws = Worksheets("TCP_SERVERS")
+Set ws = Worksheets("Ethernet интерфейсы")
 ws.Activate
 
 first = True
@@ -371,7 +371,7 @@ Private Sub CheckInterfaces()
 
 Dim counter As Integer
 
-Set ws = Worksheets("Интерфейсы")
+Set ws = Worksheets("Serial интерфейсы")
 ws.Activate
 
 Range("B2:H9").Select
@@ -429,7 +429,7 @@ End Sub
 
 Private Sub CheckProxyTable()
 
-Set ws = Worksheets("Интерфейсы")
+Set ws = Worksheets("Serial интерфейсы")
 Set ws2 = Worksheets("PROXY_TABLE")
 ws2.Activate
 
@@ -442,7 +442,7 @@ Range("A1").Activate
 
 For j = 2 To 129
   
-  If ws2.Cells(j, PTPortColumn).Value <> "PT" And ws2.Cells(j, PTPortColumn).Value <> "" Then
+  If Mid(ws2.Cells(j, PTPortColumn).Value, 1, 1) <> "T" And ws2.Cells(j, PTPortColumn).Value <> "" Then
     k = CInt(Mid(ws2.Cells(j, PTPortColumn).Value, 2, 1)) + 1
 
     If ws.Cells(k, SLGWModeColumn).Value <> "GATEWAY_PROXY" Then

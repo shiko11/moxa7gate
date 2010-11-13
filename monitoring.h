@@ -108,10 +108,10 @@ void func_res_err(int mbf, GW_StaticData *dst);
 #define EVENT_SRC_MOXAMB			0x0A
 //#define   MOXA_MB_DEVICE		0x0A
 #define EVENT_SRC_MOXATCP			0x0B
-#define EVENT_SRC_RESERV1			0x0C
-#define EVENT_SRC_RESERV2			0x0D
-#define EVENT_SRC_RESERV3			0x0E
-#define EVENT_SRC_RESERV4			0x0F
+#define EVENT_SRC_TCPBRIDGE		0x0C
+#define EVENT_SRC_RESERV1			0x0D
+#define EVENT_SRC_RESERV2			0x0E
+#define EVENT_SRC_RESERV3			0x0F
 #define EVENT_SRC_MASK				0x0F
 
 typedef struct {				// «¿œ»—‹ ∆”–Õ¿À¿ —Œ¡€“»… ÿÀﬁ«¿

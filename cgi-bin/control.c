@@ -284,7 +284,7 @@ printf("\
 			case GATEWAY_RTM: printf("<td class=\"pstatus\">GATEWAY_RTM\n"); break;
 			case GATEWAY_PROXY: printf("<td class=\"pstatus\">GATEWAY_PROXY\n"); break;
 			case BRIDGE_PROXY: printf("<td class=\"pstatus\">BRIDGE_PROXY\n"); break;
-			case BRIDGE_SIMPLE: printf("<td class=\"pstatus\">BRIDGE_SIMPLE\n"); break;
+//			case BRIDGE_SIMPLE: printf("<td class=\"pstatus\">BRIDGE_SIMPLE\n"); break;
 			default: printf("<td class=\"pstatus\">UNKNOWN\n");
 			}	  
 
@@ -344,9 +344,9 @@ if(((port-1)>=SERIAL_P1)&&((port-1)<=SERIAL_P8)) P=port-1;
 
 	switch(shared_memory[P].modbus_mode) {
 		case GATEWAY_SIMPLE:
-		case BRIDGE_SIMPLE:
-  		show_interface_clients(P);
-			break;
+	//		case BRIDGE_SIMPLE:
+  //		show_interface_clients(P);
+	//		break;
 
 		case GATEWAY_RTM:
 	  	show_vslaves(P);
@@ -845,7 +845,7 @@ switch(shared_memory[p_num].modbus_mode) {
 	case GATEWAY_RTM:			strcpy(modeText[2], " selected=\"on\""); break;
 	case GATEWAY_PROXY:		strcpy(modeText[3], " selected=\"on\""); break;
 	case BRIDGE_PROXY:		strcpy(modeText[4], " selected=\"on\""); break;
-	case BRIDGE_SIMPLE:		strcpy(modeText[5], " selected=\"on\""); break;
+//	case BRIDGE_SIMPLE:		strcpy(modeText[5], " selected=\"on\""); break;
 	default:;
 	}
 
@@ -996,18 +996,19 @@ return;
 void show_interface_clients(u8 P)
 {
 
-	if((shared_memory[P].modbus_mode!=GATEWAY_SIMPLE)&&(shared_memory[P].modbus_mode!=BRIDGE_SIMPLE)) return;
+//	if((shared_memory[P].modbus_mode!=GATEWAY_SIMPLE)&&(shared_memory[P].modbus_mode!=BRIDGE_SIMPLE)) return;
+	if(shared_memory[P].modbus_mode!=GATEWAY_SIMPLE) return;
 
   char pstatus[128], pmode[32], row_class[32];
   int i;
   
-	if(shared_memory[P].modbus_mode==BRIDGE_SIMPLE) {
-	  strcpy(pmode, "сервера");
-	  strcpy(pstatus, "\n<th rowspan=\"2\">Адрес<br />modbus\n<th rowspan=\"2\">Сдвиг<br />адреса<br />опроса\n");
-	  } else {
+//	if(shared_memory[P].modbus_mode==BRIDGE_SIMPLE) {
+//	  strcpy(pmode, "сервера");
+//	  strcpy(pstatus, "\n<th rowspan=\"2\">Адрес<br />modbus\n<th rowspan=\"2\">Сдвиг<br />адреса<br />опроса\n");
+//	  } else {
 	  	strcpy(pmode, "клиенты");
 	  	strcpy(pstatus, "\n");
-	    }
+//	    }
 
 printf("\
 <table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" align=\"center\" id=\"p_clients\">\n\
@@ -1025,11 +1026,12 @@ printf("\
 
 for(i=0; i<MAX_TCP_CLIENTS_PER_PORT; i++) {
 
-  if((
-  	 (shared_memory[P].clients[i].connection_status!=MB_CONNECTION_ESTABLISHED)&&
-  	 (shared_memory[P].modbus_mode!=BRIDGE_SIMPLE)	)||(
-  	 (shared_memory[P].modbus_mode==BRIDGE_SIMPLE)&&
-  	 (i>=shared_memory[P].accepted_connections_number)	)	) {
+  if(//(
+  	 (shared_memory[P].clients[i].connection_status!=MB_CONNECTION_ESTABLISHED//)&&
+//  	 (shared_memory[P].modbus_mode!=BRIDGE_SIMPLE)	)||(
+//  	 (shared_memory[P].modbus_mode==BRIDGE_SIMPLE)&&
+//  	 (i>=shared_memory[P].accepted_connections_number)	
+)	) {
 printf("\
 <tr class=\"p_off\">\n\
 <td>&nbsp;\n\
@@ -1039,8 +1041,8 @@ printf("\
 <td>&nbsp;\n\
 <td>&nbsp;\n\
 ");
-		if(shared_memory[P].modbus_mode==BRIDGE_SIMPLE)
-		  printf("<td>&nbsp;\n<td>&nbsp;\n");
+//		if(shared_memory[P].modbus_mode==BRIDGE_SIMPLE)
+//		  printf("<td>&nbsp;\n<td>&nbsp;\n");
 
   	continue;
   	}
@@ -1053,28 +1055,30 @@ printf("\
 																(shared_memory[P].clients[i].ip >> 8) & 0xff,
 																shared_memory[P].clients[i].ip & 0xff);
 																
-	if(shared_memory[P].modbus_mode==BRIDGE_SIMPLE)
-		sprintf(pstatus, "%d", shared_memory[P].clients[i].mb_slave);
-		else strcpy(pstatus, "N/A");
+//	if(shared_memory[P].modbus_mode==BRIDGE_SIMPLE)
+//		sprintf(pstatus, "%d", shared_memory[P].clients[i].mb_slave);
+//		else 
+strcpy(pstatus, "N/A");
 		
 	strcpy(row_class, "p_on");
-	if((shared_memory[P].modbus_mode==BRIDGE_SIMPLE)&&
-		 (shared_memory[P].clients[i].connection_status!=MB_CONNECTION_ESTABLISHED)) strcpy(row_class, "p_err");
+//	if((shared_memory[P].modbus_mode==BRIDGE_SIMPLE)&&
+//		 (shared_memory[P].clients[i].connection_status!=MB_CONNECTION_ESTABLISHED)) strcpy(row_class, "p_err");
 
 printf("\
 <tr class=\"%s\">\n\
 <td style=\"text-align:left;\">%s:%d\n\
 ",	row_class, pmode, shared_memory[P].clients[i].port);
   		
-	if(shared_memory[P].modbus_mode==BRIDGE_SIMPLE) {
-	  if(shared_memory[P].clients[i].address_shift!=MB_ADDRESS_NO_SHIFT)
-		  sprintf(pmode, "%+d", shared_memory[P].clients[i].address_shift);
-		  else sprintf(pmode, "Нет");
+//	if(shared_memory[P].modbus_mode==BRIDGE_SIMPLE) {
+//	  if(shared_memory[P].clients[i].address_shift!=MB_ADDRESS_NO_SHIFT)
+//		  sprintf(pmode, "%+d", shared_memory[P].clients[i].address_shift);
+//		  else 
+sprintf(pmode, "Нет");
 		printf("\
 <td>%s\n\
 <td>%s\n\
 ",	pstatus, pmode);
-	  }
+//	  }
 			
   if(shared_memory[P].clients[i].stat.scan_rate<MB_SCAN_RATE_INFINITE)
     sprintf(pstatus, "%d", shared_memory[P].clients[i].stat.scan_rate);
@@ -1094,7 +1098,8 @@ printf("\
   		
 	}
 
-pmode[0]=shared_memory[P].modbus_mode==BRIDGE_SIMPLE?'4':'2';
+//pmode[0]=shared_memory[P].modbus_mode==BRIDGE_SIMPLE?'4':'2';
+pmode[0]='2';
 
 printf("\
 <tr><td colspan=\"%c\">&nbsp;<td colspan=\"2\" style=\"text-align:center;\">\n\

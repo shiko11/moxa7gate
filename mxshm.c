@@ -154,11 +154,11 @@ int refresh_shm(void *arg)
 			    // sprintf(iDATA[i].bridge_status, "BPR");
 					break;
 
-				case BRIDGE_SIMPLE:
+/*				case BRIDGE_SIMPLE:
 					k=iDATA[i].current_connections_number;
 					j=iDATA[i].accepted_connections_number;
 			    sprintf(iDATA[i].bridge_status, "%1.1d%1.1dB", k, j);
-					break;
+					break;*/
 				default:;
 				}
 			}

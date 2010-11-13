@@ -35,7 +35,7 @@ union semun {
 
 void *srvr_tcp_child(void *arg); /// Потоковая функция режима GATEWAY_SIMPLE
 void *srvr_tcp_child2(void *arg); /// Потоковая функция режимов GATEWAY_ATM, GATEWAY_RTM
-void *srvr_tcp_bridge(void *arg); /// Потоковая функция режима BRIDGE_SIMPLE
+void *srvr_tcp_bridge(void *arg); /// Потоковая функция режима BRIDGE_TCP
 void *gateway_proxy_thread(void *arg); /// Потоковая функция режима GATEWAY_PROXY
 void *bridge_proxy_thread(void *arg); /// Потоковая функция режима BRIDGE_PROXY
 void *moxa_mb_thread(void *arg); /// Потоковая функция обработки запросов к MOXA

@@ -108,17 +108,16 @@ typedef struct { // очередь на семафорах
 // это число исп. также для идентификации семафора!
 #define   MOXA_MB_DEVICE		0x0A
 
-#define BRIDGE_SIMPLE				11
+#define BRIDGE_TCP					11
 #define BRIDGE_PROXY				12
 
 #define MODBUS_PORT_ERROR		4
 #define MODBUS_PORT_OFF			5
 
-/*--- Всего возможны 4 различных типа клиентов шлюза:
+/*--- Всего возможны 3 различных типа клиентов шлюза:
 	1. Клиент на стороне TCP, подключенный к порту GATEWAY_SIMPLE;
 	2. Клиент на стороне TCP, подключенный к шлюзу через общий TCP порт (обычно 502);
-	3. Клиент на стороне RTU, подключенный к порту BRIDGE_PROXY или BRIDGE_SIMPLE;
-	4. Потоковая функция moxa7gate, реализующая режим TCP_PROXY;
+	3. Клиент на стороне RTU, подключенный к порту BRIDGE_PROXY;
 */
 
 typedef struct { // параметры клиентского устройства
@@ -265,11 +264,12 @@ typedef struct { // запись таблицы TCP_SERVERS
 	unsigned int ip;						// сетевой адрес
 	unsigned int port;					// TCP порт
 	int address_shift;					// смещение адресного пространства
-	u8        p_num;						// номер порта, соотнесенного с этой записью
+	u8        p_num;						// obsolete
 	char device_name[DEVICE_NAME_LENGTH]; // наименование устройства
 	} GW_TCP_Server;
 
-input_cfg		iDATA[MAX_MOXA_PORTS];        //массив параметров скорфигурированных точек ()
+input_cfg		iDATA[MAX_MOXA_PORTS];     // данные и параметры интерфейсов RTU
+input_cfg		iDATAtcp[MAX_TCP_SERVERS]; // данные и параметры интерфейсов TCP
 input_cfg_502 gate502;
 int mxlcm_handle;
 int mxkpd_handle;

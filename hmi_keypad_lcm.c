@@ -5,7 +5,7 @@ SEM-ENGINEERING
 */
 
 #include "global.h"
-#include "mx_keypad_lcm.h"
+#include "hmi_keypad_lcm.h"
 ///---------------------------------------------------------------
 void *mx_keypad_lcm(void *arg)
   {

@@ -6,7 +6,7 @@
 #include <errno.h>
 
 #include "../global.h"
-#include "../monitoring.h"
+#include "../messages.h"
 
 #define DISPLAY_MAIN_TABLE		1
 #define DISPLAY_PORT_X				2

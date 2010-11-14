@@ -4,8 +4,8 @@ SEM-ENGINEERING
                     BRYANSK 2009
 */
 
-#ifndef MX_KEYPAD_LCM_H
-#define MX_KEYPAD_LCM_H
+#ifndef HMI_KEYPAD_LCM_H
+#define HMI_KEYPAD_LCM_H
 
 #include "mxlib/mxkeypad.h"
 #include "mxlib/mxlcm.h"
@@ -106,4 +106,11 @@ int ctrl_reset_port_counters(int port);
 int ctrl_reboot_system();
 int ctrl_change_security_settings();
 
-#endif  /* MX_KEYPAD_LCM_H */
+///=== HMI_H public variables
+GW_Display screen;
+
+int mxlcm_handle;
+int mxkpd_handle;
+int mxbzr_handle;
+
+#endif  /* HMI_KEYPAD_LCM_H */

@@ -4,8 +4,12 @@
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <pthread.h>
 
-#include "../global.h"
+#include "../hmi_web.h"
+#include "../interfaces.h"
+#include "../moxagate.h"
+#include "../clients.h"
 #include "../messages.h"
 
 #define DISPLAY_MAIN_TABLE		1

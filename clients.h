@@ -1,12 +1,26 @@
-/*
-MODBUS GATEWAY SOFTWARE
-MOXA7GATE VERSION 1.2
-SEM-ENGINEERING
-					BRYANSK 2010
-*/
+/***********   MOXA7GATE   *************
+        MODBUS GATEWAY SOFTWARE         
+                    VERSION 1.2         
+        SEM-ENGINEERING                 
+               BRYANSK 2010                 
+***************************************/
 
 #ifndef CLIENTS_H
 #define CLIENTS_H
+
+///****************** леуюмхгл наеяоевемхъ аегноюямнярх ************************
+///****************** (лнмхрнпхмц х сопюбкемхе йкхемряйхлх янедхмемхълх) *******
+
+#include <sys/time.h>
+#include <pthread.h>
+
+///=== CLIENTS_H constants
+
+#define DEVICE_NAME_LENGTH	64
+#define MAX_TCP_CLIENTS_PER_PORT	8
+
+#define MAX_CLIENT_ACTIVITY_TIMEOUT	30
+#define DEFAULT_CLIENT 0
 
 // ЯНЯРНЪМХЕ ЙКХЕМРЯЙНЦН ЯНЕДХМЕМХЪ
 #define MB_CONNECTION_CLOSED			1

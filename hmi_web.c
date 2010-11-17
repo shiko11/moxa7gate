@@ -1,15 +1,23 @@
-/*
-MOXA7GATE MODBUS GATEWAY SOFTWARE
-SEM-ENGINEERING
-                    BRYANSK 2009
-*/
+/***********   MOXA7GATE   *************
+        MODBUS GATEWAY SOFTWARE         
+                    VERSION 1.2         
+        SEM-ENGINEERING                 
+               BRYANSK 2010             
+***************************************/
 
-#include "global.h"
+///**** МОДУЛЬ МОНИТОРИНГА И УПРАВЛЕНИЯ РАБОТОЙ ШЛЮЗА СРЕДСТВАМИ WEB-СЕРВЕРА ***
 
-#include <stdio.h>
+///=== HMI_WEB_H IMPLEMENTATION
+
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <errno.h>
+
+#include "hmi_web.h"
+#include "messages.h"
+#include "interfaces.h"
+#include "moxagate.h"
+#include "hmi_keypad_lcm.h"
 
 char *pointer;
 
@@ -22,6 +30,11 @@ GW_TCP_Server *t_tcpsrv; //[MAX_TCP_SERVERS];
 
 key_t access_key;
 struct shmid_ds shmbuffer;
+
+//unsigned int buzzer_flag; // зуммер дает 1, 2 и 3 гудка в зависимости от количества ошибок: <15, 15-30, >30
+//struct timeval tv;
+
+int refresh_shm(void *arg);
 
 /*//---for reference purposes only!-----------------------------------------------------
 struct shmid_ds {
@@ -164,7 +177,8 @@ int refresh_shm(void *arg)
 			}
 
     }
-    
+
+/* ЗВУК ЗУММЕРА ПРИ ОШИБКАХ ОБМЕНА
 	gettimeofday(&tv, &tz);
 	int sec=(tv.tv_sec-tv_mem.tv_sec)+(tv.tv_usec-tv_mem.tv_usec)/1000000;
 	if(sec>=LCM_BUZZER_CONTROL_PERIOD) {
@@ -176,7 +190,7 @@ int refresh_shm(void *arg)
 //		    if(screen.buzzer_control==1) mxbuzzer_beep(mxbzr_handle, 400);
 		  p_errors[i]=iDATA[i].stat.errors;
 		  }
-	  }
+	  } */
   
 	//shmctl(shm_segment_id, IPC_STAT, &shmbuffer);
 	//unsigned segment_size=shmbuffer.shm_segsz;

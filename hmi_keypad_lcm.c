@@ -1,11 +1,19 @@
-/*
-MOXA7GATE MODBUS GATEWAY SOFTWARE
-SEM-ENGINEERING
-                    BRYANSK 2009
-*/
+/***********   MOXA7GATE   *************
+        MODBUS GATEWAY SOFTWARE         
+                    VERSION 1.2         
+        SEM-ENGINEERING                 
+               BRYANSK 2010             
+***************************************/
 
-#include "global.h"
+///**** лндскэ лнмхрнпхмцю х сопюбкемхъ пюанрни ькчгю япедярбюлх KEYPAD-LCM ****
+
+///=== HMI_KEYPAD_LCM_H IMPLEMENTATION
+
+#include <pthread.h>
+
 #include "hmi_keypad_lcm.h"
+#include "interfaces.h"
+#include "moxagate.h"
 ///---------------------------------------------------------------
 void *mx_keypad_lcm(void *arg)
   {
@@ -69,7 +77,7 @@ void *mx_keypad_lcm(void *arg)
 	  		) show_screen(screen.current_screen);
 	  }
 
-  return NULL;
+  return;
   }
 ///---------------------------------------------------------------
 void show_screen(int display)

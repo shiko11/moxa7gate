@@ -1,15 +1,27 @@
-/*
-MOXA7GATE MODBUS GATEWAY SOFTWARE
-SEM-ENGINEERING
-                    BRYANSK 2009
-*/
+/***********   MOXA7GATE   *************
+        MODBUS GATEWAY SOFTWARE         
+                    VERSION 1.2         
+        SEM-ENGINEERING                 
+               BRYANSK 2010             
+***************************************/
 
-#include "global.h"
+///********* ПРИЛОЖЕНИЕ MOXA7GATE, ГЛАВНЫЙ МОДУЛЬ ПРОГРАММЫ ********************
 
-#include "modbus_tcp.h"
+///=== MAIN_H IMPLEMENTATION
 
-#define DEBUG_oDATA
-#define DEBUG_iDATA
+#include "main.h"
+
+// переменные мультиплексированного ввода
+fd_set watchset;
+fd_set inset;
+
+//struct timeval tv_mem;
+//struct timezone tz;
+//unsigned int p_errors[MAX_MOXA_PORTS];
+
+int gateway_common_processing();
+int gateway_single_port_processing();
+int query_translating();
 
 ///-----------------------------------------------------------------------------------------------------------------
 
@@ -52,7 +64,7 @@ int main(int argc, char *argv[])
 		
     iDATA[i].current_client=0;
 
-		p_errors[i]=0; // this value for buzzer function
+//		p_errors[i]=0; // this value for buzzer function
 		iDATA[i].start_time=0;
 
 //		iDATA[i].queue_start=iDATA[i].queue_len=0; /// obsolete
@@ -96,7 +108,7 @@ int main(int argc, char *argv[])
 		
     iDATAtcp[i].current_client=0;
 
-		p_errors[i]=0; // this value for buzzer function
+//		p_errors[i]=0; // this value for buzzer function
 		iDATAtcp[i].start_time=0;
 
 //		iDATA[i].queue_start=iDATA[i].queue_len=0; /// obsolete
@@ -418,7 +430,7 @@ int main(int argc, char *argv[])
   screen.buzzer_control=1;
   screen.secr_scr_changes_was_made=0;
 
-	gettimeofday(&tv_mem, &tz);
+//gettimeofday(&tv_mem, &tz);
 //	printf("tv_mem %d\n", tv_mem.tv_sec);
 
 /// запускаем поток для обработки ввода с клавиатуры и вывода на дисплей статусной информации
@@ -434,27 +446,7 @@ int main(int argc, char *argv[])
 //  printf("stopping program...\n"); exit(1);
 
 /* ИНИЦИАЛИЗАЦИЯ СЕМАФОРОВ, НА КОТОРЫХ РАБОТАЮТ ОЧЕРЕДИ ПОРТОВ */
-
-		key_t sem_key=ftok("/tmp/app", 'b');
-		
-		if((semaphore_id = semget(sem_key, MAX_MOXA_PORTS*2+MAX_TCP_SERVERS, IPC_CREAT|IPC_EXCL|0666)) == -1) {
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 29, 0, 0, 0, 0);
-			exit(1);
-		 	}
-		
-		union semun sems;
-		unsigned short values[1];
-
-		values[0]=0;
-		sems.array = values;
-		/* Инициализируем все элементы одним значением */
-		semctl(semaphore_id, 0, SETALL, sems);
-		
-		struct sembuf operations[1]; /// obsolete
-		operations[0].sem_op=1; /// obsolete
-		operations[0].sem_flg=0; /// obsolete
-
-//		printf("maximal semaphore amount %d\n", SEMMSL);
+	if(init_queue() == 1) exit(1);
 
 /*** ИНИЦИАЛИЗАЦИЯ TCP ПОРТА ШЛЮЗА, ПРИНИМАЮЩЕГО СОЕДИНЕНИЯ КО ВСЕМ ПОРТАМ, ЗА ИСКЛЮЧЕНИЕМ ПОРТОВ GATEWAY_SIMPLE ***/
 	struct sockaddr_in	addr;
@@ -490,6 +482,10 @@ int main(int argc, char *argv[])
 /* ЗАПУСК ПОТОКОВЫХ ФУНКЦИЙ, ИНИЦИАЛИЗАЦИЯ ПОСЛЕДОВАТЕЛЬНЫХ ПОРТОВ */
 
 	int arg, P;
+
+	struct sembuf operations[1]; /// obsolete
+	operations[0].sem_op=1; /// obsolete
+	operations[0].sem_flg=0; /// obsolete
 
 	// этот массив служит для организации порядка инициализации портов (сначала GATEWAY_SIMPLE, затем остальные)
 	int ports[MAX_MOXA_PORTS]; 

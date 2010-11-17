@@ -1,14 +1,21 @@
-/*
-MOXA7GATE MODBUS GATEWAY SOFTWARE
-SEM-ENGINEERING
-                    BRYANSK 2010
-*/
+/***********   MOXA7GATE   *************
+        MODBUS GATEWAY SOFTWARE         
+                    VERSION 1.2         
+        SEM-ENGINEERING                 
+               BRYANSK 2010             
+***************************************/
 
-#include "global.h"
+///*********************** ÃŒƒ”À‹ »Õ“≈–‘≈…—Œ¬ ÿÀﬁ«¿ ****************************
+///*** Ã≈’¿Õ»«Ã Œ¡—À”∆»¬¿Õ»ﬂ MODBUS RTU SLAVE
+
+///=== INTERFACES_H MODULE IMPLEMENTATION
+
+#include <pthread.h>
+
 #include "interfaces.h"
-
-#include "modbus_rtu.h"
-#include "modbus_tcp.h"
+#include "moxagate.h"
+#include "messages.h"
+#include "modbus.h"
 
 ///-----------------------------------------------------------------------------------------------------------------
 void *bridge_proxy_thread(void *arg)

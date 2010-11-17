@@ -1,14 +1,20 @@
-/*
-MOXA7GATE MODBUS GATEWAY SOFTWARE
-SEM-ENGINEERING
-                    BRYANSK 2009
-*/
+/***********   MOXA7GATE   *************
+        MODBUS GATEWAY SOFTWARE         
+                    VERSION 1.2         
+        SEM-ENGINEERING                 
+               BRYANSK 2010                 
+***************************************/
 
 #ifndef HMI_KEYPAD_LCM_H
 #define HMI_KEYPAD_LCM_H
 
+///**** ÃŒƒ”À‹ ÃŒÕ»“Œ–»Õ√¿ » ”œ–¿¬À≈Õ»ﬂ –¿¡Œ“Œ… ÿÀﬁ«¿ —–≈ƒ—“¬¿Ã» KEYPAD-LCM ****
+
 #include "mxlib/mxkeypad.h"
 #include "mxlib/mxlcm.h"
+#include "mxlib/mxwdg.h"
+
+///=== HMI_KEYPAD_LCM_H constants
 
 #define KEY_F1 0
 #define KEY_F2 1
@@ -54,6 +60,8 @@ SEM-ENGINEERING
 #define	LCM_BUZZER_CONTROL_PERIOD 		15
 #define	LCM_BUZZER_CONTROL_ERRORS 		1
 
+///=== HMI_KEYPAD_LCM_H data types
+
 typedef struct { // net initsializatsii polej structury
 	unsigned int current_screen;
 	unsigned int prev_screen;
@@ -72,6 +80,8 @@ typedef struct { // net initsializatsii polej structury
 
   unsigned int buzzer_control;
 	} GW_Display;
+
+///=== HMI_KEYPAD_LCM_H public functions
 
 ///--- main thread function
 void *mx_keypad_lcm(void *arg);
@@ -106,7 +116,7 @@ int ctrl_reset_port_counters(int port);
 int ctrl_reboot_system();
 int ctrl_change_security_settings();
 
-///=== HMI_H public variables
+///=== HMI_KEYPAD_LCM_H public variables
 GW_Display screen;
 
 int mxlcm_handle;

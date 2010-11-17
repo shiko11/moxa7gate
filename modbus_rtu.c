@@ -1,12 +1,13 @@
-/*
-MOXA7GATE MODBUS GATEWAY SOFTWARE
-SEM-ENGINEERING
-                    BRYANSK 2009
-*/
+/***********   MOXA7GATE   *************
+        MODBUS GATEWAY SOFTWARE         
+                    VERSION 1.2         
+        SEM-ENGINEERING                 
+               BRYANSK 2010             
+***************************************/
 
-/*        modbus_rtu.c
-םןס עוהבכדיס ?1
-*/
+///******************* ּ־ִ׃ֻÜ ֲֲ־ְִ/ֲÛֲ־ְִ MODBUS ******************************
+
+///=== MODBUS_H IMPLEMENTATION
 
 #include <fcntl.h>  /* File control definitions */
 #include <stdio.h>  /* Standard input/output */
@@ -19,8 +20,7 @@ SEM-ENGINEERING
 
 #include <moxadevice.h>
 
-#include "modbus_rtu.h"
-#include "global.h"
+#include "modbus.h"
 
 #define DEBUG_MB_RTU          /* uncomment to see the data sent and received */
 #define CRC_RTU

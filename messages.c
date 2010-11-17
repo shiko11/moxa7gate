@@ -1,6 +1,19 @@
+/***********   MOXA7GATE   *************
+        MODBUS GATEWAY SOFTWARE         
+                    VERSION 1.2         
+        SEM-ENGINEERING                 
+               BRYANSK 2010             
+***************************************/
+
+///******************* лндскэ фспмюкю яннаыемхи ********************************
+
+///=== MESSAGES_H IMPLEMENTATION
+
+#include <pthread.h>
+
 #include "messages.h"
-#include "modbus_rtu.h"
-#include "modbus_tcp.h"
+#include "interfaces.h"
+#include "moxagate.h"
 
 //*************************************************************************************
 

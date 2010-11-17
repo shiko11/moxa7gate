@@ -4,7 +4,7 @@ STRIP=$(PREFIXPATH)/mxscaleb-strip
 
 moxa:
 	$(CC) -o moxa7gate \
-main.c cli.c moxagate.c modbus_rtu.c modbus_tcp.c queue.c \
+main.c cli.c moxagate.c modbus_rtu.c modbus_tcp.c queue.c clients.c \
 gateway_simple.c iface_rtumaster.c iface_rtuslave.c iface_tcpmaster.c \
 hmi_keypad_lcm.c hmi_web.c messages.c statistics.c \
 mxlib/mxkeypad_lx.c mxlib/mxlcm_lx.c mxlib/mxwdg_lx.c mxlib/mxbuzzer_lx.c \

@@ -1,9 +1,21 @@
+/***********   MOXA7GATE   *************
+        MODBUS GATEWAY SOFTWARE         
+                    VERSION 1.2         
+        SEM-ENGINEERING                 
+               BRYANSK 2010                 
+***************************************/
+
 #ifndef MESSAGES_H
 #define MESSAGES_H
 
-#include "global.h"
+///******************* МОДУЛЬ ЖУРНАЛА СООБЩЕНИЙ ********************************
 
-///******************* М Е Х А Н И З М   С О О Б Щ Е Н И Й ***************************
+#include <sys/time.h>
+
+#include "modbus.h"
+
+///=== MESSAGES_H constants
+
 #define EVENT_LOG_LENGTH			100
 #define EVENT_MESSAGE_LENGTH	81
 #define EVENT_TEMPLATE_AMOUNT	0x100
@@ -39,6 +51,15 @@
 #define EVENT_SRC_RESERV3			0x0F
 #define EVENT_SRC_MASK				0x0F
 
+#define TRAFFIC_RTU_RECV	182
+#define TRAFFIC_RTU_SEND	183
+#define TRAFFIC_TCP_RECV	184
+#define TRAFFIC_TCP_SEND	185
+#define TRAFFIC_QUEUE_IN	186
+#define TRAFFIC_QUEUE_OUT	187
+
+///=== MESSAGES_H data types
+
 typedef struct {				// ЗАПИСЬ ЖУРНАЛА СОБЫТИЙ ШЛЮЗА
 	time_t	time;					// время возникновения события
 
@@ -51,21 +72,17 @@ typedef struct {				// ЗАПИСЬ ЖУРНАЛА СОБЫТИЙ ШЛЮЗА
 	unsigned int prm[4];
 	} GW_EventLog;									 // текст сообщения
 
+///=== MESSAGES_H public variables
 
 GW_EventLog *app_log;
+
+///=== MESSAGES_H public functions
 
 void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 								unsigned int prm1,
 								unsigned int prm2,
 								unsigned int prm3,
 								unsigned int prm4);
-
-#define TRAFFIC_RTU_RECV	182
-#define TRAFFIC_RTU_SEND	183
-#define TRAFFIC_TCP_RECV	184
-#define TRAFFIC_TCP_SEND	185
-#define TRAFFIC_QUEUE_IN	186
-#define TRAFFIC_QUEUE_OUT	187
 
 void show_traffic(int traffic, int port_id, int client_id, u8 *adu, u16 adu_len);
 

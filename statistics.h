@@ -1,7 +1,16 @@
+/***********   MOXA7GATE   *************
+        MODBUS GATEWAY SOFTWARE         
+                    VERSION 1.2         
+        SEM-ENGINEERING                 
+               BRYANSK 2010                 
+***************************************/
+
 #ifndef STATISTICS_H
 #define STATISTICS_H
 
-///************* М Е Х А Н И З М   С Б О Р А   С Т А Т И С Т И К И ********************
+///*************  МОДУЛЬ СБОРА СТАТИСТИКИ ОПРОСА *******************************
+
+///=== STATISTICS_H constants
 
 #define MAX_LATENCY_HISTORY_POINTS	8
 
@@ -20,6 +29,8 @@
 #define STAT_RES_ERR		1
 #define STAT_RES_EXP		2
 #define STAT_RES_AMOUNT 3
+
+///=== STATISTICS_H data types
 
 /// Структура для хранения статистики опроса по порту, клиенту и серверу,
 /// она содержит данные как о результатах запросов, так и детализацию по функциям ModBus
@@ -66,6 +77,10 @@ typedef struct {
 //	unsigned int request_time_average;	///!!!
 	
 	} GW_StaticData;
+
+///=== STATISTICS_H public variables
+
+///=== STATISTICS_H public functions
 
 void copy_stat(GW_StaticData *dst, GW_StaticData *src);
 void update_stat(GW_StaticData *dst, GW_StaticData *src);

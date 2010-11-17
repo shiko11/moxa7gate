@@ -1,11 +1,15 @@
-/*
-MOXA7GATE MODBUS GATEWAY SOFTWARE
-SEM-ENGINEERING
-                    BRYANSK 2009
-*/
+/***********   MOXA7GATE   *************
+        MODBUS GATEWAY SOFTWARE         
+                    VERSION 1.2         
+        SEM-ENGINEERING                 
+               BRYANSK 2010             
+***************************************/
 
-#include "modbus_tcp.h"
-#include "global.h"
+///******************* лндскэ ббндю/бшбндю MODBUS ******************************
+
+///=== MODBUS_H IMPLEMENTATION
+
+#include "modbus.h"
 
 #define DEBUG_TCP
 #define CRC_TCP

@@ -1,4 +1,15 @@
-#include "modbus_rtu.h"
+/***********   MOXA7GATE   *************
+        MODBUS GATEWAY SOFTWARE         
+                    VERSION 1.2         
+        SEM-ENGINEERING                 
+               BRYANSK 2010             
+***************************************/
+
+///*************  ÃŒƒ”À‹ —¡Œ–¿ —“¿“»—“» » Œœ–Œ—¿ *******************************
+
+///=== STATISTICS_H IMPLEMENTATION
+
+#include "modbus.h"
 #include "statistics.h"
 
 //*************************************************************************************

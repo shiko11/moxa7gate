@@ -1,9 +1,15 @@
-/*
-MODBUS GATEWAY SOFTWARE
-MOXA7GATE VERSION 1.2
-SEM-ENGINEERING
-					BRYANSK 2010
-*/
+/***********   MOXA7GATE   *************
+        MODBUS GATEWAY SOFTWARE         
+                    VERSION 1.2         
+        SEM-ENGINEERING                 
+               BRYANSK 2010                 
+***************************************/
+
+///*********************** МОДУЛЬ ИНТЕРФЕЙСОВ ШЛЮЗА ****************************
+///*** МЕХАНИЗМ ОПРОСА MODBUS RTU MASTER
+///*** МЕХАНИЗМ ОПРОСА MODBUS TCP MASTER
+///*** МЕХАНИЗМ ОБСЛУЖИВАНИЯ MODBUS RTU SLAVE
+///*** МЕХАНИЗМ ПЕРЕНАПРАВЛЕНИЯ GATEWAY_SIMPLE
 
 #ifndef INTERFACES_H
 #define INTERFACES_H
@@ -11,9 +17,9 @@ SEM-ENGINEERING
 #include "queue.h"
 #include "clients.h"
 
-#define MAX_TCP_CLIENTS_PER_PORT	8
-#define MAX_CLIENT_ACTIVITY_TIMEOUT	30
-#define DEFAULT_CLIENT 0
+///=== INTERFACES_H constants
+
+#define   MAX_MOXA_PORTS		8
 
 #define   NAME_MOXA_PORT           "PORT"
 #define   NAME_MOXA_PORT_DEV  "/dev/ttyM"
@@ -29,19 +35,6 @@ SEM-ENGINEERING
 #define PROXY_TCP	8
 
 #define SERIAL_STUB 0xff
-typedef struct { // параметры последовательного порта
-	int				fd;						// идентификатор
-	unsigned char        p_num;				// номер порта MOXA
-	char      p_name[12];		// имя порта (устройства в системе)
-	char      p_mode[12];		// режим 232/485_2W/422/485_4W
-	char			speed[12];		// скорость обмена
-	char			parity[12];		// контроль четности
-	int		timeout;					// таймаут связи
-
-	int ch_interval_timeout;
-	} GW_SerialLine;
-
-#define   MAX_MOXA_PORTS		8
 
 // режим применим только для serial-интерфейса шлюза
 // ввиду его простоты и надежности он остается прежним
@@ -78,6 +71,22 @@ typedef struct { // параметры последовательного порта
 #define IFACE_ERROR					16
 #define IFACE_OFF						17
 
+#define MAX_TCP_SERVERS 		32
+
+///=== INTERFACES_H data types
+
+typedef struct { // параметры последовательного порта
+	int				fd;						// идентификатор
+	unsigned char        p_num;				// номер порта MOXA
+	char      p_name[12];		// имя порта (устройства в системе)
+	char      p_mode[12];		// режим 232/485_2W/422/485_4W
+	char			speed[12];		// скорость обмена
+	char			parity[12];		// контроль четности
+	int		timeout;					// таймаут связи
+
+	int ch_interval_timeout;
+	} GW_SerialLine;
+
 typedef struct {
 	GW_SerialLine serial;
 
@@ -108,7 +117,6 @@ typedef struct {
 	char description[DEVICE_NAME_LENGTH]; // Описание шлейфа (сети ModBus)
 	} input_cfg;
 
-#define MAX_TCP_SERVERS 32
 typedef struct { // запись таблицы TCP_SERVERS
 	unsigned char        mb_slave;					// адрес modbus-устройства для перенаправления запросов (ATM)
 	unsigned int ip;						// сетевой адрес
@@ -118,15 +126,18 @@ typedef struct { // запись таблицы TCP_SERVERS
 	char device_name[DEVICE_NAME_LENGTH]; // наименование устройства
 	} GW_TCP_Server;
 
+///=== INTERFACES_H public variables
+
+input_cfg iDATA[MAX_MOXA_PORTS];     // данные и параметры интерфейсов RTU
+input_cfg iDATAtcp[MAX_TCP_SERVERS]; // данные и параметры интерфейсов TCP
+GW_TCP_Server tcp_servers[MAX_TCP_SERVERS];
+
+///=== INTERFACES_H public functions
+
 void *srvr_tcp_child(void *arg); /// Потоковая функция режима GATEWAY_SIMPLE
 void *srvr_tcp_child2(void *arg); /// Потоковая функция режимов GATEWAY_ATM, GATEWAY_RTM
 void *srvr_tcp_bridge(void *arg); /// Потоковая функция режима BRIDGE_TCP
 void *gateway_proxy_thread(void *arg); /// Потоковая функция режима GATEWAY_PROXY
 void *bridge_proxy_thread(void *arg); /// Потоковая функция режима BRIDGE_PROXY
-
-///=== INTERFACES_H public variables
-input_cfg		iDATA[MAX_MOXA_PORTS];     // данные и параметры интерфейсов RTU
-input_cfg		iDATAtcp[MAX_TCP_SERVERS]; // данные и параметры интерфейсов TCP
-GW_TCP_Server tcp_servers[MAX_TCP_SERVERS];
 
 #endif  /* INTERFACES_H */

@@ -1,16 +1,21 @@
-/*
-MOXA7GATE MODBUS GATEWAY SOFTWARE
-SEM-ENGINEERING
-                    BRYANSK 2010
-*/
+/***********   MOXA7GATE   *************
+        MODBUS GATEWAY SOFTWARE         
+                    VERSION 1.2         
+        SEM-ENGINEERING                 
+               BRYANSK 2010             
+***************************************/
 
-#include "global.h"
+///*********************** лндскэ хмрептеиянб ькчгю ****************************
+///*** леуюмхгл нопняю MODBUS RTU MASTER
+
+///=== INTERFACES_H MODULE IMPLEMENTATION
+
 #include "interfaces.h"
+#include "moxagate.h"
+#include "messages.h"
+#include "modbus.h"
 
-#include "modbus_rtu.h"
-#include "modbus_tcp.h"
-
-///-----------------------------------------------------------------------------------------------------------------
+///----------------------------------------------------------------------------
 void *srvr_tcp_child2(void *arg) //прием - передача данных по Modbus TCP
   {
 	u8			tcp_adu[MB_TCP_MAX_ADU_LENGTH];// TCP ADU

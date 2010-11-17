@@ -1,6 +1,47 @@
+/***********   MOXA7GATE   *************
+        MODBUS GATEWAY SOFTWARE         
+                    VERSION 1.2         
+        SEM-ENGINEERING                 
+               BRYANSK 2010             
+***************************************/
+
+///*********  МОДУЛЬ ФУНКЦИЙ ПЕРЕНАПРАВЛЕНИЯ, ОЧЕРЕДЕЙ ЗАПРОСОВ MODBUS *********
+
+///=== FRWD_QUEUE_H IMPLEMENTATION
+
 #include "queue.h"
 #include "messages.h"
+#include "interfaces.h"
 
+union semun {
+	int val;
+	struct semid_ds *buf;
+	unsigned short int *array;
+	struct seminfo *__buf;
+  };
+
+///-----------------------------------------------------------------------------------------------------------------
+int init_queue()
+	{
+
+	key_t sem_key=ftok("/tmp/app", 'b');
+	
+	if((semaphore_id = semget(sem_key, MAX_MOXA_PORTS*2+MAX_TCP_SERVERS, IPC_CREAT|IPC_EXCL|0666)) == -1) {
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 29, 0, 0, 0, 0);
+		return 1;
+	 	}
+	
+	union semun sems;
+	unsigned short values[1];
+
+	values[0]=0;
+	sems.array = values;
+	/* Инициализируем все элементы одним значением */
+	semctl(semaphore_id, 0, SETALL, sems);
+	
+//		printf("maximal semaphore amount %d\n", SEMMSL);
+	return 0;
+	}
 ///-----------------------------------------------------------------------------------------------------------------
 int enqueue_query_ex(GW_Queue *queue, int client_id, int device_id, u8 *adu, u16 adu_len)
   {

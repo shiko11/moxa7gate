@@ -1,14 +1,21 @@
-/*
-MODBUS GATEWAY SOFTWARE
-MOXA7GATE VERSION 1.2
-SEM-ENGINEERING
-					BRYANSK 2010
-*/
+/***********   MOXA7GATE   *************
+        MODBUS GATEWAY SOFTWARE         
+                    VERSION 1.2         
+        SEM-ENGINEERING                 
+               BRYANSK 2010                 
+***************************************/
 
 #ifndef MOXAGATE_H
 #define MOXAGATE_H
 
+///*********************** МОДУЛЬ УСТРОЙСТВА MODBUS MOXA UC-7410 ***************
+///*** МЕХАНИЗМ ВНУТРЕННЕЙ ПАМЯТИ
+///*** СТРУКТУРЫ ДАННЫХ ДЛЯ РЕАЛИЗАЦИИ ФУНКЦИЙ HMI-ВЗАИМОДЕЙСТВИЯ
+
 #include "queue.h"
+#include "clients.h"
+
+///=== MOXAGATE_H constants
 
 #define	BASIC_STAT_GATEWAY_INFO	24
 #define	GATE_STATUS_BLOCK_LENGTH	BASIC_STAT_GATEWAY_INFO+MAX_QUERY_ENTRIES/16
@@ -17,6 +24,13 @@ SEM-ENGINEERING
 #define MOXA_DIAPASON_INSIDE			1
 #define MOXA_DIAPASON_OUTSIDE			2
 #define MOXA_DIAPASON_OVERLAPPED	3
+
+#define MAX_VIRTUAL_SLAVES 128
+#define MAX_QUERY_ENTRIES 128
+
+#define EXCEPTION_DIOGEN 0x00000001
+
+///=== MOXAGATE_H data types
 
 typedef struct {
 	int				ssd;						// TCP-порт для приема входящих клиентских соединений
@@ -67,11 +81,53 @@ u8 back_light;				// Состояние подсветки дисплея
 	
 	} input_cfg_502;
 
+/// пока определия этих блоков адресов относится к Holding-регистрам modbus и функции 06
+typedef struct {			// блок регистров внутреннего адресного пространства шлюза
+	unsigned start;			// начальный регистр диапазона адресного пространства шлюза
+	unsigned length;		// количество регистров дипазона адресного пространства шлюза
+	unsigned port;			// последовательный порт шлюза для перенаправления запроса
+	unsigned device;		// адрес устройства в сети modbus для перенаправления запроса
+
+  unsigned modbus_table; // одна из 4-х стандартных таблиц протокола MODBUS (см. файл modbus_rtu.h)
+  unsigned address_shift;  // смещение в адресном пространстве устройства modbus (чтобы читать регистры не с нуля)
+	char device_name[DEVICE_NAME_LENGTH]; // наименование устройства
+  } RT_Table_Entry;
+
+typedef struct {			// modbus-запрос для циклического опроса ведомого устройства в режиме PROXY
+	unsigned start;			// начальный регистр диапазона адресного пространства ведомого устройства
+	unsigned length;		// количество регистров в диапазоне адресов ведомого устройства
+  unsigned offset;  // номер регистра (смещение) в адресном пространстве шлюза, с которого запивывать полученные данные
+	unsigned port;			// последовательный порт шлюза для опроса ведомого устройства
+	unsigned device;		// адрес ведомого устройства в сети modbus
+
+  unsigned mbf; 			// одна из стандартных функций протокола MODBUS (см. файл modbus_rtu.h)
+  unsigned delay;  // задержка перед отправкой запроса при работе в режиме PROXY в милисекундах
+	unsigned critical;			// количество ошибок до изменения бита статуса связи
+  unsigned err_counter;  // счетчик текущего количества ошибок
+  unsigned status_bit;  // бит статуса связи (первый в переменной)
+	char device_name[DEVICE_NAME_LENGTH]; // наименование устройства
+  } Query_Table_Entry;
+
+///=== MOXAGATE_H public variables
+
+input_cfg_502 gate502;								 // данные и параметры устройства MOXAGATE
+
+RT_Table_Entry vslave[MAX_VIRTUAL_SLAVES];
+Query_Table_Entry query_table[MAX_QUERY_ENTRIES];
+
+// массив исключительных ситуаций служит для устранения проблем при обмене, вызванных особенностями
+// конечных устройств modbus-slave. он содержит набор флагов, включающих определенные алгоритмы в
+// определенных ситуациях.
+
+// исключение для СКС-07, параметр - битовый массив номеров последовательных портов, к которым подключены диогены
+unsigned int exceptions; // массив из 16 флагов
+unsigned int except_prm[16]; // параметр исключения
+
+///=== MOXAGATE_H public functions
+
 void *moxa_mb_thread(void *arg); /// Потоковая функция обработки запросов к MOXA
 
 int checkDiapason(int function, int start_address, int length);
 int process_moxamb_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu, u16 *memory_adu_len);
-
-input_cfg_502 gate502;								 // данные и параметры устройства MOXAGATE
 
 #endif  /* MOXAGATE_H */

@@ -16,9 +16,13 @@
 
 ///=== MESSAGES_H constants
 
-#define EVENT_LOG_LENGTH			100
-#define EVENT_MESSAGE_LENGTH	81
-#define EVENT_TEMPLATE_AMOUNT	0x100
+#define EVENT_LOG_LENGTH 100
+#define EVENT_MESSAGE_LENGTH 81
+#define EVENT_TEMPLATE_AMOUNT 0x100
+
+/// Типы событий, возникающих в процессе работы:
+//    - внешние (monitor)
+//    - внутренние (debug)
 
 #define EVENT_CAT_MONITOR			0x40
 #define EVENT_CAT_DEBUG				0x80
@@ -32,6 +36,39 @@
 #define EVENT_TYPE_RESERV			0x00
 #define EVENT_TYPE_MASK				0x30
 
+/*//!!! Глобальные идентификаторы объектов moxa7gate:
+
+ИНТЕРФЕЙСОВ
+  - 9 физических последовательных, возможны 3 режима работы:
+     - IFACE_GATEWAY_SIMPLE
+     - IFACE_RTU_MASTER
+     - IFACE_RTU_SLAVE
+  - 2 физических сетевых Ethernet
+  - 32 логических IFACE_TCP_MASTER
+
+МОДУЛЕЙ
+
+  - CLI_H
+  - MODBUS_H
+  - MAIN_H
+
+* - CLIENTS_H
+* - FRWD_QUEUE_H
+  - INTERFACES_H
+* - MOXAGATE_H
+
+  - MESSAGES_H
+  - STATISTICS_H
+  - HMI_KEYPAD_LCM_H
+  - HMI_WEB_H
+
+КЛИЕНТОВ
+  - 32 логических клиента шлюза, возможны следующие варианты:
+    - GW_CLIENT_TCP_GWS
+    - GW_CLIENT_TCP_502
+    - GW_CLIENT_RTU_SLV
+
+*/
 #define EVENT_SRC_P1					0x00
 #define EVENT_SRC_P2					0x01
 #define EVENT_SRC_P3					0x02
@@ -70,11 +107,14 @@ typedef struct {				// ЗАПИСЬ ЖУРНАЛА СОБЫТИЙ ШЛЮЗА
 	unsigned char msgtype;
 	unsigned char msgcode;
 	unsigned int prm[4];
-	} GW_EventLog;									 // текст сообщения
+	} GW_EventLog;	// GW_Event	 // текст сообщения
 
 ///=== MESSAGES_H public variables
 
-GW_EventLog *app_log;
+  GW_EventLog *app_log; ///!!! Нужно оформить эту переменную отдельной структурой
+
+	unsigned app_log_current_entry, app_log_entries_total;
+	unsigned msg_filter;
 
 ///=== MESSAGES_H public functions
 

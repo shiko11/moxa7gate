@@ -1,4 +1,13 @@
-/* env.cgi.c */
+/***********   MOXA7GATE   *************
+        MODBUS GATEWAY SOFTWARE         
+                    VERSION 1.2         
+        SEM-ENGINEERING                 
+               BRYANSK 2010             
+***************************************/
+
+///** лндскэ лнмхрнпхмцю х сопюбкемхъ пюанрни ькчгю япедярбюлх WEB-хмрептеияю **
+
+///=== HMI_WEB_H IMPLEMENTATION
 
 #include <stdio.h>
 #include <sys/shm.h>

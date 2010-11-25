@@ -20,7 +20,7 @@
 #include "modbus.h"
 
 ///-----------------------------------------------------------------------------------------------------------------
-void *srvr_tcp_bridge(void *arg) //–“…≈Õ - –≈“≈ƒ¡ﬁ¡ ƒ¡ŒŒŸ» –œ Modbus TCP
+void *iface_tcp_master(void *arg) //–“…≈Õ - –≈“≈ƒ¡ﬁ¡ ƒ¡ŒŒŸ» –œ Modbus TCP
   {
 
 	u8			tcp_adu[MB_TCP_MAX_ADU_LENGTH];// TCP ADU
@@ -37,11 +37,11 @@ void *srvr_tcp_bridge(void *arg) //–“…≈Õ - –≈“≈ƒ¡ﬁ¡ ƒ¡ŒŒŸ» –œ Modbus TCP
 //  printf("port %d cliet %d\n", port_id, client_id);
 	GW_StaticData tmpstat;
 	
-	input_cfg	*inputDATA;
-	inputDATA = (input_cfg	*) arg;
+	GW_Iface	*inputDATA;
+	inputDATA = (GW_Iface	*) arg;
 	//int fd=inputDATA->serial.fd;
   //int port_id=((unsigned)arg)>>8;
-  int client_id=inputDATA->current_client;
+  int client_id=0; //=inputDATA->current_client;  ///!!! Ì‡‰Ó ËÒÍÎ˛˜ËÚ¸ Ï‡ÒÒË‚ tcp_servers
 	int q_client, device_id;
 	
 	struct timeval tv1, tv2;
@@ -73,8 +73,8 @@ void *srvr_tcp_bridge(void *arg) //–“…≈Õ - –≈“≈ƒ¡ﬁ¡ ƒ¡ŒŒŸ» –œ Modbus TCP
   // THREAD STARTED
 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_TCPBRIDGE, 42, inputDATA->modbus_mode, client_id, 0, 0);
 
-//	for(i=0; i<iDATA[port_id].accepted_connections_number; i++)
-//		bridge_reset_tcp(&iDATA[port_id], i);
+//	for(i=0; i<IfaceRTU[port_id].accepted_connections_number; i++)
+//		bridge_reset_tcp(&IfaceRTU[port_id], i);
 	bridge_reset_tcp(inputDATA);
 
 ///-----------------------------------------
@@ -166,12 +166,12 @@ void *srvr_tcp_bridge(void *arg) //–“…≈Õ - –≈“≈ƒ¡ﬁ¡ ƒ¡ŒŒŸ» –œ Modbus TCP
   		tmpstat.errors_serial_adu++;
 	  	tmpstat.errors++;
 			update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
-			update_stat(&iDATA[port_id].stat, &tmpstat);
+			update_stat(&IfaceRTU[port_id].stat, &tmpstat);
 			exception_adu_len=9;
 			tcp_adu[7]=serial_adu[1]|0x80;
 			tcp_adu[8]=0x0a;
       } else  */
-		if(inputDATA->clients[0].connection_status!=MB_CONNECTION_ESTABLISHED) {
+		if(Client[0].status!=GW_CLIENT_CLOSED) { // :$
 //				exception_adu_len=9;
 //				tcp_adu[7]=serial_adu[1]|0x80;
 //				tcp_adu[8]=0x0b;
@@ -188,7 +188,7 @@ void *srvr_tcp_bridge(void *arg) //–“…≈Õ - –≈“≈ƒ¡ﬁ¡ ƒ¡ŒŒŸ» –œ Modbus TCP
 		///!!! ÒÚ‡ÚËÒÚËÍÛ Ó·ÌÓ‚ÎˇÂÏ ˆÂÌÚ‡ÎËÁÓ‚‡ÌÌÓ ‚ ÙÛÌÍˆËË int refresh_shm(void *arg) ËÎË ÔÓ‰Ó·ÌÓÈ
 		//gate502.wData4x[gate502.status_info+3*port_id+0]++;
 
-		//if(inputDATA->clients[0].connection_status!=MB_CONNECTION_ESTABLISHED) pthread_exit (0);
+		//if(inputDATA->clients[0].status!=MB_CONNECTION_ESTABLISHED) pthread_exit (0);
 		
 		clear_stat(&tmpstat);
 //		exception_adu_len=0;
@@ -202,10 +202,10 @@ void *srvr_tcp_bridge(void *arg) //–“…≈Õ - –≈“≈ƒ¡ﬁ¡ ƒ¡ŒŒŸ» –œ Modbus TCP
 //	  	serial_adu[3]=status&0xff;
 //	  	}
 
-		if(gate502.show_data_flow==1)
+		if(Security.show_data_flow==1)
 			show_traffic(TRAFFIC_TCP_SEND, MAX_MOXA_PORTS*2+client_id, i, serial_adu, serial_adu_len);
 
-		status = mb_tcp_send_adu(inputDATA->clients[0].csd, &tmpstat, tcp_adu, tcp_adu_len, serial_adu, &serial_adu_len);
+		status = mb_tcp_send_adu(Client[0].csd, &tmpstat, tcp_adu, tcp_adu_len, serial_adu, &serial_adu_len);
 
 //	gettimeofday(&tv2, &tz);
 //	inputDATA->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
@@ -218,10 +218,10 @@ void *srvr_tcp_bridge(void *arg) //–“…≈Õ - –≈“≈ƒ¡ﬁ¡ ƒ¡ŒŒŸ» –œ Modbus TCP
 		  	tmpstat.errors++;
   			// POLLING: TCP SEND
 			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|EVENT_SRC_TCPBRIDGE, 185, (unsigned) status, client_id, 0, 0);
-				shutdown(inputDATA->clients[0].csd, SHUT_RDWR);
-				close(inputDATA->clients[0].csd);
-				inputDATA->clients[0].csd=-1;
-				inputDATA->clients[0].connection_status=MB_CONNECTION_ERROR;
+				shutdown(Client[0].csd, SHUT_RDWR);
+				close(Client[0].csd);
+				Client[0].csd=-1;
+				Client[0].status=GW_CLIENT_ERROR;
 //				inputDATA->current_connections_number--;
 				if(i!=MAX_QUERY_ENTRIES) query_table[i].status_bit=0;
 				continue;
@@ -229,9 +229,9 @@ void *srvr_tcp_bridge(void *arg) //–“…≈Õ - –≈“≈ƒ¡ﬁ¡ ƒ¡ŒŒŸ» –œ Modbus TCP
 		  default:;
 		  };
 
-		status = mb_tcp_receive_adu(inputDATA->clients[0].csd, &tmpstat, tcp_adu, &tcp_adu_len);
+		status = mb_tcp_receive_adu(Client[0].csd, &tmpstat, tcp_adu, &tcp_adu_len);
 
-		if(gate502.show_data_flow==1)
+		if(Security.show_data_flow==1)
 			show_traffic(TRAFFIC_TCP_RECV, client_id, client_id, tcp_adu, tcp_adu_len);
 //	gettimeofday(&tv2, &tz);
 //	inputDATA->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
@@ -250,13 +250,13 @@ void *srvr_tcp_bridge(void *arg) //–“…≈Õ - –≈“≈ƒ¡ﬁ¡ ƒ¡ŒŒŸ» –œ Modbus TCP
 		  	tmpstat.errors++;
   			// POLLING: TCP RECV ERROR
 			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|EVENT_SRC_TCPBRIDGE, 184, (unsigned) status, client_id, 0, 0);
-				update_stat(&inputDATA->clients[0].stat, &tmpstat);
+				update_stat(&Client[0].stat, &tmpstat);
 				update_stat(&inputDATA->stat, &tmpstat);
 
-				shutdown(inputDATA->clients[0].csd, SHUT_RDWR);
-				close(inputDATA->clients[0].csd);
-				inputDATA->clients[0].csd=-1;
-				inputDATA->clients[0].connection_status=MB_CONNECTION_ERROR;
+				shutdown(Client[0].csd, SHUT_RDWR);
+				close(Client[0].csd);
+				Client[0].csd=-1;
+				Client[0].status=GW_CLIENT_ERROR;
 				if(i!=MAX_QUERY_ENTRIES) query_table[i].status_bit=0;
 				continue;
 		  	break;
@@ -277,11 +277,11 @@ void *srvr_tcp_bridge(void *arg) //–“…≈Õ - –≈“≈ƒ¡ﬁ¡ ƒ¡ŒŒŸ» –œ Modbus TCP
 		switch(serial_adu[RTUADU_FUNCTION]) {
 
 			case MBF_READ_HOLDING_REGISTERS:
-				mem_start=gate502.wData4x;
+				mem_start=MoxaDevice.wData4x;
 
 			case MBF_READ_INPUT_REGISTERS:
 				if(serial_adu[RTUADU_FUNCTION]==MBF_READ_INPUT_REGISTERS)
-					mem_start=gate502.wData3x;
+					mem_start=MoxaDevice.wData3x;
 
 				for(j=3; j<serial_adu_len-2; j+=2)
 					mem_start[query_table[i].offset+(j-3)/2]=
@@ -290,11 +290,11 @@ void *srvr_tcp_bridge(void *arg) //–“…≈Õ - –≈“≈ƒ¡ﬁ¡ ƒ¡ŒŒŸ» –œ Modbus TCP
 				break;
 
 			case MBF_READ_COILS:
-				m_start=gate502.wData1x;
+				m_start=MoxaDevice.wData1x;
 
 			case MBF_READ_DECRETE_INPUTS:
 				if(serial_adu[RTUADU_FUNCTION]==MBF_READ_DECRETE_INPUTS)
-					m_start=gate502.wData2x;
+					m_start=MoxaDevice.wData2x;
 
 				for(j=3; j<serial_adu_len-2; j++)
 					for(n=0; n<8; n++) {
@@ -342,13 +342,13 @@ void *srvr_tcp_bridge(void *arg) //–“…≈Õ - –≈“≈ƒ¡ﬁ¡ ƒ¡ŒŒŸ» –œ Modbus TCP
 
 			/// ÓÔÂ‰ÂÎˇÂÏ ÚËÔ ÍÎËÂÌÚ‡ Ë ÒÓÓÚ‚ÂÚÒÚ‚ÂÌÌÓ ÙÛÌÍˆË˛, ËÒÔÓÎ¸ÁÛÂÏÛ˛ ‰Îˇ ÓÚÔ‡‚ÍË ÓÚ‚ÂÚ‡
 			if(gate502.clients[client_id].p_num<=SERIAL_P8)
-			if(	(iDATA[gate502.clients[client_id].p_num].modbus_mode==BRIDGE_PROXY) &&
-					(gate502.clients[client_id].connection_status==MB_CONNECTION_ESTABLISHED)) {
+			if(	(IfaceRTU[gate502.clients[client_id].p_num].modbus_mode==BRIDGE_PROXY) &&
+					(gate502.clients[client_id].status==MB_CONNECTION_ESTABLISHED)) {
 						
 				if(gate502.show_data_flow==1)
 					show_traffic(TRAFFIC_RTU_SEND, gate502.clients[client_id].p_num, client_id, serial_adu, serial_adu_len-2);
 				///!!! ÌÂÓ·ıÓ‰ËÏÓ Ò‰ÂÎ‡Ú¸ Ï¸˛ÚÂÍÒ˚ ‰Îˇ ÒËÌıÓÌËÁ‡ˆËË ‡·ÓÚ˚ ÌÂÒÍÓÎ¸ÍËı ÔÓÚÓÍÓ‚ Ò Ó‰ÌËÏ ÔÓÚÓÏ
-				status = mb_serial_send_adu(iDATA[gate502.clients[client_id].p_num].serial.fd, &tmpstat, serial_adu, serial_adu_len-2, tcp_adu, &tcp_adu_len);
+				status = mb_serial_send_adu(IfaceRTU[gate502.clients[client_id].p_num].serial.fd, &tmpstat, serial_adu, serial_adu_len-2, tcp_adu, &tcp_adu_len);
 		
 				switch(status) {
 				  case 0:
@@ -364,7 +364,7 @@ void *srvr_tcp_bridge(void *arg) //–“…≈Õ - –≈“≈ƒ¡ﬁ¡ ƒ¡ŒŒŸ» –œ Modbus TCP
 		  			// POLLING: RTU SEND
 					 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|gate502.clients[client_id].p_num, 183, (unsigned) status, client_id, 0, 0);
 						update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
-						update_stat(&iDATA[gate502.clients[client_id].p_num].stat, &tmpstat);
+						update_stat(&IfaceRTU[gate502.clients[client_id].p_num].stat, &tmpstat);
 						continue;
 				  	break;
 				  default:;
@@ -409,18 +409,18 @@ void *srvr_tcp_bridge(void *arg) //–“…≈Õ - –≈“≈ƒ¡ﬁ¡ ƒ¡ŒŒŸ» –œ Modbus TCP
 	EndRun: ;
 //	close(tcsd);
 //	inputDATA->current_connections_number--;
-	inputDATA->clients[0].rc=1;
+	Client[0].rc=1;
 	// THREAD STOPPED
  	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|EVENT_SRC_TCPBRIDGE, 43, 0, client_id, 0, 0);
 	pthread_exit (0);	
 }
 
 ///-----------------------------------------------------------------------------------------------------------------
-int bridge_reset_tcp(input_cfg *bridge)
+int bridge_reset_tcp(GW_Iface *bridge)
 	{
-	if (bridge->clients[0].csd < 0)
-	  bridge->clients[0].csd = socket(AF_INET, SOCK_STREAM, 0);
-	if (bridge->clients[0].csd < 0) {
+	if (Client[0].csd < 0)
+	  Client[0].csd = socket(AF_INET, SOCK_STREAM, 0);
+	if (Client[0].csd < 0) {
 		perror("bridge socket");
 		//bridge->modbus_mode=MODBUS_PORT_ERROR;
     //strcpy(bridge->bridge_status, "ERR");
@@ -435,10 +435,10 @@ int bridge_reset_tcp(input_cfg *bridge)
 	server.sin_family = AF_INET;
 	// ÓÔÂ‰ÂÎˇÂÏ IP-‡‰ÂÒ ÒÂ‚Â‡
 	//server.sin_addr.s_addr = 0x0a0006f0; // 10.0.0.240
-	server.sin_addr.s_addr = tcp_servers[bridge->current_client].ip;
+	server.sin_addr.s_addr = IfaceTCP[0].ethernet.ip;
   //	server.sin_addr.s_addr = 0xc00000fc; // 192.0.0.252
 	// ŒÔÂ‰ÂÎˇÂÏ ÔÓÚ ÒÂ‚Â‡
-	server.sin_port =  htons(tcp_servers[bridge->current_client].port);
+	server.sin_port =  htons(IfaceTCP[0].ethernet.port);
 
 	struct timeval tvs, tvr;
 	int optlen=sizeof(tvs);
@@ -446,24 +446,24 @@ int bridge_reset_tcp(input_cfg *bridge)
 	tvr.tv_sec=0; tvr.tv_usec=500000;
 
 	if(
-	(setsockopt(bridge->clients[0].csd, SOL_SOCKET, SO_SNDTIMEO, &tvs, optlen)!=0)||
-	(setsockopt(bridge->clients[0].csd, SOL_SOCKET, SO_RCVTIMEO, &tvr, optlen)!=0)) 
+	(setsockopt(Client[0].csd, SOL_SOCKET, SO_SNDTIMEO, &tvs, optlen)!=0)||
+	(setsockopt(Client[0].csd, SOL_SOCKET, SO_RCVTIMEO, &tvr, optlen)!=0)) 
 	// SOCKET INITIALIZED
- 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_TCPBRIDGE, 65, 2, bridge->current_client, 0, 0);
+ 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_TCPBRIDGE, 65, 2, 0, 0, 0);
 //	printf("for client%d send_timeout=%dms, receive_timeout=%dms\n", client, tvs.tv_sec*1000+tvs.tv_usec/1000, tvr.tv_sec*1000+tvr.tv_usec/1000);
 
 	// ¬˚ÁÓ‚ ÙÛÌÍˆËË connect()
-	if(connect(bridge->clients[0].csd, (struct sockaddr *)&server, sizeof(server))==-1) {
+	if(connect(Client[0].csd, (struct sockaddr *)&server, sizeof(server))==-1) {
 		perror("bridge tcp connection");																			
 		// CONNECTION FAILED
-	 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_TCPBRIDGE, 69, tcp_servers[bridge->current_client].ip, bridge->current_client, 0, 0);
+	 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_TCPBRIDGE, 69, IfaceTCP[0].ethernet.ip, 0, 0, 0);
 		return 2;
 		} else // CONNECTION ESTABLISHED
-		 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_TCPBRIDGE, 68, tcp_servers[bridge->current_client].ip, bridge->current_client, 0, 0);
+		 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_TCPBRIDGE, 68, IfaceTCP[0].ethernet.ip, 0, 0, 0);
 
 
-	bridge->clients[0].connection_status=MB_CONNECTION_ESTABLISHED;
+	Client[0].status=GW_CLIENT_CLOSED; /// :)
   //bridge->current_connections_number++;
-	time(&bridge->clients[0].connection_time);
+	time(&Client[0].connection_time);
 	return 0;
 	}

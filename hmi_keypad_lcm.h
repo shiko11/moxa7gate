@@ -50,15 +50,15 @@
 #define	LCM_SCREEN_LAN				15
 #define	LCM_CONFIRM_REBOOT		26
 
-#define	LCM_SCREEN_UPDATE_RATE			800000
+#define	LCM_SCREEN_UPDATE_RATE 800000
 
 #define	LCM_SCREEN_SECURITY					16
 #define	LCM_SCREEN_HELP_SECURITY		28
 #define	LCM_SCREEN_STUB_SECURITY 		29
 #define	LCM_CONFIRM_SECR_CHANGES 		30
 
-#define	LCM_BUZZER_CONTROL_PERIOD 		15
-#define	LCM_BUZZER_CONTROL_ERRORS 		1
+#define	LCM_BUZZER_CONTROL_PERIOD 15
+#define	LCM_BUZZER_CONTROL_ERRORS 1
 
 ///=== HMI_KEYPAD_LCM_H data types
 
@@ -79,7 +79,15 @@ typedef struct { // net initsializatsii polej structury
   unsigned int watch_dog_control;
 
   unsigned int buzzer_control;
+
 	} GW_Display;
+
+///=== HMI_KEYPAD_LCM_H public variables
+GW_Display screen;
+
+int mxlcm_handle;
+int mxkpd_handle;
+int mxbzr_handle;
 
 ///=== HMI_KEYPAD_LCM_H public functions
 
@@ -115,12 +123,5 @@ int ctrl_reset_all_counters();
 int ctrl_reset_port_counters(int port);
 int ctrl_reboot_system();
 int ctrl_change_security_settings();
-
-///=== HMI_KEYPAD_LCM_H public variables
-GW_Display screen;
-
-int mxlcm_handle;
-int mxkpd_handle;
-int mxbzr_handle;
 
 #endif  /* HMI_KEYPAD_LCM_H */

@@ -11,8 +11,8 @@
 
 #include "modbus.h"
 
-#define DEBUG_TCP
-#define CRC_TCP
+//#define DEBUG_TCP
+//#define CRC_TCP
 
 //int mb_tcp_receive_adu(int sfd,u8 *mb_received_adu) //прием ADU от подключившихся клиентов
 int		mb_tcp_receive_adu(int sfd, GW_StaticData *stat, u8 *mb_received_adu, u16 *adu_len)

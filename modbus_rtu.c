@@ -22,8 +22,8 @@
 
 #include "modbus.h"
 
-#define DEBUG_MB_RTU          /* uncomment to see the data sent and received */
-#define CRC_RTU
+//#define DEBUG_MB_RTU /* uncomment to see the data sent and received */
+//#define CRC_RTU
 
 
 /****************************************************************************

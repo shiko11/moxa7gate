@@ -16,12 +16,8 @@
 #include "modbus.h"
 #include "messages.h"
 
-int translateAddress(u8 unit_id, int *port_id, int *device_id);
-int translateRegisters(int start_address, int length, int *port_id, int *device_id);
-int translateProxyDevice(int start_address, int length, int *port_id, int *device_id);
-
 ///-----------------------------------------------------------------------------------------------------------------
-void *moxa_mb_thread(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
+void *moxa_device(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
   {
 	u8			tcp_adu[MB_TCP_MAX_ADU_LENGTH];// TCP ADU
 	u16			tcp_adu_len;
@@ -34,11 +30,11 @@ void *moxa_mb_thread(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
   int port_id; //=MOXA_MB_DEVICE;
 //  int client_id=((unsigned)arg)&0xff;
 
-//	int		tcsd = iDATA[port_id].clients[client_id].csd;
+//	int		tcsd = IfaceRTU[port_id].clients[client_id].csd;
 	GW_StaticData tmpstat;
 	
 //	input_cfg	*inputDATA;
-//	inputDATA = &iDATA[port_id];
+//	inputDATA = &IfaceRTU[port_id];
 	
 	struct timeval tv1, tv2;
 	struct timezone tz;
@@ -62,11 +58,11 @@ void *moxa_mb_thread(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
 //	int fd=inputDATA->serial.fd;
 
   // THREAD STARTED
-	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_MOXAMB, 42, MOXA_MB_DEVICE, DEFAULT_CLIENT, 0, 0);
+	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_MOXAMB, 42, MOXA_MB_DEVICE, 0, 0, 0);
 
 	while (1) {
 		
-		status=get_query_from_queue(&gate502.queue, &client_id, &device_id, tcp_adu, &tcp_adu_len);
+		status=get_query_from_queue(&MoxaDevice.queue, &client_id, &device_id, tcp_adu, &tcp_adu_len);
 		if(status!=0) continue;
 
 		clear_stat(&tmpstat);
@@ -89,7 +85,7 @@ void *moxa_mb_thread(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
 				if(status!=3) { // учет ошибочных запросов
 					tmpstat.accepted++;
 					func_res_err(tcp_adu[TCPADU_FUNCTION], &tmpstat);
-					update_stat(&gate502.stat, &tmpstat);
+					update_stat(&MoxaDevice.stat, &tmpstat);
 					}
 				continue;
 				}
@@ -98,10 +94,10 @@ void *moxa_mb_thread(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
 		// считаем статистику, только если явно отправляем ответ клиенту
 		tmpstat.accepted++;
 
-			if(gate502.show_data_flow==1)
+			if(Security.show_data_flow==1)
 				show_traffic(TRAFFIC_TCP_SEND, EVENT_SRC_MOXAMB, client_id, memory_adu, memory_adu_len-2);
 
-			status = mb_tcp_send_adu(gate502.clients[client_id].csd,
+			status = mb_tcp_send_adu(Client[client_id].csd,
 																&tmpstat, memory_adu, memory_adu_len-2, tcp_adu, &tcp_adu_len);
 
 		switch(status) {
@@ -121,7 +117,7 @@ void *moxa_mb_thread(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
 
 //	if(exception_on==1) continue;///!!! обработка ошибки д.б., нужна ли здес эта проверка вообще?
 
-	update_stat(&gate502.stat, &tmpstat);
+	update_stat(&MoxaDevice.stat, &tmpstat);
 //	gettimeofday(&tv2, &tz);
 // время не считаем, так как вся обработка происходит локально без передачи запроса далее
 //	gate502.stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
@@ -146,13 +142,13 @@ int process_moxamb_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu, 
 	switch(adu[TCPADU_FUNCTION]) {
 
 		case MBF_READ_COILS:
-			if(gate502.amount1xStatus==0) return 4;
-			m_start=gate502.wData1x;
+			if(MoxaDevice.amount1xStatus==0) return 4;
+			m_start=MoxaDevice.wData1x;
 
 		case MBF_READ_DECRETE_INPUTS:
 			if(adu[TCPADU_FUNCTION]==MBF_READ_DECRETE_INPUTS) {
-				if(gate502.amount2xStatus==0) return 5;
-				m_start=gate502.wData2x;												 
+				if(MoxaDevice.amount2xStatus==0) return 5;
+				m_start=MoxaDevice.wData2x;												 
 				}
 
 			j=(adu[TCPADU_START_HI]<<8)|adu[TCPADU_START_LO];
@@ -187,13 +183,13 @@ int process_moxamb_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu, 
     	break;
 
 		case MBF_READ_HOLDING_REGISTERS:
-			if(gate502.amount4xRegisters==0) return 7;
-			mem_start=gate502.wData4x;
+			if(MoxaDevice.amount4xRegisters==0) return 7;
+			mem_start=MoxaDevice.wData4x;
 
 		case MBF_READ_INPUT_REGISTERS:
 			if(adu[TCPADU_FUNCTION]==MBF_READ_INPUT_REGISTERS) {
-				if(gate502.amount3xRegisters==0) return 6;
-				mem_start=gate502.wData3x;												
+				if(MoxaDevice.amount3xRegisters==0) return 6;
+				mem_start=MoxaDevice.wData3x;												
 				}
 
 			j=(adu[TCPADU_START_HI]<<8)|adu[TCPADU_START_LO];
@@ -235,7 +231,7 @@ int process_moxamb_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu, 
 //			for(i=0; i<adu_len; i++) printf("(%2.2X)", adu[i]);
 //			printf("\n");
 
-			status=enqueue_query_ex(&iDATA[port_id].queue, client_id, device_id, adu, adu_len);
+			status=enqueue_query_ex(&IfaceRTU[port_id].queue, client_id, device_id, adu, adu_len);
 //				printf("enqueue_query_ex %d P%d\n", status, port_id+1);
 //				status=enqueue_query(port_id, i, device_id, tcp_adu, tcp_adu_len);
 //				if(status!=0) continue;
@@ -252,110 +248,4 @@ int process_moxamb_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu, 
 
 	return 0;
 	}
-///-----------------------------------------------------------------------------------------------------------------
-int checkDiapason(int function, int start_address, int length)
-	{
-	static unsigned int internal_start, internal_end;
-
-	switch(function) {
-
-		case MBF_READ_COILS:
-		case MBF_WRITE_SINGLE_COIL:
-		case MBF_WRITE_MULTIPLE_COILS:
-			internal_start = gate502.offset1xStatus;
-			internal_end = gate502.offset1xStatus + gate502.amount1xStatus;
-			break;
-
-		case MBF_READ_DECRETE_INPUTS:
-			internal_start = gate502.offset2xStatus;
-			internal_end = gate502.offset2xStatus + gate502.amount2xStatus;
-			break;
-
-		case MBF_READ_INPUT_REGISTERS:
-			internal_start = gate502.offset3xRegisters;
-			internal_end = gate502.offset3xRegisters + gate502.amount3xRegisters;
-			break;
-
-		case MBF_READ_HOLDING_REGISTERS:
-		case MBF_WRITE_SINGLE_REGISTER:
-		case MBF_WRITE_MULTIPLE_REGISTERS:
-			internal_start = gate502.offset4xRegisters;
-			internal_end = gate502.offset4xRegisters + gate502.amount4xRegisters;
-			break;
-
-		default: internal_start = internal_end = 0;
-		}
-
-	if(start_address >= internal_start) {
-		if(start_address + length <= internal_end) return MOXA_DIAPASON_INSIDE;
-		if(start_address >= internal_end) return MOXA_DIAPASON_OUTSIDE;
-		return MOXA_DIAPASON_OVERLAPPED;
-		} else {
-			if(start_address + length <= internal_start) return MOXA_DIAPASON_OUTSIDE;
-			return MOXA_DIAPASON_OVERLAPPED;
-			}
-
-	return MOXA_DIAPASON_UNDEFINED;
-	}
-///-----------------------------------------------------------------------------------------------------------------
-int translateAddress(u8 unit_id, int *port_id, int *device_id)
-  {
-	if((unit_id < 1) || (unit_id > 247)) return 1;
-	*port_id = unit_id / 30;
-	if(*port_id > SERIAL_P8) *port_id=SERIAL_P8;
-	*device_id = unit_id - *port_id * 30;
-
-  if(iDATA[*port_id].modbus_mode!=GATEWAY_ATM) return 2;
-
-  return 0;
-  }
-
-
-int translateRegisters(int start_address, int length, int *port_id, int *device_id)
-  {
-	int i;
-
-  for(i=0; i<MAX_VIRTUAL_SLAVES; i++) {
-    if(
-//			(vslave[i].start==0) ||
-			(vslave[i].length==0) ||
-//			(vslave[i].port==SERIAL_STUB) ||
-			(vslave[i].device==0)
-			) continue;
-
-			if((start_address>=vslave[i].start)&&(start_address<(vslave[i].start+vslave[i].length))) break;
-			}
-	if(i==MAX_VIRTUAL_SLAVES) return 1;
-  //printf("%d + %d < %d + %d (i=%d)\n", vslave[i].start, vslave[i].length, start_address, length, i);
-  if((vslave[i].start+vslave[i].length)<(start_address+length)) return 2;
-
-	*port_id=vslave[i].port;
-	*device_id=i; // индекс блока адресов виртуального устройства
-	
-  return 0;
-  }
-
-int translateProxyDevice(int start_address, int length, int *port_id, int *device_id)
-  {
-	int i;
-
-  for(i=0; i<MAX_QUERY_ENTRIES; i++) {
-    if(
-			(query_table[i].length==0) ||
-			(query_table[i].mbf==0) ||
-			(query_table[i].device==0)
-			) continue;
-
-			if((start_address>=query_table[i].offset)&&(start_address<(query_table[i].offset+query_table[i].length)))
-				break;
-			}
-	if(i==MAX_VIRTUAL_SLAVES) return 1;
-  //printf("%d + %d < %d + %d (i=%d)\n", vslave[i].start, vslave[i].length, start_address, length, i);
-  if((query_table[i].offset+query_table[i].length)<(start_address+length)) return 2;
-
-	*port_id=query_table[i].port;
-	*device_id=i; // индекс блока адресов виртуального устройства
-	
-  return 0;
-  }
 ///----------------------------------------------------------------------------------------------------------------

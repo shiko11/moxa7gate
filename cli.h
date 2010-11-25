@@ -15,7 +15,7 @@
 
 ///=== CLI_H constants
 
-#define   MAX_KEYS                 64        //максимальное количество параметров командной строки с префиксом "--"
+#define   MAX_KEYS 64        //максимальное количество параметров командной строки с префиксом "--"
 //ошибки интерпретации командной строки
 #define   CL_ERR_NONE_PARAM        -1    //командная строка пуста
 #define   CL_INFO                  -5
@@ -35,15 +35,16 @@
 //#define   CL_ERR_MIN_PARAM         -1   //менее 9 параметров
 //#define   CL_ERR_NUM_STAT_BIT			 -4 //номер бита больше 16 (диапазон 1-16)
 
+///=== CLI_H public variables
+
 ///=== CLI_H public functions
 
 int get_command_line (int 	argc,
 											char	*argv[],
-											input_cfg *ptr_iDATA,
-											input_cfg_502 *ptr_gate502,
+											GW_Iface *ptr_iDATA,
+											GW_MoxaDevice *ptr_gate502,
 											RT_Table_Entry *vslave,
-											Query_Table_Entry *query_table,
-											GW_TCP_Server *tcp_servers
+											Query_Table_Entry *query_table
 											);
 
 //void sigpipe_handler();

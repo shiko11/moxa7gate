@@ -12,8 +12,6 @@
 
 ///=== STATISTICS_H constants
 
-#define MAX_LATENCY_HISTORY_POINTS	8
-
 #define STAT_FUNC_0x01		0
 #define STAT_FUNC_0x02		1
 #define STAT_FUNC_0x03		2
@@ -76,6 +74,12 @@ typedef struct {
 //	unsigned int request_time_max;			///!!!
 //	unsigned int request_time_average;	///!!!
 	
+	//--- мгновенная характеристика процесса опроса ---
+	int last_query_time; // время последнего запроса
+  int last_query_res;  // результат последнего запроса
+  int last_error_time; // время последней ошибки
+  int last_error_type; // тип последней ошибки
+
 	} GW_StaticData;
 
 ///=== STATISTICS_H public variables

@@ -18,7 +18,7 @@
 #include "modbus.h"
 
 ///-----------------------------------------------------------------------------------------------------------------
-void *bridge_proxy_thread(void *arg)
+void *iface_rtu_slave(void *arg)
   {
 
 	u8			tcp_adu[MB_TCP_MAX_ADU_LENGTH+2];// TCP ADU
@@ -38,8 +38,8 @@ void *bridge_proxy_thread(void *arg)
 //  printf("port %d cliet %d\n", port_id, client_id);
 	GW_StaticData tmpstat;
 	
-	input_cfg	*inputDATA;
-	inputDATA = &iDATA[port_id];
+	GW_Iface	*inputDATA;
+	inputDATA = &IfaceRTU[port_id];
 	int fd=inputDATA->serial.fd;
 	
 	struct timeval tv1, tv2;
@@ -54,11 +54,11 @@ void *bridge_proxy_thread(void *arg)
 
 ///-----------------------------------------
   // THREAD STARTED
-	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, 42, iDATA[port_id].modbus_mode, client_id, 0, 0);
+	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, 42, IfaceRTU[port_id].modbus_mode, client_id, 0, 0);
 
 	while (1) {
 		
-		//if(inputDATA->clients[0].connection_status!=MB_CONNECTION_ESTABLISHED) pthread_exit (0);
+		//if(inputDATA->clients[0].status!=MB_CONNECTION_ESTABLISHED) pthread_exit (0);
 		
 		clear_stat(&tmpstat);
 		
@@ -68,7 +68,7 @@ void *bridge_proxy_thread(void *arg)
     /// kazhetsya net zaschity ot perepolneniya bufera priema "serial_adu[]"
 	  status = serial_receive_adu(fd, &tmpstat, &tcp_adu[TCPADU_ADDRESS], &tcp_adu_len, NULL, inputDATA->serial.timeout, inputDATA->serial.ch_interval_timeout);
 
-		if(gate502.show_data_flow==1)
+		if(Security.show_data_flow==1)
 			show_traffic(TRAFFIC_RTU_RECV, port_id, client_id, &tcp_adu[TCPADU_ADDRESS], tcp_adu_len);
 		// так как прием данных ведется в буфер tcp_adu, приводим его содержимое в соответствие
 		tcp_adu[0]=0;
@@ -81,9 +81,9 @@ void *bridge_proxy_thread(void *arg)
 		tcp_adu_len+=6;
 
 		gettimeofday(&tv2, &tz);
-		inputDATA->clients[client_id].stat.scan_rate=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
-		if(inputDATA->clients[client_id].stat.scan_rate>MB_SCAN_RATE_INFINITE)
-		  inputDATA->clients[client_id].stat.scan_rate=MB_SCAN_RATE_INFINITE;
+		Client[client_id].stat.scan_rate=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
+		if(Client[client_id].stat.scan_rate>MB_SCAN_RATE_INFINITE)
+		  Client[client_id].stat.scan_rate=MB_SCAN_RATE_INFINITE;
 //	inputDATA->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
 //	printf("cycle begins after %d msec\n", inputDATA->clients[client_id].stat.request_time_average);
 		gettimeofday(&tv1, &tz);
@@ -104,10 +104,10 @@ void *bridge_proxy_thread(void *arg)
 		  	tmpstat.errors++;
   			// POLLING: RTU RECV
 			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|port_id, 182, (unsigned) status, client_id, 0, 0);
-				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
-				update_stat(&iDATA[port_id].stat, &tmpstat);
+				update_stat(&Client[client_id].stat, &tmpstat);
+				update_stat(&IfaceRTU[port_id].stat, &tmpstat);
 				if(status==MB_SERIAL_READ_FAILURE) {
-					iDATA[port_id].modbus_mode=MODBUS_PORT_ERROR;
+					IfaceRTU[port_id].modbus_mode=MODBUS_PORT_ERROR;
 					goto EndRun;
 					}
 				continue;
@@ -124,7 +124,7 @@ void *bridge_proxy_thread(void *arg)
 				if(status!=3) { // учет ошибочных запросов
 					tmpstat.accepted++;
 					func_res_err(tcp_adu[TCPADU_FUNCTION], &tmpstat);
-					update_stat(&iDATA[port_id].stat, &tmpstat);
+					update_stat(&IfaceRTU[port_id].stat, &tmpstat);
 					//update_stat(&gate502.stat, &tmpstat);
 					}
 				continue;
@@ -136,7 +136,7 @@ void *bridge_proxy_thread(void *arg)
 
 ///--------------------------------------------------------
 
-		if(gate502.show_data_flow==1)
+		if(Security.show_data_flow==1)
 			show_traffic(TRAFFIC_RTU_SEND, port_id, client_id, memory_adu, memory_adu_len-2);
 
 		status = mb_serial_send_adu(fd, &tmpstat, memory_adu, memory_adu_len-2, serial_adu, &serial_adu_len);
@@ -153,15 +153,15 @@ void *bridge_proxy_thread(void *arg)
 		  	tmpstat.errors++;
   			// POLLING: RTU SEND
 			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|port_id, 183, (unsigned) status, client_id, 0, 0);
-				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
-				update_stat(&iDATA[port_id].stat, &tmpstat);
+				update_stat(&Client[client_id].stat, &tmpstat);
+				update_stat(&IfaceRTU[port_id].stat, &tmpstat);
 				continue;
 		  	break;
 		  default:;
 		  };
 
-	update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
-	update_stat(&iDATA[port_id].stat, &tmpstat);
+	update_stat(&Client[client_id].stat, &tmpstat);
+	update_stat(&IfaceRTU[port_id].stat, &tmpstat);
 
 	gettimeofday(&tv2, &tz);
 
@@ -193,6 +193,6 @@ void *bridge_proxy_thread(void *arg)
 	EndRun: ;
 	// THREAD STOPPED
  	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|port_id, 43, 0, 0, 0, 0);
-	inputDATA->clients[client_id].rc=1;
+  clear_client(client_id);
 	pthread_exit (0);	
 }

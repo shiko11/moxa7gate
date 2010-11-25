@@ -12,6 +12,7 @@
 #include <pthread.h>
 
 #include "hmi_keypad_lcm.h"
+#include "hmi_web.h"
 #include "interfaces.h"
 #include "moxagate.h"
 ///---------------------------------------------------------------
@@ -60,7 +61,7 @@ void *mx_keypad_lcm(void *arg)
 	  		) process_key_security(i);
     }
 
-		refresh_shm(&iDATA);
+		refresh_shm(&IfaceRTU);
 	  usleep(LCM_SCREEN_UPDATE_RATE);
 
 	  if(	screen.current_screen==LCM_SCREEN_MAIN				||
@@ -380,10 +381,10 @@ void show_main_screen()
 	strcpy (screen.text[0], " MODBUS GATEWAY ");
 	strcpy (screen.text[1], "----------------");
 	strcpy (screen.text[2], "SL Msgs Errs MOD");
-	sprintf(screen.text[3], "P1%c%4.4d %4.4d %s", marker[0], iDATA[SERIAL_P1].stat.sended%10000, iDATA[SERIAL_P1].stat.errors%10000, iDATA[SERIAL_P1].bridge_status);
-	sprintf(screen.text[4], "P2%c%4.4d %4.4d %s", marker[1], iDATA[SERIAL_P2].stat.sended%10000, iDATA[SERIAL_P2].stat.errors%10000, iDATA[SERIAL_P2].bridge_status);
-	sprintf(screen.text[5], "P3%c%4.4d %4.4d %s", marker[2], iDATA[SERIAL_P3].stat.sended%10000, iDATA[SERIAL_P3].stat.errors%10000, iDATA[SERIAL_P3].bridge_status);
-	sprintf(screen.text[6], "P4%c%4.4d %4.4d %s", marker[3], iDATA[SERIAL_P4].stat.sended%10000, iDATA[SERIAL_P4].stat.errors%10000, iDATA[SERIAL_P4].bridge_status);
+	sprintf(screen.text[3], "P1%c%4.4d %4.4d %s", marker[0], IfaceRTU[SERIAL_P1].stat.sended%10000, IfaceRTU[SERIAL_P1].stat.errors%10000, IfaceRTU[SERIAL_P1].bridge_status);
+	sprintf(screen.text[4], "P2%c%4.4d %4.4d %s", marker[1], IfaceRTU[SERIAL_P2].stat.sended%10000, IfaceRTU[SERIAL_P2].stat.errors%10000, IfaceRTU[SERIAL_P2].bridge_status);
+	sprintf(screen.text[5], "P3%c%4.4d %4.4d %s", marker[2], IfaceRTU[SERIAL_P3].stat.sended%10000, IfaceRTU[SERIAL_P3].stat.errors%10000, IfaceRTU[SERIAL_P3].bridge_status);
+	sprintf(screen.text[6], "P4%c%4.4d %4.4d %s", marker[3], IfaceRTU[SERIAL_P4].stat.sended%10000, IfaceRTU[SERIAL_P4].stat.errors%10000, IfaceRTU[SERIAL_P4].bridge_status);
 	strcpy (screen.text[7], "F1-HELP F2-P5678");
 
   mxlcm_write_screen(mxlcm_handle, screen.text);
@@ -403,10 +404,10 @@ void show_main_screen2()
 	strcpy (screen.text[0], " MODBUS GATEWAY ");
 	strcpy (screen.text[1], "----------------");
 	strcpy (screen.text[2], "SL Msgs Errs MOD");
-	sprintf(screen.text[3], "P5%c%4.4d %4.4d %s", marker[0], iDATA[SERIAL_P5].stat.sended%10000, iDATA[SERIAL_P5].stat.errors%10000, iDATA[SERIAL_P5].bridge_status);
-	sprintf(screen.text[4], "P6%c%4.4d %4.4d %s", marker[1], iDATA[SERIAL_P6].stat.sended%10000, iDATA[SERIAL_P6].stat.errors%10000, iDATA[SERIAL_P6].bridge_status);
-	sprintf(screen.text[5], "P7%c%4.4d %4.4d %s", marker[2], iDATA[SERIAL_P7].stat.sended%10000, iDATA[SERIAL_P7].stat.errors%10000, iDATA[SERIAL_P7].bridge_status);
-	sprintf(screen.text[6], "P8%c%4.4d %4.4d %s", marker[3], iDATA[SERIAL_P8].stat.sended%10000, iDATA[SERIAL_P8].stat.errors%10000, iDATA[SERIAL_P8].bridge_status);
+	sprintf(screen.text[3], "P5%c%4.4d %4.4d %s", marker[0], IfaceRTU[SERIAL_P5].stat.sended%10000, IfaceRTU[SERIAL_P5].stat.errors%10000, IfaceRTU[SERIAL_P5].bridge_status);
+	sprintf(screen.text[4], "P6%c%4.4d %4.4d %s", marker[1], IfaceRTU[SERIAL_P6].stat.sended%10000, IfaceRTU[SERIAL_P6].stat.errors%10000, IfaceRTU[SERIAL_P6].bridge_status);
+	sprintf(screen.text[5], "P7%c%4.4d %4.4d %s", marker[2], IfaceRTU[SERIAL_P7].stat.sended%10000, IfaceRTU[SERIAL_P7].stat.errors%10000, IfaceRTU[SERIAL_P7].bridge_status);
+	sprintf(screen.text[6], "P8%c%4.4d %4.4d %s", marker[3], IfaceRTU[SERIAL_P8].stat.sended%10000, IfaceRTU[SERIAL_P8].stat.errors%10000, IfaceRTU[SERIAL_P8].bridge_status);
 	strcpy (screen.text[7], "F1-HELP F2-P1234");
 
   mxlcm_write_screen(mxlcm_handle, screen.text);
@@ -467,24 +468,24 @@ void show_uart_settings(int uart)
 
   for(i=0; i<5; i++) strcpy(prm[i], "     ---");
   
-  if(strcmp(iDATA[uart].bridge_status, "OFF")!=0) {
-	  i=strlen(iDATA[uart].serial.p_mode);
-	  if(i<9) strcpy(&prm[0][8-i], iDATA[uart].serial.p_mode);
+  if(strcmp(IfaceRTU[uart].bridge_status, "OFF")!=0) {
+	  i=strlen(IfaceRTU[uart].serial.p_mode);
+	  if(i<9) strcpy(&prm[0][8-i], IfaceRTU[uart].serial.p_mode);
 	  if(prm[0][5]=='_') prm[0][5]=' ';
-	  i=strlen(iDATA[uart].serial.speed);
-	  if(i<9) strcpy(&prm[1][8-i], iDATA[uart].serial.speed);
-	  i=strlen(iDATA[uart].serial.parity);
-	  if(i<9) strcpy(&prm[2][8-i], iDATA[uart].serial.parity);
-		sprintf(tmp, "%d", iDATA[uart].serial.timeout/1000);
+	  i=strlen(IfaceRTU[uart].serial.speed);
+	  if(i<9) strcpy(&prm[1][8-i], IfaceRTU[uart].serial.speed);
+	  i=strlen(IfaceRTU[uart].serial.parity);
+	  if(i<9) strcpy(&prm[2][8-i], IfaceRTU[uart].serial.parity);
+		sprintf(tmp, "%d", IfaceRTU[uart].serial.timeout/1000);
 	  i=strlen(tmp);
 	  if(i<9) strcpy(&prm[3][8-i], tmp);
-		sprintf(tmp, "%d", iDATA[uart].tcp_port);
+		sprintf(tmp, "%d", IfaceRTU[uart].Security.tcp_port);
 	  i=strlen(tmp);
 	  if(i<9) strcpy(&prm[4][8-i], tmp);
     }
 
 	strcpy (screen.text[0], " MODBUS GATEWAY ");
-	sprintf(screen.text[1], "Serial Port   P%d", iDATA[uart].serial.p_num);
+	sprintf(screen.text[1], "Serial Port   P%d", uart+1);
 	sprintf(screen.text[2], "Mode    %s", prm[0]);
 	sprintf(screen.text[3], "Speed   %s", prm[1]);
 	sprintf(screen.text[4], "Parity  %s", prm[2]);
@@ -556,15 +557,15 @@ void show_system_info()
 	struct tm *tmd;
 	time_t moment;
 
-//	time_t start_time=iDATA[0].start_time;
+//	time_t start_time=IfaceRTU[0].start_time;
 //	int i;
 //  for(i=1; i<MAX_MOXA_PORTS; i++)
-//  	if(start_time>iDATA[i].start_time) start_time=iDATA[i].start_time;
+//  	if(start_time>IfaceRTU[i].start_time) start_time=IfaceRTU[i].start_time;
 
-	tmd=gmtime(&gate502.start_time);
+	tmd=gmtime(&MoxaDevice.start_time);
 
 	time(&moment);
-	int diff=difftime(moment, gate502.start_time);
+	int diff=difftime(moment, MoxaDevice.start_time);
 	
 	strcpy (screen.text[0], "System started  ");
 	sprintf(screen.text[1], "%2.2d.%2.2d.%4.4d %2.2d:%2.2d", tmd->tm_mday, tmd->tm_mon+1, tmd->tm_year+1900, tmd->tm_hour, tmd->tm_min);
@@ -600,12 +601,12 @@ LCM_SCREEN_PORT8_STAT
 *///---------------------------------------------------------------
 void show_uart_detail(int uart)
   {
-	sprintf(screen.text[0], "MODBUS PORT%d %s", iDATA[uart].serial.p_num, iDATA[uart].bridge_status);
-	sprintf(screen.text[1], "Messages    %4.4d", iDATA[uart].stat.sended%10000);
-	sprintf(screen.text[2], "Timeouts    %4.4d", iDATA[uart].stat.timeouts%10000);
-	sprintf(screen.text[3], "CRC Errors  %4.4d", iDATA[uart].stat.crc_errors%10000);
-	sprintf(screen.text[4], "Errors      %4.4d", iDATA[uart].stat.errors%10000);
-	sprintf(screen.text[5], "Time delay  %4.4d", iDATA[uart].stat.request_time);
+	sprintf(screen.text[0], "MODBUS PORT%d %s", uart+1, IfaceRTU[uart].bridge_status);
+	sprintf(screen.text[1], "Messages    %4.4d", IfaceRTU[uart].stat.sended%10000);
+	sprintf(screen.text[2], "Timeouts    %4.4d", IfaceRTU[uart].stat.timeouts%10000);
+	sprintf(screen.text[3], "CRC Errors  %4.4d", IfaceRTU[uart].stat.crc_errors%10000);
+	sprintf(screen.text[4], "Errors      %4.4d", IfaceRTU[uart].stat.errors%10000);
+	sprintf(screen.text[5], "Time delay  %4.4d", IfaceRTU[uart].stat.request_time);
 	strcpy (screen.text[6], "F3-Reset counter");
 	strcpy (screen.text[7], "F4-RSALL F2-BACK");
 
@@ -890,33 +891,33 @@ int ctrl_reset_port_counters(int port)
   {
   if(port<0 || port>7) return 1;
 
-  iDATA[port].stat.accepted=\
-  iDATA[port].stat.errors_input_communication=\
-  iDATA[port].stat.errors_tcp_adu=\
-  iDATA[port].stat.errors_tcp_pdu=\
-  iDATA[port].stat.errors_serial_sending=\
-  iDATA[port].stat.errors_serial_accepting=\
-  iDATA[port].stat.timeouts=\
-  iDATA[port].stat.crc_errors=\
-  iDATA[port].stat.errors_serial_adu=\
-  iDATA[port].stat.errors_serial_pdu=\
-  iDATA[port].stat.errors_tcp_sending=\
-  iDATA[port].stat.errors=\
-  iDATA[port].stat.sended=0;
+  IfaceRTU[port].stat.accepted=\
+  IfaceRTU[port].stat.errors_input_communication=\
+  IfaceRTU[port].stat.errors_tcp_adu=\
+  IfaceRTU[port].stat.errors_tcp_pdu=\
+  IfaceRTU[port].stat.errors_serial_sending=\
+  IfaceRTU[port].stat.errors_serial_accepting=\
+  IfaceRTU[port].stat.timeouts=\
+  IfaceRTU[port].stat.crc_errors=\
+  IfaceRTU[port].stat.errors_serial_adu=\
+  IfaceRTU[port].stat.errors_serial_pdu=\
+  IfaceRTU[port].stat.errors_tcp_sending=\
+  IfaceRTU[port].stat.errors=\
+  IfaceRTU[port].stat.sended=0;
 
-//  iDATA[port].stat.latency_history[MAX_LATENCY_HISTORY_POINTS];
-//  iDATA[port].stat.clp; // current latensy point
+//  IfaceRTU[port].stat.latency_history[MAX_LATENCY_HISTORY_POINTS];
+//  IfaceRTU[port].stat.clp; // current latensy point
   int i;
   for(i=0; i<MB_FUNCTIONS_IMPLEMENTED*2+1; i++)
-  	//iDATA[port].stat.input_messages[i]=\
-  	iDATA[port].stat.output_messages[i]=0;
+  	//IfaceRTU[port].stat.input_messages[i]=\
+  	IfaceRTU[port].stat.output_messages[i]=0;
 
   return 0;	
   }
 
 int ctrl_reboot_system()
   {
-	gate502.halt=1;
+	Security.halt=1;
   return 0;	
   }
 

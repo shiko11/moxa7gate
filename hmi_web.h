@@ -8,14 +8,17 @@
 #ifndef HMI_WEB_H
 #define HMI_WEB_H
 
-///**** лндскэ лнмхрнпхмцю х сопюбкемхъ пюанрни ькчгю япедярбюлх WEB-яепбепю ***
+///** лндскэ лнмхрнпхмцю х сопюбкемхъ пюанрни ькчгю япедярбюлх WEB-хмрептеияю **
 
 ///=== HMI_WEB_H public constants
 
-#define GATE_WEB_INTERFACE_TIMEOUT	2
+#define GATE_WEB_INTERFACE_TIMEOUT 2
 
 ///=== HMI_WEB_H public variables
-int shm_segment_id;
+
+  int shm_segment_id;
+
+	time_t timestamp;  // БПЕЛЪ ОНЯКЕДМЕЦН НАМНБКЕМХЪ ДЮММШУ ДКЪ web-ХМРЕПТЕИЯЮ
 
 ///=== HMI_WEB_H public functions
 

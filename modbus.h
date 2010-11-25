@@ -13,15 +13,17 @@
 ///*** ФУНКЦИИ ВВОДА/ВЫВОДА, ПРЕДНАЗНАЧЕННЫЕ ДЛЯ РАБОТЫ С MODBUS
 ///*** ФУНКЦИИ КОНФИГУРАЦИИ АППАРАТНЫХ ИНТЕРФЕЙСОВ
 
-#include "statistics.h"
+#include "statistics.h" /* учет статистики лишний здесь */
 
 ///=== MODBUS_H constants
 
+#define DEVICE_NAME_LENGTH 64
+
 /* Predel'nye ТБЪНЕТЩ */
-#define		MB_TCP_MAX_ADU_LENGTH		260		/* максимальная длина пакета  TCP MODBUS ADU принимаемого от OPC */
-#define 	MB_TCP_ADU_HEADER_LEN		7
-#define MB_SERIAL_MAX_ADU_LEN			256       // максимальная длина пакета-ответа
-#define MB_SERIAL_MIN_ADU_LEN			3              // минимальная длина пакета-ответа (7
+#define		MB_TCP_MAX_ADU_LENGTH 260		/* максимальная длина пакета  TCP MODBUS ADU принимаемого от OPC */
+#define 	MB_TCP_ADU_HEADER_LEN 7
+#define MB_SERIAL_MAX_ADU_LEN   256       // максимальная длина пакета-ответа
+#define MB_SERIAL_MIN_ADU_LEN   3              // минимальная длина пакета-ответа (7
 
 #define MB_FUNCTIONS_IMPLEMENTED 8
 #define MB_FUNCTION_0x01	0
@@ -50,13 +52,6 @@
 #define RTUADU_LEN_LO			5
 
 #define RTUADU_BYTES			2
-
-/*фЙРЩ ДБООЩИ*/
-typedef unsigned char              u8;
-typedef unsigned short             u16;
-
-int 		mb_check_request_pdu(unsigned char *pdu, unsigned char len);
-int 		mb_check_response_pdu(unsigned char *pdu, unsigned char len, unsigned char *request);
 
 /* лПННХОЙЛБГЙПООЩЕ ПЫЙВЛЙ */
 #define COMMS_FAILURE                         0
@@ -176,13 +171,27 @@ int 		mb_check_response_pdu(unsigned char *pdu, unsigned char len, unsigned char
 #define	TCP_PDU_ERR								-7
 #define	TCP_COM_ERR_SEND					-8
 
-u16       crc(u8 *buf,u16 start,u16 cnt);
-int       open_comm(char *device,char *mode);
-int       set_param_comms(int ttyfd,char *baud,char *parity);
+/*фЙРЩ ДБООЩИ*/
+typedef unsigned char              u8;
+typedef unsigned short             u16;
+
+///*** modbus_tcp.c
 
 int		mb_tcp_receive_adu(int sfd, GW_StaticData *stat, u8 *mb_received_adu, u16 *adu_len);
 //int mb_tcp_send_adu(int sfd, input_cfg *context, u8 *pdu, u16 pdu_len, u8 *rq_adu);
 //int mb_tcp_send_adu(int sfd, input_cfg *context, u8 *pdu, u16 pdu_len);
 int mb_tcp_send_adu(int sfd, GW_StaticData *stat, u8 *pdu, u16 pdu_len, u8 *request, u16 *tcp_len);
+int 		mb_check_request_pdu(unsigned char *pdu, unsigned char len);
+int 		mb_check_response_pdu(unsigned char *pdu, unsigned char len, unsigned char *request);
+
+///*** modbus_rtu.c
+
+u16       crc(u8 *buf,u16 start,u16 cnt);
+int mb_serial_send_adu(int ttyfd, GW_StaticData *stat, u8 *pdu, u16 pdu_len, u8 *adu, u16 *adu_len);
+int receive_response(int ttyfd, u8 *received_string,int timeout,int ch_interval_timeout);
+int mb_serial_receive_adu(int fd, GW_StaticData *stat, u8 *adu, u16 *adu_len, u8 *request, int timeout,int ch_interval_timeout);
+int       open_comm(char *device,char *mode);
+int       set_param_comms(int ttyfd,char *baud,char *parity);
+int serial_receive_adu(int fd, GW_StaticData *stat, u8 *adu, u16 *adu_len, u8 *request, int timeout,int ch_interval_timeout); // iface_rtu_slave uses this
 
 #endif  /* MODBUS_H */

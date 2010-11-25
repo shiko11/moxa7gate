@@ -15,10 +15,12 @@
 #include "interfaces.h"
 #include "moxagate.h"
 
-//*************************************************************************************
+///=== MESSAGES_H private variables
 
 char eventmsg[EVENT_MESSAGE_LENGTH];
 char message_template[EVENT_TEMPLATE_AMOUNT][EVENT_MESSAGE_LENGTH];
+
+///=== MESSAGES_H private functions
 
 //*************************************************************************************
 
@@ -118,22 +120,22 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 //		(0x01 << ((msgtype & EVENT_SRC_MASK)-1))
 //		)==0) return;
 
-	if(gate502.show_sys_messages==0 && (msgtype & EVENT_CAT_MASK)==EVENT_CAT_DEBUG) return;
-	if(gate502.show_data_flow==0    && (msgtype & EVENT_CAT_MASK)==EVENT_CAT_TRAFFIC) return;
+	if(Security.show_sys_messages==0 && (msgtype & EVENT_CAT_MASK)==EVENT_CAT_DEBUG) return;
+	if(Security.show_data_flow==0    && (msgtype & EVENT_CAT_MASK)==EVENT_CAT_TRAFFIC) return;
 	
 	/// создаем запись в журнале
 	time(&curtime);
 	if(app_log!=NULL) {
-		app_log[gate502.app_log_current_entry].time=curtime;
-		app_log[gate502.app_log_current_entry].msgtype=msgtype;
-		app_log[gate502.app_log_current_entry].msgcode=msgcode;
+		app_log[app_log_current_entry].time=curtime;
+		app_log[app_log_current_entry].msgtype=msgtype;
+		app_log[app_log_current_entry].msgcode=msgcode;
 		
-		app_log[gate502.app_log_current_entry].prm[0]=prm1;
-		app_log[gate502.app_log_current_entry].prm[1]=prm2;
-		app_log[gate502.app_log_current_entry].prm[2]=prm3;
-		app_log[gate502.app_log_current_entry].prm[3]=prm4;
+		app_log[app_log_current_entry].prm[0]=prm1;
+		app_log[app_log_current_entry].prm[1]=prm2;
+		app_log[app_log_current_entry].prm[2]=prm3;
+		app_log[app_log_current_entry].prm[3]=prm4;
 		
-		gate502.app_log_entries_total++;
+		app_log_entries_total++;
 	  } else printf("!");
 	
 	/// выводим событие на консоль
@@ -174,9 +176,9 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 
 	// инкрементируем счетчик кольцевого буфера сообщений
 	if(app_log!=NULL)
-		gate502.app_log_current_entry=\
-			gate502.app_log_current_entry==EVENT_LOG_LENGTH-1?\
-			0:gate502.app_log_current_entry+1;
+		app_log_current_entry=\
+			app_log_current_entry==EVENT_LOG_LENGTH-1?\
+			0:app_log_current_entry+1;
 	
 	return;
 	}
@@ -268,8 +270,9 @@ void make_msgstr(	unsigned char msgcode, char *str,
 ///--- CONNECTION (СЕТЕВОЕ СОЕДИНЕНИЕ) [65..127, 63]
 
 	if(msgcode==65) // SOCKET INITIALIZED STAGE %d TCPSERVER %s;
-		if(prm2==DEFAULT_CLIENT) 	sprintf(str, message_template[msgcode], prm1, "N/A");
-		  else  									sprintf(str, message_template[msgcode], prm1, "xxx.xxx.xxx.xxx");
+//		if(prm2==DEFAULT_CLIENT) 	sprintf(str, message_template[msgcode], prm1, "N/A");
+//		  else  									
+             sprintf(str, message_template[msgcode], prm1, "xxx.xxx.xxx.xxx");
 
 	if(msgcode==67) // CONNECTION ACCEPTED FROM %s CLIENT %d;
 		if(prm1==0) sprintf(str, message_template[msgcode], "N/A", 0);

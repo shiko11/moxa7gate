@@ -11,12 +11,13 @@
 
 #include "cli.h"
 
-#define DEBUG_CL //ÞÉÓÔÏ ÄÌÑ ÏÔÌÁÄËÉ ÁÌÇÏÒÉÔÍÁ ÉÎÔÅÒÅÐÒÅÔÁÃÉÉ ËÏÍÁÎÄÎÏÊ ÓÔÒÏËÉ
-//#define DEBUG_WORK //ÞÉÓÔÏ ÄÌÑ ÏÔÌÁÄËÉ ÒÁÂÏÔÙ Æ-ÃÉÉ *run_work 
+///=== CLI_H private variables
+
+///=== CLI_H private functions
 
 void help_print(void); /* âûâîä ñïðàâêè */
 void version_print (void); /* âûâîä èíôîðìàöèè î ïðîãðàììå */
-int check_gate_settings(input_cfg *data);
+int check_gate_settings(GW_Iface *data);
 int verify_tcp_servers();
 int verify_vslaves();
 int verify_proxy_queries();
@@ -65,11 +66,10 @@ www.semgroup.ru\n\
 ///-------------------------------------------------------------------------
 int get_command_line (int 	argc,
 											char	*argv[],
-											input_cfg *ptr_iDATA,
-											input_cfg_502 *ptr_gate502,
+											GW_Iface *ptr_iDATA,
+											GW_MoxaDevice *ptr_gate502,
 											RT_Table_Entry *vslave,
-											Query_Table_Entry *query_table,
-											GW_TCP_Server *tcp_servers
+											Query_Table_Entry *query_table
 											) //îáðàáîòêà ïàðàìåòðîâ êîìàíäíîé ñòðîêè
 {
 	//ïðîâåðêà íà ïóñòóþ êîìàíäíóþ ñòðîêó
@@ -106,10 +106,10 @@ int get_command_line (int 	argc,
 		if (strcmp(argv[id_key_argc[i]],"--help")==0) {help_print(); return CL_INFO;}
 		if (strcmp(argv[id_key_argc[i]],"--version")==0) {version_print(); return CL_INFO;}
 
-		if (strcmp(argv[id_key_argc[i]],"--show_data_flow")==0) ptr_gate502->show_data_flow=1;
-		if (strcmp(argv[id_key_argc[i]],"--show_sys_messages")==0) ptr_gate502->show_sys_messages=1;
-		if (strcmp(argv[id_key_argc[i]],"--watchdog_timer")==0) ptr_gate502->watchdog_timer=1;
-		if (strcmp(argv[id_key_argc[i]],"--use_buzzer")==0) ptr_gate502->use_buzzer=1;
+		if (strcmp(argv[id_key_argc[i]],"--show_data_flow")==0) Security.show_data_flow=1;
+		if (strcmp(argv[id_key_argc[i]],"--show_sys_messages")==0) Security.show_sys_messages=1;
+		if (strcmp(argv[id_key_argc[i]],"--watchdog_timer")==0) Security.watchdog_timer=1;
+		if (strcmp(argv[id_key_argc[i]],"--use_buzzer")==0) Security.use_buzzer=1;
 
 //		if (strcmp(argv[id_key_argc[i]],"--single_gateway_port_502")==0) *single_gateway_port_502=1;
 		if (strcmp(argv[id_key_argc[i]],"--single_gateway_port_502")==0) return CL_ERR_NOT_ALLOWED;
@@ -119,8 +119,8 @@ int get_command_line (int 	argc,
 		if (strcmp(argv[id_key_argc[i]],"--proxy_mode")==0) return CL_ERR_NOT_ALLOWED;
 
 		if (strcmp(argv[id_key_argc[i]],"--tcp_port")==0) {
-			ptr_gate502->tcp_port=atoi(argv[id_key_argc[i]+1]);
-			if(ptr_gate502->tcp_port==0) return CL_ERR_IN_MAP;					
+			Security.tcp_port=atoi(argv[id_key_argc[i]+1]);
+			if(Security.tcp_port==0) return CL_ERR_IN_MAP;					
 			}
 		if (strcmp(argv[id_key_argc[i]],"--modbus_address")==0) {
 			ptr_gate502->modbus_address=atoi(argv[id_key_argc[i]+1]);
@@ -138,15 +138,15 @@ int get_command_line (int 	argc,
 			}
 
 		if (strcmp(argv[id_key_argc[i]],"--Object")==0)
-			strcpy(ptr_gate502->object, argv[id_key_argc[i]+1]);
+			strcpy(Security.object, argv[id_key_argc[i]+1]);
 		if (strcmp(argv[id_key_argc[i]],"--Location")==0)
-			strcpy(ptr_gate502->location, argv[id_key_argc[i]+1]);
+			strcpy(Security.location, argv[id_key_argc[i]+1]);
 		if (strcmp(argv[id_key_argc[i]],"--confVersion")==0)
-			strcpy(ptr_gate502->version, argv[id_key_argc[i]+1]);
+			strcpy(Security.version, argv[id_key_argc[i]+1]);
 		if (strcmp(argv[id_key_argc[i]],"--NetworkName")==0)
-			strcpy(ptr_gate502->networkName, argv[id_key_argc[i]+1]);
+			strcpy(Security.networkName, argv[id_key_argc[i]+1]);
 		if (strcmp(argv[id_key_argc[i]],"--NetworkAddress")==0)
-			get_ip_from_string(argv[id_key_argc[i]+1], &ptr_gate502->IPAddress, &k);
+			get_ip_from_string(argv[id_key_argc[i]+1], &Security.IPAddress, &k);
 	}
 
 	//------------------------------------
@@ -259,7 +259,7 @@ int get_command_line (int 	argc,
 			arg=argv[id_p_argc[i]+6];
 			sscanf(arg, "%d", &temp);
 			if((temp<502) || (temp>32000)) return CL_ERR_IN_MAP;
-			ptr_iDATA[p_num-1].tcp_port=temp;
+			ptr_iDATA[p_num-1].Security.tcp_port=temp;
 			shift_counter++;
 			}
 
@@ -318,7 +318,7 @@ int get_command_line (int 	argc,
 
 			arg=argv[id_vslaves+i*5+7+shift_counter];
 			if(strcmp(arg, "--address_shift")==0) {
-				vslave[i].address_shift=atoi(argv[id_vslaves+i*5+8+shift_counter]);
+				vslave[i].offset=atoi(argv[id_vslaves+i*5+8+shift_counter]);
 				shift_counter+=2;
 				}
 
@@ -416,7 +416,7 @@ int get_command_line (int 	argc,
 		if((tcpsrv_entries_num<1)||(tcpsrv_entries_num>MAX_TCP_SERVERS)) return CL_ERR_TCPSRV_CFG;
 		shift_counter=0;
 	
-		for(i=0; i<tcpsrv_entries_num; i++) {
+/*		for(i=0; i<tcpsrv_entries_num; i++) {
 
 					arg=argv[id_tcpsrv+i*4+2+shift_counter];
 
@@ -435,7 +435,7 @@ int get_command_line (int 	argc,
 					
 					/// ÷èòàåì ñìåùåíèå àäðåñà
 					arg=argv[id_tcpsrv+i*4+4+shift_counter];
-					tcp_servers[i].address_shift=atoi(arg);
+					tcp_servers[i].offset=atoi(arg);
 					
 //					arg=argv[id_tcpsrv+i*4+5+shift_counter];
 //					tcp_servers[i].p_num=arg[1]=='T'?PROXY_TCP:arg[1]-48-1;
@@ -452,17 +452,17 @@ int get_command_line (int 	argc,
 						strcpy(tcp_servers[i].device_name, arg);
 						shift_counter+=2;
 						}
-		  }
+		  }*/
 
-	  int res=verify_tcp_servers();
-	  if(res!=0) return CL_ERR_TCPSRV_CFG;
+//	  int res=verify_tcp_servers();
+//	  if(res!=0) return CL_ERR_TCPSRV_CFG;
 		}
 
 	return CL_OK;
 	}
 
 ///-------------------------------------------------------------------------
-int check_gate_settings(input_cfg *data)
+int check_gate_settings(GW_Iface *data)
 	{
 	
 	if(!(
@@ -506,7 +506,7 @@ void sigio_handler()
 printf("SIGIO! \n");
 return;
 }
-*///----------------------------------------------------------------------------------------------------------------
+///----------------------------------------------------------------------------------------------------------------
 int verify_tcp_servers()
   {
 	int i;
@@ -538,7 +538,7 @@ int verify_tcp_servers()
 
 	return 0;
   }
-///----------------------------------------------------------------------------------------------------------------
+*///----------------------------------------------------------------------------------------------------------------
 int verify_vslaves()
   {
 	int i;
@@ -556,7 +556,7 @@ int verify_vslaves()
 			if((vslave[i].start+vslave[i].length)>65535) return 3;
 			if(vslave[i].port>SERIAL_P8) return 4;
 			if((vslave[i].device==0)||(vslave[i].device>247)) return 5;
-			if(vslave[i].address_shift<0) return 6;
+			if(vslave[i].offset<0) return 6;
 
 			}
   

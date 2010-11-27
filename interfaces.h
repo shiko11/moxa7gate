@@ -20,22 +20,68 @@
 ///=== INTERFACES_H constants
 
 #define   MAX_MOXA_PORTS 8
+#define MAX_TCP_SERVERS 32
 
-#define   NAME_MOXA_PORT           "PORT"
-#define   NAME_MOXA_PORT_DEV  "/dev/ttyM"
-#define SERIAL_P1	0
-#define SERIAL_P2	1
-#define SERIAL_P3	2
-#define SERIAL_P4	3
-#define SERIAL_P5	4
-#define SERIAL_P6	5
-#define SERIAL_P7	6
-#define SERIAL_P8	7
+/// MOXA7GATE ASSETS
+
+#define GATEWAY_P1	0
+#define GATEWAY_P2	1
+#define GATEWAY_P3	2
+#define GATEWAY_P4	3
+#define GATEWAY_P5	4
+#define GATEWAY_P6	5
+#define GATEWAY_P7	6
+#define GATEWAY_P8	7
+
+#define GATEWAY_P9        8
+#define GATEWAY_SYSTEM    9
+#define GATEWAY_MOXAGATE  10
+#define GATEWAY_CLIENTS   11
+#define GATEWAY_SECURITY  12
+#define GATEWAY_FRWD      13
+#define GATEWAY_QT        14
+#define GATEWAY_HMI       15
+
+#define GATEWAY_T01 16
+#define GATEWAY_T02 17
+#define GATEWAY_T03 18
+#define GATEWAY_T04 19
+#define GATEWAY_T05 20
+#define GATEWAY_T06 21
+#define GATEWAY_T07 22
+#define GATEWAY_T08 23
+
+#define GATEWAY_T09 24
+#define GATEWAY_T10 25
+#define GATEWAY_T11 26
+#define GATEWAY_T12 27
+#define GATEWAY_T13 28
+#define GATEWAY_T14 29
+#define GATEWAY_T15 30
+#define GATEWAY_T16 31
+
+#define GATEWAY_T17 32
+#define GATEWAY_T18 33
+#define GATEWAY_T19 34
+#define GATEWAY_T20 35
+#define GATEWAY_T21 36
+#define GATEWAY_T22 37
+#define GATEWAY_T23 38
+#define GATEWAY_T24 39
+
+#define GATEWAY_T25 40
+#define GATEWAY_T26 41
+#define GATEWAY_T27 42
+#define GATEWAY_T28 43
+#define GATEWAY_T29 44
+#define GATEWAY_T30 45
+#define GATEWAY_T31 46
+#define GATEWAY_T32 47
 
 // режим применим только для serial-интерфейса шлюза
 // ввиду его простоты и надежности он остается прежним
 #define GATEWAY_SIMPLE				6
-#define IFACE_GATEWAY_SIMPLE	6
+#define IFACE_TCPSERVER 6
 
 ///!!! эти определения режимов портов устарели, они сохраняют свой смысл для реализации механизма перенаправления
 #define GATEWAY_ATM					7
@@ -67,7 +113,8 @@
 #define IFACE_ERROR					16
 #define IFACE_OFF						17
 
-#define MAX_TCP_SERVERS 32
+#define   NAME_MOXA_PORT           "PORT"
+#define   NAME_MOXA_PORT_DEV  "/dev/ttyM"
 
 #define EXCEPTION_DIOGEN 0x00000001
 
@@ -89,10 +136,11 @@ typedef struct {
 
 // параметры TCP-порта шлюза
 typedef struct {
-	unsigned char mb_slave; // адрес modbus-устройства для перенаправления запросов (ATM)
-	unsigned short offset;      /// стартовый регистр внутри целевого устройства
 	unsigned int ip;        // сетевой адрес
 	unsigned int port;      // номер TCP-порта
+	unsigned char unit_id;  // адрес на который отвечает целевое устройство
+	unsigned short offset;  /// стартовый регистр внутри целевого устройства
+	unsigned char mb_slave; // адрес modbus-устройства для перенаправления запросов (ATM)
 	unsigned int ip2;       // резервный сетевой адрес
 	unsigned int port2;     // резервный номер TCP-порта
 	} GW_TCPIface;

@@ -381,10 +381,10 @@ void show_main_screen()
 	strcpy (screen.text[0], " MODBUS GATEWAY ");
 	strcpy (screen.text[1], "----------------");
 	strcpy (screen.text[2], "SL Msgs Errs MOD");
-	sprintf(screen.text[3], "P1%c%4.4d %4.4d %s", marker[0], IfaceRTU[SERIAL_P1].stat.sended%10000, IfaceRTU[SERIAL_P1].stat.errors%10000, IfaceRTU[SERIAL_P1].bridge_status);
-	sprintf(screen.text[4], "P2%c%4.4d %4.4d %s", marker[1], IfaceRTU[SERIAL_P2].stat.sended%10000, IfaceRTU[SERIAL_P2].stat.errors%10000, IfaceRTU[SERIAL_P2].bridge_status);
-	sprintf(screen.text[5], "P3%c%4.4d %4.4d %s", marker[2], IfaceRTU[SERIAL_P3].stat.sended%10000, IfaceRTU[SERIAL_P3].stat.errors%10000, IfaceRTU[SERIAL_P3].bridge_status);
-	sprintf(screen.text[6], "P4%c%4.4d %4.4d %s", marker[3], IfaceRTU[SERIAL_P4].stat.sended%10000, IfaceRTU[SERIAL_P4].stat.errors%10000, IfaceRTU[SERIAL_P4].bridge_status);
+	sprintf(screen.text[3], "P1%c%4.4d %4.4d %s", marker[0], IfaceRTU[GATEWAY_P1].stat.sended%10000, IfaceRTU[GATEWAY_P1].stat.errors%10000, IfaceRTU[GATEWAY_P1].bridge_status);
+	sprintf(screen.text[4], "P2%c%4.4d %4.4d %s", marker[1], IfaceRTU[GATEWAY_P2].stat.sended%10000, IfaceRTU[GATEWAY_P2].stat.errors%10000, IfaceRTU[GATEWAY_P2].bridge_status);
+	sprintf(screen.text[5], "P3%c%4.4d %4.4d %s", marker[2], IfaceRTU[GATEWAY_P3].stat.sended%10000, IfaceRTU[GATEWAY_P3].stat.errors%10000, IfaceRTU[GATEWAY_P3].bridge_status);
+	sprintf(screen.text[6], "P4%c%4.4d %4.4d %s", marker[3], IfaceRTU[GATEWAY_P4].stat.sended%10000, IfaceRTU[GATEWAY_P4].stat.errors%10000, IfaceRTU[GATEWAY_P4].bridge_status);
 	strcpy (screen.text[7], "F1-HELP F2-P5678");
 
   mxlcm_write_screen(mxlcm_handle, screen.text);
@@ -404,10 +404,10 @@ void show_main_screen2()
 	strcpy (screen.text[0], " MODBUS GATEWAY ");
 	strcpy (screen.text[1], "----------------");
 	strcpy (screen.text[2], "SL Msgs Errs MOD");
-	sprintf(screen.text[3], "P5%c%4.4d %4.4d %s", marker[0], IfaceRTU[SERIAL_P5].stat.sended%10000, IfaceRTU[SERIAL_P5].stat.errors%10000, IfaceRTU[SERIAL_P5].bridge_status);
-	sprintf(screen.text[4], "P6%c%4.4d %4.4d %s", marker[1], IfaceRTU[SERIAL_P6].stat.sended%10000, IfaceRTU[SERIAL_P6].stat.errors%10000, IfaceRTU[SERIAL_P6].bridge_status);
-	sprintf(screen.text[5], "P7%c%4.4d %4.4d %s", marker[2], IfaceRTU[SERIAL_P7].stat.sended%10000, IfaceRTU[SERIAL_P7].stat.errors%10000, IfaceRTU[SERIAL_P7].bridge_status);
-	sprintf(screen.text[6], "P8%c%4.4d %4.4d %s", marker[3], IfaceRTU[SERIAL_P8].stat.sended%10000, IfaceRTU[SERIAL_P8].stat.errors%10000, IfaceRTU[SERIAL_P8].bridge_status);
+	sprintf(screen.text[3], "P5%c%4.4d %4.4d %s", marker[0], IfaceRTU[GATEWAY_P5].stat.sended%10000, IfaceRTU[GATEWAY_P5].stat.errors%10000, IfaceRTU[GATEWAY_P5].bridge_status);
+	sprintf(screen.text[4], "P6%c%4.4d %4.4d %s", marker[1], IfaceRTU[GATEWAY_P6].stat.sended%10000, IfaceRTU[GATEWAY_P6].stat.errors%10000, IfaceRTU[GATEWAY_P6].bridge_status);
+	sprintf(screen.text[5], "P7%c%4.4d %4.4d %s", marker[2], IfaceRTU[GATEWAY_P7].stat.sended%10000, IfaceRTU[GATEWAY_P7].stat.errors%10000, IfaceRTU[GATEWAY_P7].bridge_status);
+	sprintf(screen.text[6], "P8%c%4.4d %4.4d %s", marker[3], IfaceRTU[GATEWAY_P8].stat.sended%10000, IfaceRTU[GATEWAY_P8].stat.errors%10000, IfaceRTU[GATEWAY_P8].bridge_status);
 	strcpy (screen.text[7], "F1-HELP F2-P1234");
 
   mxlcm_write_screen(mxlcm_handle, screen.text);
@@ -876,14 +876,14 @@ void show_menu_screen()
 ///---------------------------------------------------------------
 int ctrl_reset_all_counters()
   {
-  ctrl_reset_port_counters(SERIAL_P1);
-  ctrl_reset_port_counters(SERIAL_P2);
-  ctrl_reset_port_counters(SERIAL_P3);
-  ctrl_reset_port_counters(SERIAL_P4);
-  ctrl_reset_port_counters(SERIAL_P5);
-  ctrl_reset_port_counters(SERIAL_P6);
-  ctrl_reset_port_counters(SERIAL_P7);
-  ctrl_reset_port_counters(SERIAL_P8);
+  ctrl_reset_port_counters(GATEWAY_P1);
+  ctrl_reset_port_counters(GATEWAY_P2);
+  ctrl_reset_port_counters(GATEWAY_P3);
+  ctrl_reset_port_counters(GATEWAY_P4);
+  ctrl_reset_port_counters(GATEWAY_P5);
+  ctrl_reset_port_counters(GATEWAY_P6);
+  ctrl_reset_port_counters(GATEWAY_P7);
+  ctrl_reset_port_counters(GATEWAY_P8);
    
   return 0;	
   }

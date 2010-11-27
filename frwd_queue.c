@@ -187,7 +187,7 @@ int translateAddress(u8 unit_id, int *port_id, int *device_id)
   {
 	if((unit_id < 1) || (unit_id > 247)) return 1;
 	*port_id = unit_id / 30;
-	if(*port_id > SERIAL_P8) *port_id=SERIAL_P8;
+	if(*port_id > GATEWAY_P8) *port_id=GATEWAY_P8;
 	*device_id = unit_id - *port_id * 30;
 
   if(IfaceRTU[*port_id].modbus_mode!=GATEWAY_ATM) return 2;
@@ -214,7 +214,7 @@ int translateRegisters(int start_address, int length, int *port_id, int *device_
   //printf("%d + %d < %d + %d (i=%d)\n", vslave[i].start, vslave[i].length, start_address, length, i);
   if((vslave[i].start+vslave[i].length)<(start_address+length)) return 2;
 
-	*port_id=vslave[i].port;
+	*port_id=vslave[i].iface;
 	*device_id=i; // индекс блока адресов виртуального устройства
 	
   return 0;
@@ -238,7 +238,7 @@ int translateProxyDevice(int start_address, int length, int *port_id, int *devic
   //printf("%d + %d < %d + %d (i=%d)\n", vslave[i].start, vslave[i].length, start_address, length, i);
   if((query_table[i].offset+query_table[i].length)<(start_address+length)) return 2;
 
-	*port_id=query_table[i].port;
+	*port_id=query_table[i].iface;
 	*device_id=i; // индекс блока адресов виртуального устройства
 	
   return 0;

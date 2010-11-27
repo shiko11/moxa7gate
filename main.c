@@ -104,11 +104,11 @@ int main(int argc, char *argv[])
 		Security.watchdog_timer=0;
 		Security.use_buzzer=0;
 
-		Security.object[0]=0;
-		Security.location[0]=0;
-		Security.version[0]=0;
-		Security.networkName[0]=0;
-		Security.IPAddress=0;
+		Security.Object[0]=0;
+		Security.Location[0]=0;
+		Security.VersionNumber[0]=0;
+		Security.NetworkName[0]=0;
+		Security.NetworkAddress=0;
 
 		app_log_current_entry=app_log_entries_total=0;
 		app_log=NULL;

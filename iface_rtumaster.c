@@ -275,7 +275,7 @@ void *iface_rtu_master(void *arg)
 		clear_stat(&tmpstat);
 
 	if(i!=MAX_QUERY_ENTRIES) {//формируем следующий запрос из таблицы опроса
-		if(query_table[i].port!=port_id) continue; ///!!! нужно реализовать массив с индексами
+		if(query_table[i].iface!=port_id) continue; ///!!! нужно реализовать массив с индексами
     if(
 			(query_table[i].length==0) ||
 			(query_table[i].mbf==0) ||
@@ -464,7 +464,7 @@ if((exceptions&EXCEPTION_DIOGEN)!=0)
 			serial_adu[RTUADU_START_LO]=j&0xff;
 
 			/// определяем тип клиента и соответственно функцию, используемую для отправки ответа
-			if(Client[client_id].iface<=SERIAL_P8)
+			if(Client[client_id].iface<=GATEWAY_P8)
 			if(	(IfaceRTU[Client[client_id].iface].modbus_mode==BRIDGE_PROXY) &&
 					(Client[client_id].status==GW_CLIENT_RTU_SLV)) {
 						

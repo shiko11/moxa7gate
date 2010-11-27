@@ -1,21 +1,37 @@
 Attribute VB_Name = "moxa7gate"
-'ÑÎÇÄÀÍÈÅ ÊÎÍÔÈÃÓĞÀÖÈÎÍÍÎÃÎ ÑÊĞÈÏÒÀ ÄËß ÇÀÏÓÑÊÀ ØËŞÇÀ MODBUS moxa7gate Â ÊÎÌÌÓÍÈÊÀÖÈÎÍÍÎÌ ÊÎÍÒĞÎËËÅĞÅ MOXA UC-7410
+'/***********   MOXA7GATE   *************
+'        MODBUS GATEWAY SOFTWARE
+'                    Version 1.2
+'        SEM-ENGINEERING
+'               BRYANSK 2010
+'***************************************/
 
+' ÑÎÇÄÀÍÈÅ ÊÎÍÔÈÃÓĞÀÖÈÎÍÍÎÃÎ ÑÊĞÈÏÒÀ ÄËß ÇÀÏÓÑÊÀ ØËŞÇÀ MODBUS moxa7gate
+' Â ÊÎÌÌÓÍÈÊÀÖÈÎÍÍÎÌ ÊÎÍÒĞÎËËÅĞÅ MOXA UC-7410 (Plus), ÂÅĞÑÈß 1.2
+
+' ËÈÑÒ "ØËŞÇ"
+' ÎÁÙÀß ÈÍÔÎĞÌÀÖÈß
 Public Const SETTObjectRow As Integer = 4
 Public Const SETTLocationRow As Integer = 5
-Public Const SETTDesignationRow As Integer = 6
+Public Const SETTLabelRow As Integer = 6
 Public Const SETTNetworkNameRow As Integer = 7
-Public Const SETTIPAddressRow As Integer = 8
-Public Const SETTConfVersionRow As Integer = 9
-Public Const SETTConfUCModelRow As Integer = 10
-Public Const SETTTCPPortRow As Integer = 14
-Public Const SETTMBAddressRow As Integer = 15
-Public Const SETTStatusInfoBlockRow As Integer = 16
-Public Const SETTShowDataFlowRow As Integer = 21
-Public Const SETTShowSysMessagesRow As Integer = 22
+Public Const SETTLAN1AddressRow As Integer = 8
+Public Const SETTLAN2AddressRow As Integer = 9
+Public Const SETTVersionNumberRow As Integer = 10
+Public Const SETTVersionTimeRow As Integer = 11
+Public Const SETTModelRow As Integer = 12
+' ÏÀĞÀÌÅÒĞÛ ĞÀÁÎÒÛ ÏĞÎÃĞÀÌÌÛ
+Public Const SETTTCPPortRow As Integer = 15
+Public Const SETTMBAddressRow As Integer = 16
+Public Const SETTStatusInfoBlockRow As Integer = 17
+Public Const SETTShowSysMessagesRow As Integer = 18
+Public Const SETTMap2Xto4XRow As Integer = 19
+' ÎÏÖÈÈ
 Public Const SETTWatchdogTimerRow As Integer = 23
-Public Const SETTBuzzerRow As Integer = 24
+Public Const SETTShowDataFlowRow As Integer = 24
+Public Const SETTBuzzerRow As Integer = 25
 
+' ËÈÑÒ "SERIAL-èíòåğôåéñû"
 Public Const SLGWPortColumn As Integer = 1
 Public Const SLGWModeColumn As Integer = 2
 Public Const SLModeColumn As Integer = 3
@@ -25,33 +41,52 @@ Public Const SLTimeoutColumn As Integer = 6
 Public Const SLTCPPortColumn As Integer = 7
 Public Const SLCommentColumn As Integer = 8
 
-Public Const PTAddressColumn As Integer = 2
-Public Const PTMBTableColumn As Integer = 3
-Public Const PTStartColumn As Integer = 4
-Public Const PTLengthColumn As Integer = 5
-Public Const PTOffsetColumn As Integer = 6
-Public Const PTPortColumn As Integer = 7
-Public Const PTDelayColumn As Integer = 8
-Public Const PTCriticalColumn As Integer = 9
-Public Const PTCommentColumn As Integer = 10
+' ËÈÑÒ "LANTCP-èíòåğôåéñû"
+Public Const LANTCPIfaceColumn As Integer = 1
+Public Const LANTCPIPColumn As Integer = 2
+Public Const LANTCPTCPColumn As Integer = 3
+Public Const LANTCPMBAddressColumn As Integer = 4
+Public Const LANTCPOffsetColumn As Integer = 5
+Public Const LANTCPATMAddressColumn As Integer = 6
+Public Const LANTCPIP2Column As Integer = 7
+Public Const LANTCPTCP2Column As Integer = 8
+Public Const LANTCPCommentColumn As Integer = 9
 
-Public Const RTMAddressColumn As Integer = 2
-Public Const RTMMBTableColumn As Integer = 3
-Public Const RTMStartColumn As Integer = 4
-Public Const RTMLengthColumn As Integer = 5
-Public Const RTMAddrShiftColumn As Integer = 6
-Public Const RTMPortColumn As Integer = 7
+' ËÈÑÒ "Òàáëèöà îïğîñà"
+Public Const PTIfaceColumn As Integer = 2
+Public Const PTMBAddressColumn As Integer = 3
+Public Const PTMBTableColumn As Integer = 4
+Public Const PTAccessColumn As Integer = 5
+Public Const PTStartColumn As Integer = 6
+Public Const PTLengthColumn As Integer = 7
+Public Const PTOffsetColumn As Integer = 8
+Public Const PTDelayColumn As Integer = 9
+Public Const PTCriticalColumn As Integer = 10
+Public Const PTCommentColumn As Integer = 11
+
+' ËÈÑÒ "Íàçíà÷åíèå ğåãèñòğîâ"
+Public Const RTMIfaceColumn As Integer = 2
+Public Const RTMMBAddressColumn As Integer = 3
+Public Const RTMMBTableColumn As Integer = 4
+Public Const RTMOffsetColumn As Integer = 5
+Public Const RTMStartColumn As Integer = 6
+Public Const RTMLengthColumn As Integer = 7
 Public Const RTMCommentColumn As Integer = 8
 
-Public Const TSMBAddressColumn As Integer = 2
-Public Const TSIPAddressColumn As Integer = 3
-Public Const TSTCPPortColumn As Integer = 4
-Public Const TSAddrShiftColumn As Integer = 5
-Public Const TSPortColumn As Integer = 6
-Public Const TSCommentColumn As Integer = 7
+' ËÈÑÒ "Èñêëş÷åíèÿ"
+Public Const EXCPStageColumn As Integer = 2
+Public Const EXCPActionColumn As Integer = 3
+Public Const EXCPPrm1Column As Integer = 4
+Public Const EXCPPrm2Column As Integer = 5
+Public Const EXCPPrm3Column As Integer = 6
+Public Const EXCPPrm4Column As Integer = 7
+Public Const EXCPCommentColumn As Integer = 8
 
-Public Const EXCPTOnColumn As Integer = 2
-Public Const EXCPTPrmColumn As Integer = 3
+' ËÈÑÒ "Íàçíà÷åíèå ğåãèñòğîâ"
+Public Const ATMFirstRow As Integer = 3
+Public Const ATMRowsAmount As Integer = 32
+Public Const ATMFirstColumn As Integer = 2
+Public Const ATMColumnsAmount As Integer = 8
 
 Public ErrorCount As Integer
 
@@ -63,12 +98,12 @@ Dim first As Boolean
 
 '**** ÂÛÏÎËÍßÅÌ ÏĞÎÂÅĞÊÓ ÊÎÍÔÈÃÓĞÀÖÈÈ
 
-Call CheckSH
-If ErrorCount <> 0 Then
-  If Not MsgBox("Íàéäåíî" + CStr(ErrorCount) + "îøèáîê. Âñå ğàâíî ïğîäîëæèòü?", vbYesNo, Âíèìàíèå) Then
+'Call CheckSH
+'If ErrorCount <> 0 Then
+'  If Not MsgBox("Íàéäåíî" + CStr(ErrorCount) + "îøèáîê. Âñå ğàâíî ïğîäîëæèòü?", vbYesNo, Âíèìàíèå) Then
 '    Exit Sub
-    End If
-  End If
+'    End If
+'  End If
 
 '**** ÎÒÊĞÛÂÀÅÌ ÔÀÉË ÄËß ÇÀÏÈÑÈ
 
@@ -83,101 +118,114 @@ End If
 
 '**** ÇÀÏÈÑÜ ÎÁÙÈÕ ÏÀĞÀÌÅÒĞÎÂ ÍÀÑÒĞÎÉÊÈ ØËŞÇÀ ****
 
-Set ws = Worksheets("Øëşç")
-ws.Activate
+Set ws = Worksheets("ØËŞÇ")
+'ws.Activate
 
-' èíêğåìåíòèğóåì íîìåğ âåğñèè
-ws.Cells(SETTConfVersionRow, 2).Value = CStr("1.") + CStr(CDec(Mid(ws.Cells(SETTConfVersionRow, 2).Value, 3)) + 1)
+' èíêğåìåíòèğóåì íîìåğ âåğñèè, ïîëó÷àåì òåêóùåå âğåìÿ
+ws.Cells(SETTVersionNumberRow, 2).Value = CStr("1.") + CStr(CDec(Mid(ws.Cells(SETTVersionNumberRow, 2).Value, 3)) + 1)
+ws.Cells(SETTVersionTimeRow, 2).Value = CStr(Date) + " " + CStr(Time)
 
 Print #1, "#! /bin/sh"
 Print #1, "#"
 Print #1, "# MOXA7GATE MODBUS GATEWAY SOFTWARE VERSION 1.2"
 Print #1, "# SEM-ENGINEERING, BRYANSK " + CStr(Year(Date))
 Print #1, "#"
+Print #1, "# OBJECT: " + ws.Cells(SETTObjectRow, 2).Value
+Print #1, "# LOCATION: " + ws.Cells(SETTLocationRow, 2).Value
+Print #1, "# LABEL: " + ws.Cells(SETTLabelRow, 2).Value
+Print #1, "#"
 Print #1, "# THIS CONFIGURATION FILE GENERATED AUTOMATICALLY"
-Print #1, "# AT " + CStr(Time) + " " + CStr(Date) '!!! äîáàâèòü àíàëîãè÷íûé êîä â ïåğåìåííóş äëÿ ïåğåäà÷è â ïğîãğàììó
+Print #1, "# AT " + ws.Cells(SETTVersionTimeRow, 2).Value
+Print #1, "# VERSION " + CStr(ws.Cells(SETTVersionNumberRow, 2).Value)
 Print #1, "#"
-Print #1, "# Object: " + ws.Cells(SETTObjectRow, 2).Value
-Print #1, "# Location: " + ws.Cells(SETTLocationRow, 2).Value + " " + ws.Cells(SETTDesignationRow, 2).Value
-Print #1, "#"
-Print #1, "# File Version: " + CStr(ws.Cells(SETTConfVersionRow, 2).Value)
-Print #1, "#"
+Print #1, "# Device Model: " + ws.Cells(SETTModelRow, 2).Value
 Print #1, "# Network Name: " + ws.Cells(SETTNetworkNameRow, 2).Value
-Print #1, "# Network Address: " + ws.Cells(SETTIPAddressRow, 2).Value
+Print #1, "# LAN1 Address: " + ws.Cells(SETTLAN1AddressRow, 2).Value
+Print #1, "# LAN2 Address: " + ws.Cells(SETTLAN2AddressRow, 2).Value
 Print #1, "#"
 Print #1, " "
 
-If ws.Cells(SETTConfUCModelRow, 2).Value = "MOXA UC-7410" Then
+If ws.Cells(SETTModelRow, 2).Value = "MOXA UC-7410" Then
     Print #1, "/root/moxa7gate \"
 Else
     Print #1, "/home/root/moxa7gate_plus \"
 End If
 
-If ws.Cells(SETTTCPPortRow, 2).Value <> "" And ws.Cells(SETTTCPPortRow, 2).Value <> 0 Then
-    Print #1, "--tcp_port " + CStr(ws.Cells(SETTTCPPortRow, 2).Value) + " \"
-End If
-
-If ws.Cells(SETTMBAddressRow, 2).Value <> "" And ws.Cells(SETTMBAddressRow, 2).Value <> 0 Then
-    Print #1, "--modbus_address " + CStr(ws.Cells(SETTMBAddressRow, 2).Value) + " \"
-End If
-
-If ws.Cells(SETTStatusInfoBlockRow, 2).Value <> "" And ws.Cells(SETTStatusInfoBlockRow, 2).Value <> 0 Then
-    Print #1, "--status_info " + CStr(ws.Cells(SETTStatusInfoBlockRow, 2).Value) + " \"
-End If
-
-If ws.Cells(SETTShowDataFlowRow, 2).Value = "Äà" Then
-    Print #1, "--show_data_flow \"
-End If
-
-If ws.Cells(SETTShowSysMessagesRow, 2).Value = "Äà" Then
-    Print #1, "--show_sys_messages \"
-End If
-
-If ws.Cells(SETTWatchdogTimerRow, 2).Value = "Äà" Then
-    Print #1, "--watchdog_timer \"
-End If
-
-If ws.Cells(SETTBuzzerRow, 2).Value = "Äà" Then
-    Print #1, "--use_buzzer \"
-End If
-
+' ÎÁÙÀß ÈÍÔÎĞÌÀÖÈß
 str = "--Object " + """"
 str = str + CStr(ws.Cells(SETTObjectRow, 2).Value) + """ \"
 Print #1, str
 
 str = "--Location " + """"
-str = str + CStr(ws.Cells(SETTLocationRow, 2).Value + " " + ws.Cells(SETTDesignationRow, 2).Value) + """ \"
+str = str + CStr(ws.Cells(SETTLocationRow, 2).Value) + """ \"
 Print #1, str
 
-str = "--confVersion " + """"
-str = str + CStr(ws.Cells(SETTConfVersionRow, 2).Value) + """ \"
+str = "--Label " + """"
+str = str + CStr(ws.Cells(SETTLabelRow, 2).Value) + """ \"
 Print #1, str
 
 str = "--NetworkName " + """"
 str = str + CStr(ws.Cells(SETTNetworkNameRow, 2).Value) + """ \"
 Print #1, str
 
-str = "--NetworkAddress " + """"
-str = str + CStr(ws.Cells(SETTIPAddressRow, 2).Value) + """ \"
+str = "--LAN1Address " + """"
+str = str + CStr(ws.Cells(SETTLAN1AddressRow, 2).Value) + """ \"
 Print #1, str
 
-'**** ÇÀÏÈÑÜ ÈÑÊËŞ×ÅÍÈÉ ****
+str = "--LAN2Address " + """"
+str = str + CStr(ws.Cells(SETTLAN2AddressRow, 2).Value) + """ \"
+Print #1, str
 
-Set ws = Worksheets("Èñêëş÷åíèÿ")
-ws.Activate
+str = "--VersionNumber " + """"
+str = str + CStr(ws.Cells(SETTVersionNumberRow, 2).Value) + """ \"
+Print #1, str
 
-For i = 2 To 17
+str = "--VersionTime " + """"
+str = str + CStr(ws.Cells(SETTVersionTimeRow, 2).Value) + """ \"
+Print #1, str
 
-    If ws.Cells(i, EXCPTOnColumn).Value = "Äà" Then
-        Print #1, "--exception " + Format(i - 1) + " " + CStr(ws.Cells(i, EXCPTPrmColumn).Value) + " \"
-    End If
+str = "--Model " + """"
+str = str + CStr(ws.Cells(SETTModelRow, 2).Value) + """ \"
+Print #1, str
 
-Next i
+' ÏÀĞÀÌÅÒĞÛ ĞÀÁÎÒÛ ÏĞÎÃĞÀÌÌÛ
+If ws.Cells(SETTTCPPortRow, 2).Value <> "" Then
+    Print #1, "--tcp_port " + CStr(ws.Cells(SETTTCPPortRow, 2).Value) + " \"
+End If
+
+If ws.Cells(SETTMBAddressRow, 2).Value <> "" Then
+    Print #1, "--modbus_address " + CStr(ws.Cells(SETTMBAddressRow, 2).Value) + " \"
+End If
+
+If ws.Cells(SETTStatusInfoBlockRow, 2).Value <> "" Then
+    Print #1, "--status_info " + CStr(ws.Cells(SETTStatusInfoBlockRow, 2).Value) + " \"
+End If
+
+If ws.Cells(SETTShowSysMessagesRow, 2).Value = "Äà" Then
+    Print #1, "--show_sys_messages \"
+End If
+
+If ws.Cells(SETTMap2Xto4XRow, 2).Value = "Äà" Then
+    Print #1, "--map2Xto4X \"
+End If
+
+' ÎÏÖÈÈ
+If ws.Cells(SETTWatchdogTimerRow, 2).Value = "Äà" Then
+    Print #1, "--watchdog_timer \"
+End If
+
+If ws.Cells(SETTShowDataFlowRow, 2).Value = "Äà" Then
+    Print #1, "--show_data_flow \"
+End If
+
+If ws.Cells(SETTBuzzerRow, 2).Value = "Äà" Then
+    Print #1, "--use_buzzer \"
+End If
 
 '**** ÇÀÏÈÑÜ ÏÀĞÀÌÅÒĞÎÂ ÊÎÍÔÈÃÓĞÀÖÈÈ ÏÎÑËÅÄÎÂÀÒÅËÜÍÛÕ ÈÍÒÅĞÔÅÉÑÎÂ ****
 
-Set ws = Worksheets("Serial èíòåğôåéñû")
-ws.Activate
+Set ws = Worksheets("SERIAL-èíòåğôåéñû")
+'ws.Activate
 
 For i = 2 To 9
 
@@ -192,7 +240,7 @@ res = (ws.Cells(i, SLGWModeColumn).Value <> "") And (ws.Cells(i, SLGWModeColumn)
         str = str + CStr(ws.Cells(i, SLTimeoutColumn).Value) + " "
         str = str + CStr(ws.Cells(i, SLGWModeColumn).Value) + " "
         
-        If ws.Cells(i, SLGWModeColumn).Value = "GATEWAY_SIMPLE" Then
+        If ws.Cells(i, SLGWModeColumn).Value = "TCP_SERVER" Then
             str = str + CStr(ws.Cells(i, SLTCPPortColumn).Value) + " "
         End If
         
@@ -206,37 +254,84 @@ res = (ws.Cells(i, SLGWModeColumn).Value <> "") And (ws.Cells(i, SLGWModeColumn)
 
 Next i
 
-'**** ÇÀÏÈÑÜ ÒÀÁËÈÖÛ ÎÏĞÎÑÀ PROXY_TABLE ****
+'**** ÇÀÏÈÑÜ ÏÀĞÀÌÅÒĞÎÂ ÊÎÍÔÈÃÓĞÀÖÈÈ ËÎÃÈ×ÅÑÊÈÕ TCP-ÈÍÒÅĞÔÅÉÑÎÂ ****
 
-Set ws = Worksheets("PROXY_TABLE")
-ws.Activate
+Set ws = Worksheets("LANTCP-èíòåğôåéñû")
+'ws.Activate
 
-first = True
+For i = 2 To 33
 
-For i = 2 To 129
-    If ws.Cells(i, PTAddressColumn).Value = "" Then
-        j = i - 2
-        Exit For
-    End If
-Next i
-
-For i = 2 To 129
-    
-    res = ws.Cells(i, PTAddressColumn).Value <> ""
+res = (ws.Cells(i, LANTCPIPColumn).Value <> "")
 
     If res Then
 
-        If first Then
-            Print #1, "PROXY_TABLE " + CStr(j) + " \"
-            first = False
+        If i < 11 Then
+          str = "TCP0" + Format(i - 1) + " "
+        Else
+          str = "TCP" + Format(i - 1) + " "
+        End If
+
+        str = str + CStr(ws.Cells(i, LANTCPIPColumn).Value) + ":"
+        str = str + CStr(ws.Cells(i, LANTCPTCPColumn).Value) + " "
+        str = str + CStr(ws.Cells(i, LANTCPMBAddressColumn).Value) + " "
+        str = str + CStr(ws.Cells(i, LANTCPOffsetColumn).Value) + " "
+        str = str + CStr(ws.Cells(i, LANTCPATMAddressColumn).Value) + " "
+        
+        If ws.Cells(i, LANTCPIP2Column).Value <> "" Then
+          str = str + CStr(ws.Cells(i, LANTCPIP2Column).Value) + ":"
+        Else
+          str = str + "0.0.0.0:"
         End If
         
-        str = CStr(ws.Cells(i, PTStartColumn).Value) + " "
+        str = str + CStr(ws.Cells(i, LANTCPTCP2Column).Value) + " "
+        
+        If ws.Cells(i, LANTCPCommentColumn).Value <> "" Then
+            str = str + "--desc " + """"
+            str = str + CStr(ws.Cells(i, LANTCPCommentColumn).Value) + """ "
+        End If
+        
+        Print #1, str + "\"
+    End If
+
+Next i
+
+'**** ÇÀÏÈÑÜ ÒÀÁËÈÖÛ ÎÏĞÎÑÀ ****
+
+Set ws = Worksheets("Òàáëèöà îïğîñà")
+'ws.Activate
+
+j = 0
+For i = 2 To 129
+    If ws.Cells(i, PTIfaceColumn).Value <> "" Then
+        j = j + 1
+    End If
+Next i
+
+If j <> 0 Then
+  Print #1, "PROXY_TABLE " + CStr(j) + " \"
+End If
+        
+For i = 2 To 129
+    
+    res = ws.Cells(i, PTIfaceColumn).Value <> ""
+
+    If res Then
+
+        str = CStr(ws.Cells(i, PTIfaceColumn).Value) + " "
+        str = str + CStr(ws.Cells(i, PTMBAddressColumn).Value) + " "
+        str = str + CStr(ws.Cells(i, PTMBTableColumn).Value) + " "
+        
+        If ws.Cells(i, PTAccessColumn).Value = "×òåíèå/Çàïèñü" Then
+          str = str + "RW "
+        ElseIf ws.Cells(i, PTAccessColumn).Value = "Îòêëş÷åí" Then
+          str = str + "OFF "
+        Else
+          str = str + "R "
+        End If
+        
+        str = str + CStr(ws.Cells(i, PTStartColumn).Value) + " "
         str = str + CStr(ws.Cells(i, PTLengthColumn).Value) + " "
         str = str + CStr(ws.Cells(i, PTOffsetColumn).Value) + " "
-        str = str + CStr(ws.Cells(i, PTPortColumn).Value) + " "
-        str = str + CStr(ws.Cells(i, PTAddressColumn).Value) + " "
-        str = str + CStr(ws.Cells(i, PTMBTableColumn).Value) + " "
         str = str + CStr(ws.Cells(i, PTDelayColumn).Value) + " "
         str = str + CStr(ws.Cells(i, PTCriticalColumn).Value) + " "
         
@@ -250,40 +345,34 @@ For i = 2 To 129
 
 Next i
 
-'**** ÇÀÏÈÑÜ ÒÀÁËÈÖÛ ÂÈĞÒÓÀËÜÍÛÕ ÓÑÒĞÎÉÑÒÂ RTM_TABLE ****
+'**** ÇÀÏÈÑÜ ÒÀÁËÈÖÛ ÂÈĞÒÓÀËÜÍÛÕ ÓÑÒĞÎÉÑÒÂ ****
 
-Set ws = Worksheets("RTM_TABLE")
-ws.Activate
+Set ws = Worksheets("Íàçíà÷åíèå ğåãèñòğîâ")
+'ws.Activate
 
-first = True
-
+j = 0
 For i = 2 To 129
-    If ws.Cells(i, RTMStartColumn).Value = "" Then
-        j = i - 2
-        Exit For
+    If ws.Cells(i, RTMIfaceColumn).Value <> "" Then
+        j = j + 1
     End If
 Next i
 
+If j <> 0 Then
+  Print #1, "RTM_TABLE " + CStr(j) + " \"
+End If
+        
 For i = 2 To 129
     
-    res = ws.Cells(i, RTMStartColumn).Value <> ""
+    res = ws.Cells(i, RTMIfaceColumn).Value <> ""
 
     If res Then
 
-        If first Then
-            Print #1, "RTM_TABLE " + CStr(j) + " \"
-            first = False
-        End If
-        
-        str = CStr(ws.Cells(i, RTMStartColumn).Value) + " "
-        str = str + CStr(ws.Cells(i, RTMLengthColumn).Value) + " "
-        str = str + CStr(ws.Cells(i, RTMPortColumn).Value) + " "
-        str = str + CStr(ws.Cells(i, RTMAddressColumn).Value) + " "
+        str = CStr(ws.Cells(i, RTMIfaceColumn).Value) + " "
+        str = str + CStr(ws.Cells(i, RTMMBAddressColumn).Value) + " "
         str = str + CStr(ws.Cells(i, RTMMBTableColumn).Value) + " "
-        
-        If ws.Cells(i, RTMAddrShiftColumn).Value <> "" And ws.Cells(i, RTMAddrShiftColumn).Value <> 0 Then
-            str = str + "--address_shift " + CStr(ws.Cells(i, RTMAddrShiftColumn).Value) + " "
-        End If
+        str = str + CStr(ws.Cells(i, RTMOffsetColumn).Value) + " "
+        str = str + CStr(ws.Cells(i, RTMStartColumn).Value) + " "
+        str = str + CStr(ws.Cells(i, RTMLengthColumn).Value) + " "
         
         If ws.Cells(i, RTMCommentColumn).Value <> "" Then
             str = str + "--desc " + """"
@@ -295,58 +384,108 @@ For i = 2 To 129
 
 Next i
 
-'**** ÇÀÏÈÑÜ ÒÀÁËÈÖÛ MOBBUS TCP-ÑÅĞÂÅĞÎÂ ****
+'**** ÇÀÏÈÑÜ ÒÀÁËÈÖÛ ÈÑÊËŞ×ÅÍÈÉ ****
 
-Set ws = Worksheets("Ethernet èíòåğôåéñû")
-ws.Activate
+Set ws = Worksheets("Èñêëş÷åíèÿ")
+'ws.Activate
 
-first = True
-
+j = 0
 For i = 2 To 33
-    If ws.Cells(i, TSMBAddressColumn).Value = "" Then
-        j = i - 2
-        Exit For
+    If ws.Cells(i, EXCPStageColumn).Value <> "" Then
+        j = j + 1
     End If
 Next i
 
+If j <> 0 Then
+  Print #1, "EXCEPTIONS " + CStr(j) + " \"
+End If
+        
 For i = 2 To 33
-    
-    res = ws.Cells(i, TSMBAddressColumn).Value <> ""
+
+    res = ws.Cells(i, EXCPStageColumn).Value <> ""
 
     If res Then
 
-        If first Then
-            Print #1, "TCP_SERVERS " + CStr(j) + " \"
-            first = False
-        End If
+      If CStr(ws.Cells(i, EXCPStageColumn).Value) = "ÇÀÏĞÎÑ ÏÎËÓ×ÅÍ RAW" Then
+      str = "QUERY_RECV_RAW "
+      ElseIf CStr(ws.Cells(i, EXCPStageColumn).Value) = "ÇÀÏĞÎÑ ÏÎËÓ×ÅÍ" Then
+      str = "QUERY_RECV "
+      ElseIf CStr(ws.Cells(i, EXCPStageColumn).Value) = "ÏÅĞÅÍÀÏĞÀÂËÅÍÈÅ" Then
+      str = "QUERY_FRWD "
+      ElseIf CStr(ws.Cells(i, EXCPStageColumn).Value) = "ÎÒÂÅÒ ÏÎËÓ×ÅÍ" Then
+      str = "RESPONSE_RECV "
+      ElseIf CStr(ws.Cells(i, EXCPStageColumn).Value) = "ÎÒÏĞÀÂÊÀ ÎÒÂÅÒÀ" Then
+      str = "RESPONSE_SEND "
+      Else ' ÎÒÂÅÒ ÏÎËÓ×ÅÍ RAW
+      str = "RESPONSE_RECV_RAW "
+      End If
+      
+      str = str + CStr(ws.Cells(i, EXCPActionColumn).Value) + " "
+      str = str + CStr(ws.Cells(i, EXCPPrm1Column).Value) + " "
+      str = str + CStr(ws.Cells(i, EXCPPrm2Column).Value) + " "
+      str = str + CStr(ws.Cells(i, EXCPPrm3Column).Value) + " "
+      str = str + CStr(ws.Cells(i, EXCPPrm4Column).Value) + " "
+      
+      If ws.Cells(i, EXCPCommentColumn).Value <> "" Then
+        str = str + "--desc " + """"
+        str = str + CStr(ws.Cells(i, EXCPCommentColumn).Value) + """ "
+      End If
         
-        str = CStr(ws.Cells(i, TSIPAddressColumn).Value) + ":"
-        str = str + CStr(ws.Cells(i, TSTCPPortColumn).Value) + " "
-        str = str + CStr(ws.Cells(i, TSMBAddressColumn).Value) + " "
-        str = str + CStr(ws.Cells(i, TSAddrShiftColumn).Value) + " "
-        str = str + CStr(ws.Cells(i, TSPortColumn).Value) + " "
-
-        If ws.Cells(i, TSCommentColumn).Value <> "" Then
-            str = str + "--desc " + """"
-            str = str + CStr(ws.Cells(i, TSCommentColumn).Value) + """ "
-        End If
-        
-        Print #1, str + "\"
-    End If
+      Print #1, str + "\"
+      End If
 
 Next i
+
+'**** ÇÀÏÈÑÜ ÒÀÁËÈÖÛ ÍÀÇÍÀ×ÅÍÈß ÀÄĞÅÑÎÂ ***
+
+Set ws = Worksheets("Íàçíà÷åíèå àäğåñîâ")
+'ws.Activate
+
+Print #1, "ATM_TABLE" + " \"
+
+For ATMIfaceColumn = ATMFirstColumn To 3 * ATMColumnsAmount - 1 Step 3
+  
+  ATMBusColumn = ATMIfaceColumn + 1
+  
+  str = ""
+  For ATMRow = ATMFirstRow To ATMFirstRow + ATMRowsAmount - 1
+
+'    IfaceNumber = MsgBox(ws.Cells(ATMRow, ATMIfaceColumn).Value, vbOKOnly, "xx")
+'    IfaceNumber = MsgBox(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 1, 1), vbOKOnly, "p")
+'    IfaceNumber = MsgBox(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 2, 1), vbOKOnly, "d")
+
+    If ws.Cells(ATMRow, ATMIfaceColumn).Value = "" Then
+      IfaceNumber = 0
+    Else
+      IfaceNumber = CInt(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 2, 1))
+    End If
+    
+    res = CStr(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 1, 1)) = "P"
+    res = res And IfaceNumber > 0 And IfaceNumber < 9
+
+    If res Then
+      str = str + CStr(CInt(256 * (IfaceNumber - 1) + CByte(ws.Cells(ATMRow, ATMBusColumn).Value))) + " "
+    Else
+      str = str + "0 "
+    End If
+  
+  Next ATMRow
+
+Print #1, str + "\"
+
+Next ATMIfaceColumn
 
 '**** ÂÛÏÎËÍÅÍÎ, ÇÀÊĞÛÂÀÅÌ ÔÀÉË
 
 Print #1, "&"
 Close #1
 
-Set ws = Worksheets("Øëşç")
-ws.Activate
+'Set ws = Worksheets("Øëşç")
+'ws.Activate
 
 End Sub
 
-' ÍÀÁÎĞ ÔÓÍÊÖÈÉ ÄËß ÏĞÎÂÅĞÊÈ ÊÎĞĞÅÊÒÍÎÑÒÈ ÒÅÊÓÙÅÉ ÊÎÍÔÈÃÓĞÀÖÈÈ ØËŞÇÀ
+' ÍÀÁÎĞ ÔÓÍÊÖÈÉ ÄËß ÏĞÎÂÅĞÊÈ ÊÎĞĞÅÊÒÍÎÑÒÈ ÊÎÍÔÈÃÓĞÀÖÈÈ
 
 Public Sub CheckSH()
   

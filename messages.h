@@ -77,6 +77,7 @@
 #define EVENT_SRC_P6					0x05
 #define EVENT_SRC_P7					0x06
 #define EVENT_SRC_P8					0x07
+
 #define EVENT_SRC_SYSTEM			0x08
 #define EVENT_SRC_GATE502			0x09
 #define EVENT_SRC_MOXAMB			0x0A

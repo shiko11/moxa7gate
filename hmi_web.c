@@ -153,7 +153,7 @@ int refresh_shm(void *arg)
 					/// количество успешно выполняемых запросов из таблицы QUERY_TABLE для этого порта (00-99%)
 				  stat1=stat2=0;
 				  for(j=0; j<MAX_QUERY_ENTRIES; j++)
-						if(	(query_table[j].port==i) 		&&
+						if(	(query_table[j].iface==i) 		&&
 								(query_table[j].length!=0) 	&&
 								(query_table[j].mbf!=0)			&&
 								(query_table[j].device!=0)	) {
@@ -240,11 +240,11 @@ int refresh_shm(void *arg)
 	app_log_current_entry=app_log_current_entry;
 	app_log_entries_total=app_log_entries_total;
 
-	strcpy(t_security->object, Security.object);
-	strcpy(t_security->location, Security.location);
-	strcpy(t_security->version, Security.version);
-	strcpy(t_security->networkName, Security.networkName);
-	t_security->IPAddress=Security.IPAddress;
+	strcpy(t_security->Object, Security.Object);
+	strcpy(t_security->Location, Security.Location);
+	strcpy(t_security->VersionNumber, Security.VersionNumber);
+	strcpy(t_security->NetworkName, Security.NetworkName);
+	t_security->NetworkAddress=Security.NetworkAddress;
 	t_security->start_time=Security.start_time;
 
 	t_security->start_time=Security.start_time;
@@ -299,7 +299,7 @@ int refresh_shm(void *arg)
 	for(i=0; i<MAX_VIRTUAL_SLAVES; i++) {
 		t_rtm[i].start=vslave[i].start;
 		t_rtm[i].length=vslave[i].length;
-		t_rtm[i].port=vslave[i].port;
+		t_rtm[i].iface=vslave[i].iface;
 		t_rtm[i].device=vslave[i].device;
 		t_rtm[i].modbus_table=vslave[i].modbus_table;
 		t_rtm[i].offset=vslave[i].offset;
@@ -310,7 +310,7 @@ int refresh_shm(void *arg)
 		t_proxy[i].start=query_table[i].start;
 		t_proxy[i].length=query_table[i].length;
 		t_proxy[i].offset=query_table[i].offset;
-		t_proxy[i].port=query_table[i].port;
+		t_proxy[i].iface=query_table[i].iface;
 		t_proxy[i].device=query_table[i].device;
 		t_proxy[i].mbf=query_table[i].mbf;
 		t_proxy[i].delay=query_table[i].delay;

@@ -26,6 +26,14 @@
 //#define DEFAULT_CLIENT 0
 //#define MB_SLAVE_NOT_DEFINED			0xff
 
+#define EXPT_STAGE_QUERY_RECV_RAW    1
+#define EXPT_STAGE_QUERY_RECV        2
+#define EXPT_STAGE_QUERY_FRWD        3
+#define EXPT_STAGE_RESPONSE_RECV     4
+#define EXPT_STAGE_RESPONSE_SEND     5
+#define EXPT_STAGE_RESPONSE_RECV_RAW 6
+#define EXPT_STAGE_UNDEFINED         7
+
 ///!!! эти константы не в том модуле:
 #define MB_ADDRESS_NO_SHIFT				0
 #define MB_SCAN_RATE_INFINITE			100000
@@ -49,13 +57,15 @@ typedef struct {
 
 	time_t start_time;  // время запуска
 
-  char object[DEVICE_NAME_LENGTH];			// наименование объекта автоматизации
-  char location[DEVICE_NAME_LENGTH];		// Место установки устройства MOXA UC-7410
-  char version[DEVICE_NAME_LENGTH];			// Версия конфигурационного файла
-  char confTime[DEVICE_NAME_LENGTH];		// Время создания конфигурационного файла
-  char networkName[DEVICE_NAME_LENGTH];	// Сетевое имя устройства
-  char Model[DEVICE_NAME_LENGTH];       // Модель устройства
-  unsigned int IPAddress;								// сетевой адрес
+  char Object[DEVICE_NAME_LENGTH];        // наименование объекта автоматизации
+  char Location[DEVICE_NAME_LENGTH];      // Место установки устройства MOXA UC-7410
+  char Label[DEVICE_NAME_LENGTH];         //Обозначение по спецификации
+  char NetworkName[DEVICE_NAME_LENGTH];   // Сетевое имя устройства
+  unsigned int LAN1Address;               // сетевой адрес основной
+  unsigned int LAN2Address;               // сетевой адрес резервный
+  char VersionNumber[DEVICE_NAME_LENGTH]; // Версия конфигурационного файла
+  char VersionTime[DEVICE_NAME_LENGTH];   // Время создания конфигурационного файла
+  char Model[DEVICE_NAME_LENGTH];         // Модель устройства
 
   // Блок переменных SNMP, RFC1213-MIB
 //  char sysDescr[64];     //.0	Uninitialized
@@ -66,10 +76,10 @@ typedef struct {
 //  char sysLocation[64];  //.0	Uninitialized
 //    char sysServices[64];//.0	72
 
-  unsigned char show_data_flow;		// Показывать пакеты данных в сессии Telnet
-  unsigned char show_sys_messages;	///!!! Выводить системные сообщения в общий журнал
-  unsigned char watchdog_timer;		// Использовать Watchdog-таймер
-  unsigned char use_buzzer;				// Испльзовать зуммер для сигнализации ошибок
+  unsigned char show_data_flow;     // Показывать пакеты данных в сессии Telnet
+  unsigned char show_sys_messages;	// Выводить в журнал отладочные сообщения
+  unsigned char watchdog_timer;     // Использовать Watchdog-таймер
+  unsigned char use_buzzer;         // Испльзовать зуммер для сигнализации
 
  	unsigned char halt; // флаг принудительного останова программы по команде
 
@@ -110,7 +120,7 @@ typedef struct { // параметры клиентского устройства
 	} GW_Client;
 
 typedef struct {
-
+  ///!!! Необходимо разделять этапы при обработке исключений на до и после проверки на целостность пакета
 	unsigned char stage; // Стадия прохождения запроса
 
   // Действие - это специальный алгоритм,\
@@ -124,6 +134,7 @@ typedef struct {
   unsigned int prm3;
   unsigned int prm4;
 
+	char comment[DEVICE_NAME_LENGTH]; // комментарий
   } GW_Exception;
 
 ///=== CLIENTS_H public variables

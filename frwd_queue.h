@@ -23,6 +23,10 @@
 #define MOXA_DIAPASON_OUTSIDE			2
 #define MOXA_DIAPASON_OVERLAPPED	3
 
+#define QT_ACCESS_READONLY  1
+#define QT_ACCESS_READWRITE 2
+#define QT_ACCESS_DISABLED  3
+
 #define MAX_VIRTUAL_SLAVES 128
 #define MAX_QUERY_ENTRIES 128
 
@@ -45,29 +49,30 @@ typedef struct { // очередь на семафорах
 typedef struct {			// блок регистров внутреннего адресного пространства шлюза
 	unsigned short start;			// начальный регистр диапазона адресного пространства шлюза
 	unsigned short length;		// количество регистров дипазона адресного пространства шлюза
-	unsigned port;			//!!! iface последовательный порт шлюза для перенаправления запроса
+	unsigned char iface;			// последовательный порт шлюза для перенаправления запроса
 	unsigned device;		// адрес устройства в сети modbus для перенаправления запроса
 
-  unsigned modbus_table; // одна из 4-х стандартных таблиц протокола MODBUS (см. файл modbus_rtu.h)
+  unsigned char modbus_table; // одна из 4-х стандартных таблиц протокола MODBUS (см. файл modbus_rtu.h)
   unsigned short offset;  // смещение в адресном пространстве устройства modbus (чтобы читать регистры не с нуля)
 	char device_name[DEVICE_NAME_LENGTH]; // наименование устройства
   } RT_Table_Entry; // GW_RTM_Table_Entry
 
 typedef struct {			// modbus-запрос для циклического опроса ведомого устройства в режиме PROXY
+	unsigned char iface;		// интерфейс шлюза для опроса ведомого устройства
+	unsigned char device;		// адрес ведомого устройства в сети modbus
+  unsigned char mbf; 			// одна из стандартных функций протокола MODBUS (см. файл modbus_rtu.h)
+  unsigned char access;  // режим доступа к блоку данных: только чтение, чтение/запись, отключено
+
 	unsigned short  start;			// начальный регистр диапазона адресного пространства ведомого устройства
 	unsigned short length;		// количество регистров в диапазоне адресов ведомого устройства
   unsigned short offset;  // номер регистра (смещение) в адресном пространстве шлюза, с которого запивывать полученные данные
-	unsigned port;			// последовательный порт шлюза для опроса ведомого устройства
-	unsigned char device;		// адрес ведомого устройства в сети modbus
 
-  unsigned mbf; 			// одна из стандартных функций протокола MODBUS (см. файл modbus_rtu.h)
   unsigned delay;  // задержка перед отправкой запроса при работе в режиме PROXY в милисекундах
 	unsigned critical;			// количество ошибок до изменения бита статуса связи
+	char device_name[DEVICE_NAME_LENGTH]; // наименование устройства
+
   unsigned err_counter;  // счетчик текущего количества ошибок
   unsigned status_bit;  // бит статуса связи (первый в переменной)
-
-  unsigned char access;  // режим доступа к блоку данных: только чтение, чтение/запись, отключено
-	char device_name[DEVICE_NAME_LENGTH]; // наименование устройства
   } Query_Table_Entry; // GW_Query_Table_Entry
 
 ///=== FRWD_QUEUE_H public variables

@@ -92,7 +92,7 @@ void *iface_tcp_master(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
 		clear_stat(&tmpstat);
 
 	if(i!=MAX_QUERY_ENTRIES) {//формируем следующий запрос из таблицы опроса
-		if(query_table[i].port!=MAX_MOXA_PORTS*2+client_id) continue; ///!!! нужно реализовать массив с индексами
+		if(query_table[i].iface!=MAX_MOXA_PORTS*2+client_id) continue; ///!!! нужно реализовать массив с индексами
     if(
 			(query_table[i].length==0) ||
 			(query_table[i].mbf==0) ||

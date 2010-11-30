@@ -29,7 +29,247 @@ int translateAddress(u8 unit_id, int *port_id, int *device_id);
 int translateRegisters(int start_address, int length, int *port_id, int *device_id);
 int translateProxyDevice(int start_address, int length, int *port_id, int *device_id);
 
-///-----------------------------------------------------------------------------------------------------------------
+///-----------------------------------------------------------------------------
+int init_AddressMap_Entry(int index)
+  {
+  /// таблица назначения адресов
+  AddressMap[index].iface=GATEWAY_NONE;
+  AddressMap[index].address=MODBUS_ADDRESS_BROADCAST;
+
+  return 0;
+  }
+
+int check_AddressMap_Entry(int index)
+  {
+
+  if( ((AddressMap[index].iface > GATEWAY_P8) && (AddressMap[index].iface < GATEWAY_T01)) ||
+      (AddressMap[index].iface > GATEWAY_T32)
+    ) return ATM_CONF_IFACE;
+
+  if(  (AddressMap[index].address < MODBUS_ADDRESS_MIN) ||
+       (AddressMap[index].address > MODBUS_ADDRESS_MAX)
+    ) return ATM_CONF_MBADDR;
+
+ 	return COMMAND_LINE_OK;
+  }
+
+///-----------------------------------------------------------------------------
+int init_Vslave_Entry(int index)
+  {
+  /// таблица назначения регистров
+	vslave[index].iface=GATEWAY_NONE;
+	vslave[index].device=MODBUS_ADDRESS_BROADCAST;
+  vslave[index].modbus_table=MB_TABLE_NONE;
+  vslave[index].offset=0;
+
+	vslave[index].start=0;
+	vslave[index].length=0;
+
+	vslave[index].device_name[0]=0;
+
+  return 0;
+  }
+
+int check_Vslave_Entry(int index)
+  {
+
+  if( ((vslave[index].iface > GATEWAY_P8) && (vslave[index].iface < GATEWAY_T01)) ||
+      (vslave[index].iface > GATEWAY_T32)
+    ) return VSLAVE_CONF_IFACE;
+	
+  if(  (vslave[index].device < MODBUS_ADDRESS_MIN) ||
+       (vslave[index].device > MODBUS_ADDRESS_MAX)
+    ) return VSLAVE_CONF_MBADDR;
+
+	if(!(
+			vslave[index].modbus_table==COIL_STATUS_TABLE      ||
+			vslave[index].modbus_table==INPUT_STATUS_TABLE     ||
+			vslave[index].modbus_table==HOLDING_REGISTER_TABLE ||
+			vslave[index].modbus_table==INPUT_REGISTER_TABLE   ||
+		)) return VSLAVE_CONF_MBTABL;
+
+  // параметры, задающие адресуемый диапазон, проверяем в комплексе
+
+  // начальный регистр диапазона	
+  if( unsigned int(vslave[index].offset + vslave[index].start) > MB_ADDRESS_LAST) return VSLAVE_CONF_BEGDIAP;
+
+  // конечный регистр диапазона	
+  if( unsigned int( \
+    vslave[index].offset + \
+    vslave[index].start + \
+    vslave[index].length) > MB_ADDRESS_LAST) return VSLAVE_CONF_ENDDIAP;
+
+  if(vslave[index].length==0) return VSLAVE_CONF_LENDIAP;
+	
+  /// Наименование устройства
+  // vslave[index].device_name
+
+ 	return COMMAND_LINE_OK;
+  }
+
+///-----------------------------------------------------------------------------
+int init_ProxyQuery_Entry(int index)
+  {
+  /// таблица опроса
+	query_table[index].iface=GATEWAY_NONE;
+	query_table[index].device=MODBUS_ADDRESS_BROADCAST;
+  query_table[index].mbf=MB_FUNC_NONE;
+  query_table[index].access=QT_ACCESS_DISABLED;
+
+	query_table[index].start=0;
+	query_table[index].length=0;
+  query_table[index].offset=0;
+
+  query_table[index].delay=0;
+	query_table[index].critical=0;
+	query_table[index].device_name[0]=0;
+
+  query_table[index].err_counter=0;
+  query_table[index].status_bit=0;
+
+  return 0;
+  }
+
+int check_ProxyQuery_Entry(int index)
+  {
+
+  if( ((query_table[index].iface > GATEWAY_P8) && (query_table[index].iface < GATEWAY_T01)) ||
+      (query_table[index].iface > GATEWAY_T32)
+    ) return PQUERY_CONF_IFACE;
+	
+  if(  (query_table[index].device < MODBUS_ADDRESS_MIN) ||
+       (query_table[index].device > MODBUS_ADDRESS_MAX)
+    ) return PQUERY_CONF_MBADDR;
+
+	if(!(
+			query_table[index].mbf==MBF_READ_COILS             ||
+			query_table[index].mbf==MBF_READ_DECRETE_INPUTS    ||
+			query_table[index].mbf==MBF_READ_HOLDING_REGISTERS ||
+			query_table[index].mbf==MBF_READ_INPUT_REGISTERS   ||
+		)) return PQUERY_CONF_MBTABL;
+
+	if(!(
+			query_table[index].access==QT_ACCESS_READWRITE ||
+			query_table[index].access==QT_ACCESS_READONLY  ||
+			query_table[index].access==QT_ACCESS_DISABLED  ||
+		)) return PQUERY_CONF_ACCESS;
+
+  // начальный регистр области чтения
+  // конечный регистр области чтения
+  if( unsigned int (query_table[index].start + query_table[index].length -1) > MB_ADDRESS_LAST)
+    return PQUERY_CONF_ENDREGREAD;
+
+  // длина пакета данных
+  if( (query_table[index].mbf==MBF_READ_COILS) && (
+      (query_table[index].length < MBF_0x01_MIN_QUANTITY) ||
+      (query_table[index].length > MBF_0x01_MAX_QUANTITY)
+      )) return PQUERY_CONF_LENPACKET;
+  if( (query_table[index].mbf==MBF_READ_DECRETE_INPUTS) && (
+      (query_table[index].length < MBF_0x02_MIN_QUANTITY) ||
+      (query_table[index].length > MBF_0x02_MAX_QUANTITY)
+      )) return PQUERY_CONF_LENPACKET;
+  if( (query_table[index].mbf==MBF_READ_HOLDING_REGISTERS) && (
+      (query_table[index].length < MBF_0x03_MIN_QUANTITY) ||
+      (query_table[index].length > MBF_0x03_MAX_QUANTITY)
+      )) return PQUERY_CONF_LENPACKET;
+  if( (query_table[index].mbf==MBF_READ_INPUT_REGISTERS) && (
+      (query_table[index].length < MBF_0x04_MIN_QUANTITY) ||
+      (query_table[index].length > MBF_0x04_MAX_QUANTITY)
+      )) return PQUERY_CONF_LENPACKET;
+
+  // начальный регистр области записи
+  // конечный регистр области записи
+  if( unsigned int (query_table[index].offset + query_table[index].length) > MB_ADDRESS_LAST)
+    return PQUERY_CONF_ENDREGWRITE;
+
+  if( (((query_table[index].iface & IFACETCP_MASK)==0) && (query_table[index].delay < QT_DELAY_RTU_MIN)) ||
+      (((query_table[index].iface & IFACETCP_MASK)!=0) && (query_table[index].delay < QT_DELAY_TCP_MIN))
+    ) return PQUERY_CONF_DELAYMIN;
+  if( (((query_table[index].iface & IFACETCP_MASK)==0) && (query_table[index].delay > QT_DELAY_RTU_MAX)) ||
+      (((query_table[index].iface & IFACETCP_MASK)!=0) && (query_table[index].delay > QT_DELAY_TCP_MAX))
+    ) return PQUERY_CONF_DELAYMAX;
+
+  if(query_table[index].critical > QT_CRITICAL_MAX) return PQUERY_CONF_ERRCNTR;
+	
+  /// Наименование устройства
+  // query_table[i].device_name
+
+ 	return COMMAND_LINE_OK;
+  }
+
+///-----------------------------------------------------------------------------
+int init_Exception(int index)
+  {
+  /// таблица исключений
+	Exception[index].stage=EXPT_STAGE_UNDEFINED;
+	Exception[index].action=EXPT_ACT_NONE;
+
+  Exception[index].prm1=0xffffffff;
+  Exception[index].prm2=0xffffffff;
+  Exception[index].prm3=0xffffffff;
+  Exception[index].prm4=0xffffffff;
+
+	Exception[index].comment[0]=0;
+
+  return 0;
+  }
+
+int check_Exception(int index)
+  {
+
+	if(!( // этап прохождения запроса
+			Exception[index].stage==EXPT_STAGE_QUERY_RECV_RAW ||
+			Exception[index].stage==EXPT_STAGE_QUERY_RECV ||
+			Exception[index].stage==EXPT_STAGE_QUERY_FRWD ||
+			Exception[index].stage==EXPT_STAGE_RESPONSE_RECV_RAW ||
+			Exception[index].stage==EXPT_STAGE_RESPONSE_RECV ||
+			Exception[index].stage==EXPT_STAGE_RESPONSE_SEND
+		)) return EXPT_CONF_STAGE;
+
+	if(!( // действие
+			Exception[index].action==EXPT_ACT_SKS07_DIOGEN
+		)) return EXPT_CONF_ACTION;
+
+  // проверяем набор параметров по каждому из определенных действий
+
+	if(Exception[index].action==EXPT_ACT_SKS07_DIOGEN) {
+    if( ((Exception[i].prm1 > GATEWAY_P8) && (Exception[i].prm1 < GATEWAY_T01)) ||
+        (Exception[i].prm1 > GATEWAY_T32)
+      ) return EXPT_CONF_PRM1;
+	
+    if(  (Exception[i].prm2 < MODBUS_ADDRESS_MIN) ||
+         (Exception[i].prm2 > MODBUS_ADDRESS_MAX)
+      ) return EXPT_CONF_PRM2;
+    }
+	
+  // Exception[i].prm1
+  // Exception[i].prm2
+  // Exception[i].prm3
+  // Exception[i].prm4																		
+
+  /// Комментарий
+  // Exception[i].comment
+
+ 	return COMMAND_LINE_OK;
+  }
+
+///-----------------------------------------------------------------------------
+int init_frwd_queue_h()
+  {
+  unsigned int i;			
+
+	// memset(vslave,0,sizeof(vslave));
+	// memset(query_table,0,sizeof(query_table));
+
+  for(i=0; i<=MODBUS_ADDRESS_MAX; i++)        init_AddressMap_Entry(i);
+  for(i=0; i<MAX_VIRTUAL_SLAVES; i++)         init_Vslave_Entry(i);
+  for(i=0; i<MAX_QUERY_ENTRIES; i++)          init_ProxyQuery_Entry(i);
+  for(i=0; i<MOXAGATE_EXCEPTIONS_NUMBER; i++) init_Exception(i);
+
+  return 0;
+  }
+
+///-----------------------------------------------------------------------------
 int init_queue()
 	{
 
@@ -243,4 +483,9 @@ int translateProxyDevice(int start_address, int length, int *port_id, int *devic
 	
   return 0;
   }
-///-----------------------------------------------------------------------------------------------------------------
+
+///-----------------------------------------------------------------------------
+///-----------------------------------------------------------------------------
+///-----------------------------------------------------------------------------
+///-----------------------------------------------------------------------------
+///-----------------------------------------------------------------------------

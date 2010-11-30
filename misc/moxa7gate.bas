@@ -295,29 +295,97 @@ res = (ws.Cells(i, LANTCPIPColumn).Value <> "")
 
 Next i
 
+'**** «¿œ»—‹ “¿¡À»÷€ Õ¿«Õ¿◊≈Õ»ﬂ ¿ƒ–≈—Œ¬ ***
+
+Set ws = Worksheets("Õ‡ÁÌ‡˜ÂÌËÂ ‡‰ÂÒÓ‚")
+'ws.Activate
+
+For ATMIfaceColumn = ATMFirstColumn To 3 * ATMColumnsAmount - 1 Step 3
+  
+  ATMBusColumn = ATMIfaceColumn + 1
+    
+  ' œÓ‚ÂˇÂÏ Ó˜ÂÂ‰ÌÓÈ ÒÚÓÎ·Âˆ Ì‡ Ì‡ÎË˜ËÂ ÌÂÔÛÒÚ˚ı ÒÚÓÍ
+  GoodColumn = False
+  For ATMRow = ATMFirstRow To ATMFirstRow + ATMRowsAmount - 1
+    If ws.Cells(ATMRow, ATMIfaceColumn).Value = "" Then
+      IfaceNumber = 0
+    Else
+      IfaceNumber = CInt(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 2, 1))
+    End If
+    
+    If CStr(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 1, 1)) = "P" And IfaceNumber > 0 And IfaceNumber < 9 Then
+      GoodColumn = True
+    End If
+  Next ATMRow
+
+  If GoodColumn Then
+    str = "AT" + CStr(CInt(ATMIfaceColumn \ 3 + 1)) + " "
+    For ATMRow = ATMFirstRow To ATMFirstRow + ATMRowsAmount - 1
+  
+      If ws.Cells(ATMRow, ATMIfaceColumn).Value = "" Then
+        IfaceNumber = 0
+      Else
+        IfaceNumber = CInt(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 2, 1))
+      End If
+    
+      res = CStr(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 1, 1)) = "P"
+      res = res And IfaceNumber > 0 And IfaceNumber < 9
+
+      If res Then
+        str = str + CStr(CInt(256 * (IfaceNumber - 1) + CByte(ws.Cells(ATMRow, ATMBusColumn).Value))) + " "
+      Else
+        str = str + "0 "
+      End If
+  
+    Next ATMRow
+
+  Print #1, str + "\"
+  End If
+
+Next ATMIfaceColumn
+
+'**** «¿œ»—‹ “¿¡À»÷€ ¬»–“”¿À‹Õ€’ ”—“–Œ…—“¬ ****
+
+Set ws = Worksheets("Õ‡ÁÌ‡˜ÂÌËÂ Â„ËÒÚÓ‚")
+'ws.Activate
+
+For i = 2 To 129
+    
+    res = ws.Cells(i, RTMIfaceColumn).Value <> ""
+
+    If res Then
+        str = "RT "
+
+        str = str + CStr(ws.Cells(i, RTMIfaceColumn).Value) + " "
+        str = str + CStr(ws.Cells(i, RTMMBAddressColumn).Value) + " "
+        str = str + CStr(ws.Cells(i, RTMMBTableColumn).Value) + " "
+        str = str + CStr(ws.Cells(i, RTMOffsetColumn).Value) + " "
+        str = str + CStr(ws.Cells(i, RTMStartColumn).Value) + " "
+        str = str + CStr(ws.Cells(i, RTMLengthColumn).Value) + " "
+        
+        If ws.Cells(i, RTMCommentColumn).Value <> "" Then
+            str = str + "--desc " + """"
+            str = str + CStr(ws.Cells(i, RTMCommentColumn).Value) + """ "
+        End If
+        
+        Print #1, str + "\"
+    End If
+
+Next i
+
 '**** «¿œ»—‹ “¿¡À»÷€ Œœ–Œ—¿ ****
 
 Set ws = Worksheets("“‡·ÎËˆ‡ ÓÔÓÒ‡")
 'ws.Activate
 
-j = 0
-For i = 2 To 129
-    If ws.Cells(i, PTIfaceColumn).Value <> "" Then
-        j = j + 1
-    End If
-Next i
-
-If j <> 0 Then
-  Print #1, "PROXY_TABLE " + CStr(j) + " \"
-End If
-        
 For i = 2 To 129
     
     res = ws.Cells(i, PTIfaceColumn).Value <> ""
 
     If res Then
-
-        str = CStr(ws.Cells(i, PTIfaceColumn).Value) + " "
+        str = "QT "
+        
+        str = str + CStr(ws.Cells(i, PTIfaceColumn).Value) + " "
         str = str + CStr(ws.Cells(i, PTMBAddressColumn).Value) + " "
         str = str + CStr(ws.Cells(i, PTMBTableColumn).Value) + " "
         
@@ -345,79 +413,30 @@ For i = 2 To 129
 
 Next i
 
-'**** «¿œ»—‹ “¿¡À»÷€ ¬»–“”¿À‹Õ€’ ”—“–Œ…—“¬ ****
-
-Set ws = Worksheets("Õ‡ÁÌ‡˜ÂÌËÂ Â„ËÒÚÓ‚")
-'ws.Activate
-
-j = 0
-For i = 2 To 129
-    If ws.Cells(i, RTMIfaceColumn).Value <> "" Then
-        j = j + 1
-    End If
-Next i
-
-If j <> 0 Then
-  Print #1, "RTM_TABLE " + CStr(j) + " \"
-End If
-        
-For i = 2 To 129
-    
-    res = ws.Cells(i, RTMIfaceColumn).Value <> ""
-
-    If res Then
-
-        str = CStr(ws.Cells(i, RTMIfaceColumn).Value) + " "
-        str = str + CStr(ws.Cells(i, RTMMBAddressColumn).Value) + " "
-        str = str + CStr(ws.Cells(i, RTMMBTableColumn).Value) + " "
-        str = str + CStr(ws.Cells(i, RTMOffsetColumn).Value) + " "
-        str = str + CStr(ws.Cells(i, RTMStartColumn).Value) + " "
-        str = str + CStr(ws.Cells(i, RTMLengthColumn).Value) + " "
-        
-        If ws.Cells(i, RTMCommentColumn).Value <> "" Then
-            str = str + "--desc " + """"
-            str = str + CStr(ws.Cells(i, RTMCommentColumn).Value) + """ "
-        End If
-        
-        Print #1, str + "\"
-    End If
-
-Next i
-
 '**** «¿œ»—‹ “¿¡À»÷€ »— Àﬁ◊≈Õ»… ****
 
 Set ws = Worksheets("»ÒÍÎ˛˜ÂÌËˇ")
 'ws.Activate
 
-j = 0
-For i = 2 To 33
-    If ws.Cells(i, EXCPStageColumn).Value <> "" Then
-        j = j + 1
-    End If
-Next i
-
-If j <> 0 Then
-  Print #1, "EXCEPTIONS " + CStr(j) + " \"
-End If
-        
 For i = 2 To 33
 
     res = ws.Cells(i, EXCPStageColumn).Value <> ""
 
     If res Then
+      str = "EXPT "
 
       If CStr(ws.Cells(i, EXCPStageColumn).Value) = "«¿œ–Œ— œŒÀ”◊≈Õ RAW" Then
-      str = "QUERY_RECV_RAW "
+      str = str + "QUERY_RECV_RAW "
       ElseIf CStr(ws.Cells(i, EXCPStageColumn).Value) = "«¿œ–Œ— œŒÀ”◊≈Õ" Then
-      str = "QUERY_RECV "
+      str = str + "QUERY_RECV "
       ElseIf CStr(ws.Cells(i, EXCPStageColumn).Value) = "œ≈–≈Õ¿œ–¿¬À≈Õ»≈" Then
-      str = "QUERY_FRWD "
+      str = str + "QUERY_FRWD "
       ElseIf CStr(ws.Cells(i, EXCPStageColumn).Value) = "Œ“¬≈“ œŒÀ”◊≈Õ" Then
-      str = "RESPONSE_RECV "
+      str = str + "RESPONSE_RECV "
       ElseIf CStr(ws.Cells(i, EXCPStageColumn).Value) = "Œ“œ–¿¬ ¿ Œ“¬≈“¿" Then
-      str = "RESPONSE_SEND "
+      str = str + "RESPONSE_SEND "
       Else ' Œ“¬≈“ œŒÀ”◊≈Õ RAW
-      str = "RESPONSE_RECV_RAW "
+      str = str + "RESPONSE_RECV_RAW "
       End If
       
       str = str + CStr(ws.Cells(i, EXCPActionColumn).Value) + " "
@@ -435,45 +454,6 @@ For i = 2 To 33
       End If
 
 Next i
-
-'**** «¿œ»—‹ “¿¡À»÷€ Õ¿«Õ¿◊≈Õ»ﬂ ¿ƒ–≈—Œ¬ ***
-
-Set ws = Worksheets("Õ‡ÁÌ‡˜ÂÌËÂ ‡‰ÂÒÓ‚")
-'ws.Activate
-
-Print #1, "ATM_TABLE" + " \"
-
-For ATMIfaceColumn = ATMFirstColumn To 3 * ATMColumnsAmount - 1 Step 3
-  
-  ATMBusColumn = ATMIfaceColumn + 1
-  
-  str = ""
-  For ATMRow = ATMFirstRow To ATMFirstRow + ATMRowsAmount - 1
-
-'    IfaceNumber = MsgBox(ws.Cells(ATMRow, ATMIfaceColumn).Value, vbOKOnly, "xx")
-'    IfaceNumber = MsgBox(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 1, 1), vbOKOnly, "p")
-'    IfaceNumber = MsgBox(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 2, 1), vbOKOnly, "d")
-
-    If ws.Cells(ATMRow, ATMIfaceColumn).Value = "" Then
-      IfaceNumber = 0
-    Else
-      IfaceNumber = CInt(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 2, 1))
-    End If
-    
-    res = CStr(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 1, 1)) = "P"
-    res = res And IfaceNumber > 0 And IfaceNumber < 9
-
-    If res Then
-      str = str + CStr(CInt(256 * (IfaceNumber - 1) + CByte(ws.Cells(ATMRow, ATMBusColumn).Value))) + " "
-    Else
-      str = str + "0 "
-    End If
-  
-  Next ATMRow
-
-Print #1, str + "\"
-
-Next ATMIfaceColumn
 
 '**** ¬€œŒÀÕ≈ÕŒ, «¿ –€¬¿≈Ã ‘¿…À
 

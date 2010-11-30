@@ -19,24 +19,18 @@
 
 #define MAX_TCP_CLIENTS_PER_PORT 4
 #define MOXAGATE_CLIENTS_NUMBER 32
-#define MOXAGATE_EXCEPTIONS_NUMBER 32
 
 #define MAX_CLIENT_ACTIVITY_TIMEOUT 30
 
 //#define DEFAULT_CLIENT 0
 //#define MB_SLAVE_NOT_DEFINED			0xff
 
-#define EXPT_STAGE_QUERY_RECV_RAW    1
-#define EXPT_STAGE_QUERY_RECV        2
-#define EXPT_STAGE_QUERY_FRWD        3
-#define EXPT_STAGE_RESPONSE_RECV     4
-#define EXPT_STAGE_RESPONSE_SEND     5
-#define EXPT_STAGE_RESPONSE_RECV_RAW 6
-#define EXPT_STAGE_UNDEFINED         7
-
 ///!!! эти константы не в том модуле:
 #define MB_ADDRESS_NO_SHIFT				0
 #define MB_SCAN_RATE_INFINITE			100000
+
+#define TCP_PORT_MIN 1
+#define TCP_PORT_MAX 0xFFFF
 
 /*--- Всего возможны 4 различных типа клиентов шлюза:
 	1. Клиент на стороне TCP, подключенный к порту GATEWAY_SIMPLE;
@@ -55,7 +49,7 @@
 // параметры, предназначенные для контроля и управления шлюзом
 typedef struct {
 
-	time_t start_time;  // время запуска
+	time_t start_time;  // время запуска шлюза
 
   char Object[DEVICE_NAME_LENGTH];        // наименование объекта автоматизации
   char Location[DEVICE_NAME_LENGTH];      // Место установки устройства MOXA UC-7410
@@ -66,15 +60,6 @@ typedef struct {
   char VersionNumber[DEVICE_NAME_LENGTH]; // Версия конфигурационного файла
   char VersionTime[DEVICE_NAME_LENGTH];   // Время создания конфигурационного файла
   char Model[DEVICE_NAME_LENGTH];         // Модель устройства
-
-  // Блок переменных SNMP, RFC1213-MIB
-//  char sysDescr[64];     //.0	Uninitialized
-//  char sysObjectID[64];  //.0	liebertGlobalProducts
-//  char sysUpTime[64];    //.0	56 minutes, 25 seconds
-//    char sysContact[64]; //.0	Uninitialized
-//  char sysName[256];     //.0	nb214_ibp1_liebert_bottom
-//  char sysLocation[64];  //.0	Uninitialized
-//    char sysServices[64];//.0	72
 
   unsigned char show_data_flow;     // Показывать пакеты данных в сессии Telnet
   unsigned char show_sys_messages;	// Выводить в журнал отладочные сообщения
@@ -119,24 +104,6 @@ typedef struct { // параметры клиентского устройства
 
 	} GW_Client;
 
-typedef struct {
-  ///!!! Необходимо разделять этапы при обработке исключений на до и после проверки на целостность пакета
-	unsigned char stage; // Стадия прохождения запроса
-
-  // Действие - это специальный алгоритм,\
-     предназначенный для обработки очень специфичной ситуации.
-	unsigned char action;
-
-  // Параметр - это данные в любом формате, приводимые в итоге к
-  // 32-разрядному числу при генерации конфигурации.
-  unsigned int prm1;
-  unsigned int prm2;
-  unsigned int prm3;
-  unsigned int prm4;
-
-	char comment[DEVICE_NAME_LENGTH]; // комментарий
-  } GW_Exception;
-
 ///=== CLIENTS_H public variables
 
 	// переменная для контроля состояния объекта программы (модуля, механизма, потока)
@@ -144,15 +111,12 @@ typedef struct {
 
   GW_Security Security;
 	GW_Client	Client[MOXAGATE_CLIENTS_NUMBER];
-  GW_Exception Exception[MOXAGATE_EXCEPTIONS_NUMBER];
-
-  // obsolete
-  // исключение для СКС-07, параметр - битовый массив номеров последовательных портов, к которым подключены диогены
-  unsigned int exceptions; // obsolete // массив из 16 флагов
-  unsigned int except_prm[16]; // obsolete // параметр исключения
 
 ///=== CLIENTS_H public functions
+
   int init_clients();     // условно конструктор
+  int check_Security();
+
   int init_main_socket();
   int close_clients();    // условно деструктор
 	int clear_client(int client);
@@ -184,4 +148,14 @@ RFC1213-MIB	sysUpTime.0	56 minutes, 25 seconds
 	RFC1213-MIB	sysName.0	nb214_ibp1_liebert_bottom
 	RFC1213-MIB	sysLocation.0	Uninitialized
 RFC1213-MIB	sysServices.0	72
+
+  // Блок переменных SNMP, RFC1213-MIB
+  char sysDescr[64];     //.0	Uninitialized
+  char sysObjectID[64];  //.0	liebertGlobalProducts
+  char sysUpTime[64];    //.0	56 minutes, 25 seconds
+    char sysContact[64]; //.0	Uninitialized
+  char sysName[256];     //.0	nb214_ibp1_liebert_bottom
+  char sysLocation[64];  //.0	Uninitialized
+    char sysServices[64];//.0	72
+
 *******************************************************************************/

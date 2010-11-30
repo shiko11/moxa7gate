@@ -93,21 +93,16 @@
 
 /* Коды функций */
 
+#define MB_TABLE_NONE 0
 #define COIL_STATUS_TABLE				1
-#define MIN_STARTING_ADDRESS_1X	0x0000
-#define MAX_STARTING_ADDRESS_1X	0xffff
-
 #define INPUT_STATUS_TABLE			2
-#define MIN_STARTING_ADDRESS_2X	0x0000
-#define MAX_STARTING_ADDRESS_2X	0xffff
-
 #define INPUT_REGISTER_TABLE		3
-#define MIN_STARTING_ADDRESS_3X	0x0000
-#define MAX_STARTING_ADDRESS_3X	0xffff
-
 #define HOLDING_REGISTER_TABLE	4
-#define MIN_STARTING_ADDRESS_4X	0x0000
-#define MAX_STARTING_ADDRESS_4X	0xffff
+
+#define MB_ADDRESS_FIRST 0x0000
+#define MB_ADDRESS_LAST  0xffff
+
+#define MB_FUNC_NONE 0x00
 
 #define MBF_READ_COILS                                 0x01
 #define MBF_0x01_MIN_QUANTITY							0x0001
@@ -157,9 +152,9 @@
 #define MBF_HAS_EXCEPTION                              0x80
 #define MBF_MASK                                       0x7F ///< mask function code
 
+#define MODBUS_ADDRESS_BROADCAST	0
 #define MODBUS_ADDRESS_MIN				1
 #define MODBUS_ADDRESS_MAX				247
-#define MODBUS_ADDRESS_BROADCAST	0
 
 //*** TCP Recv ERR
 #define	TCP_COM_ERR_NULL					-1

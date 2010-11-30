@@ -27,7 +27,7 @@ typedef struct {
 	time_t start_time;  // врем€ запуска
   unsigned char modbus_address; // собственный Modbus-адрес шлюза дл€ диагностики и управлени€ средствами HMI систем
   ///!!! реализовать блок данных диагностики отдельным массивом пам€ти, не св€занным с указателем wData4x
-  unsigned status_info; // стартовый адрес блока собственных регистров шлюза (по умолчанию начинаетс€ с первого)
+  unsigned short status_info; // стартовый адрес блока собственных регистров шлюза (по умолчанию начинаетс€ с первого)
 
 	GW_Queue queue;
   GW_StaticData stat;
@@ -37,14 +37,14 @@ typedef struct {
   // мьютекс используетс€ дл€ синхронизации потоков при работе с пам€тью
   pthread_mutex_t moxa_mutex;
 	// начало блока внутренних регистров Moxa (смещение)
-	unsigned offset1xStatus, offset2xStatus, offset3xRegisters, offset4xRegisters;
+	unsigned short offset1xStatus, offset2xStatus, offset3xRegisters, offset4xRegisters;
 	// количество элементов в каждой из таблиц MODBUS
-	unsigned amount1xStatus, amount2xStatus, amount3xRegisters, amount4xRegisters;
+	unsigned short amount1xStatus, amount2xStatus, amount3xRegisters, amount4xRegisters;
 	// указатели на массивы пам€ти
-	u8	*wData1x; //массив виртуальных 1x регистров MOXA (coil status)
-	u8	*wData2x; //массив виртуальных 2x регистров MOXA (input status)
-	u16	*wData3x; //массив виртуальных 3x регистров MOXA (input register)
-	u16	*wData4x; //массив виртуальных 4x регистров MOXA (holding register)
+	unsigned char *wData1x; //массив виртуальных 1x регистров MOXA (coil status)
+	unsigned char *wData2x; //массив виртуальных 2x регистров MOXA (input status)
+	unsigned short *wData3x; //массив виртуальных 3x регистров MOXA (input register)
+	unsigned short *wData4x; //массив виртуальных 4x регистров MOXA (holding register)
 	
 	} GW_MoxaDevice;
 
@@ -53,6 +53,8 @@ typedef struct {
   GW_MoxaDevice MoxaDevice; // данные и параметры устройства MOXAGATE
 
 ///=== MOXAGATE_H public functions
+
+int init_moxagate_h();
 
 void *moxa_device(void *arg); /// ѕотокова€ функци€ обработки запросов к MOXA
 

@@ -13,48 +13,34 @@
 
 ///=== CLI_H private variables
 
+int qt_current=0;
+int rt_current=0;
+int expt_current=0;
+
+int argc_counter=0;
+
 ///=== CLI_H private functions
 
-void help_print(void);    /* вывод справки */
-void version_print(void); /* вывод информации о программе */
+void help_print(void);    /* вывод информации о программе */
 
 int parse_Security();
-int parse_IfaceRTU();
-int parse_IfaceTCP();
-int parse_QT();
-int parse_RT();
+int parse_IfacesRTU();
+int parse_IfacesTCP();
+int parse_AddressMap();
+int parse_Vslaves();
+int parse_ProxyQueries();
 int parse_Exceptions();
-int parse_AT();
 
 ///----------------------------------------------------------------------------
-void help_print (void) /* вывод справки */
+void help_print (void) /* вывод информации о программе */
 {
 printf("%s\n", "\
 Usage: moxa7gate [OPTIONS] [PORTx mode speed parity timeout GATEWAY tcp_port]...\n\n\
 Opens serial port(s) for transfer Modbus messages to communicate with modbus-enabled devices.\n\n\
-OPTIONS:\n\n\
---help               - display this help and exit\n\
---version            - output version information and exit\n\
---show_data_flow     - prints Modbus requests and responses\n\
---show_sys_messages  - prints messages for debug purposes\n\
---single_gateway_port_502	- use only 502 tcp port\n\n\
-PORT sections:\n\n\
-x        - serial port number 1..8\n\
-mode     - port mode (RS-232, RS-485 etc.)\n\
-speed    - baud rate\n\
-parity   - parity (none, even, odd)\n\
-timeout  - communication timeout (500000...10000000)\n\
-tcp_port - TCP port for accepting incoming\n\
-           connections from Modbus-TCP clients\n\n\
 Read the manual for details.\n\
 ");
-return;
-}
 
-///-------------------------------------------------------------------------
-void version_print (void) /* вывод информации о программе */
-{
-printf("%s\n", "\
+//printf("%s\n", "\
 MOXA7GATE R1.00\n\
 Modbus gateway\n\
      software\n\
@@ -63,56 +49,151 @@ SEM-ENGINEERING\n\
 www.semgroup.ru\n\
    Bryansk 2009\n\
 ");
-	return;
+
+return;
 }
 
 ///-------------------------------------------------------------------------
 //обработка параметров командной строки
 int get_command_line(int argc, char *argv[])
   {
-	// выводим короткую справку по умолчанию
+	// выводим информацию о программе по умолчанию
 	if( (argc==1) ||
-      ((argc==2) && (strncmp(argv[1], "/?", 2)     ==0)) ||
-      ((argc==2) && (strncmp(argv[1], "/h", 2)     ==0)) ||
-      ((argc==2) && (strncmp(argv[1], "/help", 5)  ==0)) ||
-      ((argc==2) && (strncmp(argv[1], "-?", 2)     ==0)) ||
-      ((argc==2) && (strncmp(argv[1], "-h", 2)     ==0)) ||
-      ((argc==2) && (strncmp(argv[1], "-help", 5)  ==0)) ||
-      ((argc==2) && (strncmp(argv[1], "--h", 3)    ==0)) ||
-      ((argc==2) && (strncmp(argv[1], "--help", 6) ==0)) ||
-      ((argc==2) && (strncmp(argv[1], "help", 4)   ==0)) ||
-      ((argc==2) && (strncmp(argv[1], "?", 1)      ==0)) ||
-      ) {help_print(); return CL_INFO;}
+      ((argc>1) && (strncmp(argv[1], "/?", 2)     ==0)) ||
+      ((argc>1) && (strncmp(argv[1], "/h", 2)     ==0)) ||
+      ((argc>1) && (strncmp(argv[1], "/help", 5)  ==0)) ||
+      ((argc>1) && (strncmp(argv[1], "-?", 2)     ==0)) ||
+      ((argc>1) && (strncmp(argv[1], "-h", 2)     ==0)) ||
+      ((argc>1) && (strncmp(argv[1], "-help", 5)  ==0)) ||
+      ((argc>1) && (strncmp(argv[1], "--h", 3)    ==0)) ||
+      ((argc>1) && (strncmp(argv[1], "--help", 6) ==0)) ||
+      ((argc>1) && (strncmp(argv[1], "help", 4)   ==0)) ||
+      ((argc>1) && (strncmp(argv[1], "?", 1)      ==0)) ||
+      ) {help_print(); return COMMAND_LINE_INFO;}
 
-	unsigned int i;
+	int i=COMMAND_LINE_OK;
 	unsigned int j;
 	unsigned int k;
 
   //**** ЧТЕНИЕ ОБЩИХ ПАРАМЕТРОВ НАСТРОЙКИ ШЛЮЗА ****
-  int parse_Security();
-  int check_Security();
+  k=parse_Security();
+  if(k!=COMMAND_LINE_OK) {
+    i=COMMAND_LINE_ERROR;
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+    } else {
+    k=check_Security();
+    if(k!=COMMAND_LINE_OK) {
+      i=COMMAND_LINE_ERROR;
+      sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+      }
+    }
+
   //**** ЧТЕНИЕ ПАРАМЕТРОВ КОНФИГУРАЦИИ ПОСЛЕДОВАТЕЛЬНЫХ ИНТЕРФЕЙСОВ ****
-  int parse_IfaceRTU();
-  int check_Iface(GW_Iface *data);
-	strcpy(IfaceRTU[p_num].bridge_status, "INI");
+  k=parse_IfacesRTU();
+  if(k!=COMMAND_LINE_OK) {
+    i=COMMAND_LINE_ERROR;
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+    } else {
+      for(j=GATEWAY_P1; j<GATEWAY_P8; j++) {
+        if(IfaceRTU[j].modbus_mode==IFACE_OFF) continue;
+        k=check_Iface(&IfaceRTU[j]);
+        if(k!=COMMAND_LINE_OK) {
+          i=COMMAND_LINE_ERROR;
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+          break; // останавливаемся после первой ошибки
+          } else strcpy(IfaceRTU[j].bridge_status, "INI");
+        }
+      }
+
   //**** ЧТЕНИЕ ПАРАМЕТРОВ КОНФИГУРАЦИИ ЛОГИЧЕСКИХ TCP-ИНТЕРФЕЙСОВ ****
-  int parse_IfaceTCP();
-  int check_Iface(GW_Iface *data);
-	strcpy(IfaceTCP[t_num].bridge_status, "INI");
-  //**** ЧТЕНИЕ ТАБЛИЦЫ ОПРОСА ****
-  int parse_QT();
-  int check_QTEntry();
+  k=parse_IfacesTCP();
+  if(k!=COMMAND_LINE_OK) {
+    i=COMMAND_LINE_ERROR;
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+    } else {
+      for(j=GATEWAY_T01; j<GATEWAY_T32; j++) {
+        if(IfaceTCP[j].modbus_mode==IFACE_OFF) continue;
+        k=check_Iface(&IfaceTCP[j]);
+        if(k!=COMMAND_LINE_OK) {
+          i=COMMAND_LINE_ERROR;	
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+          break; // останавливаемся после первой ошибки
+          } else strcpy(IfaceTCP[j].bridge_status, "INI");
+        }
+      }
+
+  //**** ЧТЕНИЕ ТАБЛИЦЫ НАЗНАЧЕНИЯ АДРЕСОВ ***
+  k=parse_AddressMap();
+  if(k!=COMMAND_LINE_OK) {
+    i=COMMAND_LINE_ERROR;
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+    } else {
+      for(j=MODBUS_ADDRESS_MIN; j<=MODBUS_ADDRESS_MAX; j++) {
+        if(AddressMap[j].iface==GATEWAY_NONE) continue;
+        k=check_AddressMap_Entry(j);
+        if(k!=COMMAND_LINE_OK) {
+          i=COMMAND_LINE_ERROR;	
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+          break; // останавливаемся после первой ошибки
+          }
+        }
+      }
+
   //**** ЧТЕНИЕ ТАБЛИЦЫ ВИРТУАЛЬНЫХ УСТРОЙСТВ ****
-  int parse_RT();
-  int check_RTEntry();
-  //**** ЗАПИСЬ ТАБЛИЦЫ ИСКЛЮЧЕНИЙ ****
-  int parse_Exceptions();
-  int check_Exception();
+  k=parse_Vslaves();
+  if(k!=COMMAND_LINE_OK) {
+    i=COMMAND_LINE_ERROR;
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+    } else {
+      for(j=0; j<MAX_VIRTUAL_SLAVES; j++) {
+        if(vslave[j].iface==GATEWAY_NONE) continue;
+        k=check_Vslave_Entry(j);
+        if(k!=COMMAND_LINE_OK) {
+          i=COMMAND_LINE_ERROR;	
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+          break; // останавливаемся после первой ошибки
+          }
+        }
+      }
 
-  int parse_AT();
-  int check_AT();
+  //**** ЧТЕНИЕ ТАБЛИЦЫ ОПРОСА ****
+  k=parse_ProxyQueries();
+  if(k!=COMMAND_LINE_OK) {
+    i=COMMAND_LINE_ERROR;
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+    } else {
+      for(j=0; j<MAX_QUERY_ENTRIES; j++) {
+        if(query_table[j].iface==GATEWAY_NONE) continue;
+        k=check_ProxyQuery_Entry(j);
+        if(k!=COMMAND_LINE_OK) {
+          i=COMMAND_LINE_ERROR;	
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+          break; // останавливаемся после первой ошибки
+          }
+        }
+      }
 
-	return CL_OK;
+  //**** ЧТЕНИЕ ТАБЛИЦЫ ИСКЛЮЧЕНИЙ ****
+  k=parse_Exceptions();
+  if(k!=COMMAND_LINE_OK) {
+    i=COMMAND_LINE_ERROR;
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+    } else {
+      for(j=0; j<MOXAGATE_EXCEPTIONS_NUMBER; j++) {
+        if(Exceptions[j].stage==EXPT_STAGE_UNDEFINED) continue;
+        k=check_Exception(j);
+        if(k!=COMMAND_LINE_OK) {
+          i=COMMAND_LINE_ERROR;	
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+          break; // останавливаемся после первой ошибки
+          }
+        }
+      }
+
+  // проверяем количество обработанных конфигурационных параметров
+  if((argc_counter+1)!=argc) return COMMAND_LINE_ARGC;
+
+	return i;
 	}
 ///-----------------------------------------------------------------------------
 //**** ЧТЕНИЕ ОБЩИХ ПАРАМЕТРОВ НАСТРОЙКИ ШЛЮЗА ****
@@ -122,6 +203,8 @@ int parse_Security()
 	unsigned int j;
 	unsigned int k;
 
+  char *arg;
+
 	unsigned char key_cnt	= 0;
 	unsigned char id_key_argc[MAX_COMMON_KEYS];
 	memset(id_key_argc, 0, sizeof(id_key_argc));
@@ -130,7 +213,7 @@ int parse_Security()
 
 	for(i=0; i<argc; i++)
 		if(strncmp(argv[i], "--", 2)==0) {
-			if(key_cnt==MAX_COMMON_KEYS) return CL_ERR_NOT_ALLOWED; // считаем есть дубликат
+			if(key_cnt==MAX_COMMON_KEYS) return SECURITY_CONF_STRUCT; // считаем ошибка в структуре параметров
 			id_key_argc[key_cnt++] = i;
 		  }
 
@@ -141,93 +224,116 @@ int parse_Security()
     // ОБЩАЯ ИНФОРМАЦИЯ
 
 		if(strcmp(argv[id_key_argc[i]],"--Object")==0) {
-      if(id_key_valset[0]==1) return CL_ERR_NOT_ALLOWED;
-			strcpy(Security.Object, argv[id_key_argc[i]+1]);
+      if(id_key_valset[0]==1) return SECURITY_CONF_DUPLICATE;
+      arg=argv[id_key_argc[i]+1];
+      if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
+        arg[DEVICE_NAME_LENGTH-1]=0;
+			strcpy(Security.Object, arg);
       id_key_valset[0]=1;
-      j=1;
+      j=2;
       }
 
 		if(strcmp(argv[id_key_argc[i]],"--Location")==0) {
-      if(id_key_valset[1]==1) return CL_ERR_NOT_ALLOWED;
-			strcpy(Security.Location, argv[id_key_argc[i]+1]);
+      if(id_key_valset[1]==1) return SECURITY_CONF_DUPLICATE;
+      arg=argv[id_key_argc[i]+1];
+      if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
+        arg[DEVICE_NAME_LENGTH-1]=0;
+			strcpy(Security.Location, arg);
       id_key_valset[1]=1;
-      j=1;
+      j=2;
       }
 
 		if(strcmp(argv[id_key_argc[i]],"--Label")==0) {
-      if(id_key_valset[2]==1) return CL_ERR_NOT_ALLOWED;
-			strcpy(Security.Label, argv[id_key_argc[i]+1]);
+      if(id_key_valset[2]==1) return SECURITY_CONF_DUPLICATE;
+      arg=argv[id_key_argc[i]+1];
+      if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
+        arg[DEVICE_NAME_LENGTH-1]=0;
+			strcpy(Security.Label, arg);
       id_key_valset[2]=1;
-      j=1;
+      j=2;
       }
 
 		if(strcmp(argv[id_key_argc[i]],"--NetworkName")==0) {
-      if(id_key_valset[3]==1) return CL_ERR_NOT_ALLOWED;
-			strcpy(Security.NetworkName, argv[id_key_argc[i]+1]);
+      if(id_key_valset[3]==1) return SECURITY_CONF_DUPLICATE;
+      arg=argv[id_key_argc[i]+1];
+      if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
+        arg[DEVICE_NAME_LENGTH-1]=0;
+			strcpy(Security.NetworkName, arg);
       id_key_valset[3]=1;
-      j=1;
+      j=2;
       }
 
 		if(strcmp(argv[id_key_argc[i]],"--LAN1Address")==0) {
-      if(id_key_valset[4]==1) return CL_ERR_NOT_ALLOWED;
+      if(id_key_valset[4]==1) return SECURITY_CONF_DUPLICATE;
 			get_ip_from_string(argv[id_key_argc[i]+1], &Security.LAN1Address, &k);
       id_key_valset[4]=1;
-      j=1;
+      j=2;
       }
 
 		if(strcmp(argv[id_key_argc[i]],"--LAN2Address")==0) {
-      if(id_key_valset[5]==1) return CL_ERR_NOT_ALLOWED;
+      if(id_key_valset[5]==1) return SECURITY_CONF_DUPLICATE;
 			get_ip_from_string(argv[id_key_argc[i]+1], &Security.LAN2Address, &k);
       id_key_valset[5]=1;
-      j=1;
+      j=2;
       }
 
 		if(strcmp(argv[id_key_argc[i]],"--VersionNumber")==0) {
-      if(id_key_valset[6]==1) return CL_ERR_NOT_ALLOWED;
-			strcpy(Security.VersionNumber, argv[id_key_argc[i]+1]);
+      if(id_key_valset[6]==1) return SECURITY_CONF_DUPLICATE;
+      arg=argv[id_key_argc[i]+1];
+      if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
+        arg[DEVICE_NAME_LENGTH-1]=0;
+			strcpy(Security.VersionNumber, arg);
       id_key_valset[6]=1;
-      j=1;
+      j=2;
       }
 
 		if(strcmp(argv[id_key_argc[i]],"--VersionTime")==0) {
-      if(id_key_valset[7]==1) return CL_ERR_NOT_ALLOWED;
-			strcpy(Security.VersionTime, argv[id_key_argc[i]+1]);
+      if(id_key_valset[7]==1) return SECURITY_CONF_DUPLICATE;
+      arg=argv[id_key_argc[i]+1];
+      if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
+        arg[DEVICE_NAME_LENGTH-1]=0;
+			strcpy(Security.VersionTime, arg);
       id_key_valset[7]=1;
-      j=1;
+      j=2;
       }
 
 		if(strcmp(argv[id_key_argc[i]],"--Model")==0) {
-      if(id_key_valset[8]==1) return CL_ERR_NOT_ALLOWED;
-			strcpy(Security.Model, argv[id_key_argc[i]+1]);
+      if(id_key_valset[8]==1) return SECURITY_CONF_DUPLICATE;
+      arg=argv[id_key_argc[i]+1];
+      if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
+        arg[DEVICE_NAME_LENGTH-1]=0;
+			strcpy(Security.Model, arg);
       id_key_valset[8]=1;
-      j=1;
+      j=2;
       }
 
     // ПАРАМЕТРЫ РАБОТЫ ПРОГРАММЫ
 
 		if(strcmp(argv[id_key_argc[i]],"--tcp_port")==0) {
-      if(id_key_valset[9]==1) return CL_ERR_NOT_ALLOWED;
+      if(id_key_valset[9]==1) return SECURITY_CONF_DUPLICATE;
 			Security.tcp_port=atoi(argv[id_key_argc[i]+1]);
       id_key_valset[9]=1;
-      j=1;
+      j=2;
 			}
 
 		if(strcmp(argv[id_key_argc[i]],"--modbus_address")==0) {
-      if(id_key_valset[10]==1) return CL_ERR_NOT_ALLOWED;
-			ptr_gate502->modbus_address=atoi(argv[id_key_argc[i]+1]);
+      if(id_key_valset[10]==1) return SECURITY_CONF_DUPLICATE;
+			MoxaDevice.modbus_address=atoi(argv[id_key_argc[i]+1]);
       id_key_valset[10]=1;
-      j=1;
+      j=2;
 			}
 
 		if(strcmp(argv[id_key_argc[i]],"--status_info")==0) {
-      if(id_key_valset[11]==1) return CL_ERR_NOT_ALLOWED;
-			ptr_gate502->status_info=atoi(argv[id_key_argc[i]+1]);
+      if(id_key_valset[11]==1) return SECURITY_CONF_DUPLICATE;
+			MoxaDevice.status_info=atoi(argv[id_key_argc[i]+1]);
+      ///!!! должен декрементироваться здесь, т.к. это индекс. в настоящее время декрементируется при инициализации:
+      //MoxaDevice.status_info--;
       id_key_valset[11]=1;
-      j=1;
+      j=2;
 			}
 
 		if(strcmp(argv[id_key_argc[i]],"--show_sys_messages")==0) {j=1; Security.show_sys_messages=1;}
-		if(strcmp(argv[id_key_argc[i]],"--map2Xto4X")==0)         {j=1; ptr_gate502->map2Xto4X=1;}
+		if(strcmp(argv[id_key_argc[i]],"--map2Xto4X")==0)         {j=1; MoxaDevice.map2Xto4X=1;}
 
     // ОПЦИИ
 
@@ -235,14 +341,15 @@ int parse_Security()
 		if(strcmp(argv[id_key_argc[i]],"--show_data_flow")==0)    {j=1; Security.show_data_flow=1;}
 		if(strcmp(argv[id_key_argc[i]],"--use_buzzer")==0)        {j=1; Security.use_buzzer=1;}
 
-    if(j==0) return CL_ERR_NOT_ALLOWED; // считаем встретилась ошибка в написании ключа
+    if(j==0) return SECURITY_CONF_SPELLING; // считаем встретилась ошибка в написании ключа
+    argc_counter+=j;
 	  }
 
- 	return 0;
+ 	return COMMAND_LINE_OK;
   }
 ///-----------------------------------------------------------------------------
 //**** ЧТЕНИЕ ПАРАМЕТРОВ КОНФИГУРАЦИИ ПОСЛЕДОВАТЕЛЬНЫХ ИНТЕРФЕЙСОВ ****
-int parse_IfaceRTU()
+int parse_IfacesRTU()
   {
 	unsigned int i;
 	unsigned int j;
@@ -265,14 +372,14 @@ int parse_IfaceRTU()
 		strcat(dest, tmp);
 		for(j=0; j<argc; j++)
 			if(strncmp(argv[j], dest, 5)==0) {
-        if(p_cnt==MAX_MOXA_PORTS) return CL_ERR_MIN_PARAM; // считаем есть дубликаты
+        if(p_cnt==MAX_MOXA_PORTS) return IFACE_CONF_RTUDUPLICATE; // считаем есть дубликаты
 				id_p_argc[p_cnt++]=j;						
         }
     }
 
   for(i=0; i<p_cnt; i++) {
 
-    if(argc - id_p_argc[i] < SERIAL_PARAMETERS) return CL_ERR_MIN_PARAM; // считаем ошибка в количестве параметров
+    if(argc - id_p_argc[i] < SERIAL_PARAMETERS) return IFACE_CONF_RTUSTRUCT; // считаем ошибка в структуре параметров
 
 		// port number
 		arg=argv[id_p_argc[i]+0];
@@ -308,13 +415,14 @@ int parse_IfaceRTU()
 		k=strlen(arg);
 		for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
 
-		if(IfaceRTU[p_num].modbus_mode!=IFACE_OFF) return CL_ERR_GATEWAY_MODE; // считаем есть дубликаты
+		if(IfaceRTU[p_num].modbus_mode!=IFACE_OFF) return IFACE_CONF_RTUDUPLICATE; // считаем есть дубликаты
 
 		if(strcmp(arg, "TCP_SERVER")==0) IfaceRTU[p_num].modbus_mode=IFACE_TCPSERVER;
 		if(strcmp(arg, "RTU_MASTER")==0) IfaceRTU[p_num].modbus_mode=IFACE_RTUMASTER;
 		if(strcmp(arg, "RTU_SLAVE")==0)  IfaceRTU[p_num].modbus_mode=IFACE_RTUSLAVE;
 
-		if(IfaceRTU[p_num].modbus_mode==IFACE_OFF) return CL_ERR_GATEWAY_MODE; // считаем ошибка в названии режима работы
+    // считаем ошибка в названии режима работы
+		if(IfaceRTU[p_num].modbus_mode==IFACE_OFF) return IFACE_CONF_MBMODE;
 
 		shift_counter=0;
 
@@ -338,13 +446,15 @@ int parse_IfaceRTU()
 			  shift_counter++;
 			  }
       }
+
+    argc_counter+=SERIAL_PARAMETERS+shift_counter;
 	  }
 
- 	return 0;
+ 	return COMMAND_LINE_OK;
   }
 ///-----------------------------------------------------------------------------
 //**** ЧТЕНИЕ ПАРАМЕТРОВ КОНФИГУРАЦИИ ЛОГИЧЕСКИХ TCP-ИНТЕРФЕЙСОВ ****
-int parse_IfaceTCP()
+int parse_IfacesTCP()
   {
 	unsigned int i;
 	unsigned int j;
@@ -367,14 +477,14 @@ int parse_IfaceTCP()
 		strcat(dest, tmp);
 		for(j=0; j<argc; j++)
 			if(strncmp(argv[j], dest, 5)==0) {
-        if(t_cnt==MAX_TCP_SERVERS) return CL_ERR_MIN_PARAM; // считаем есть дубликаты
+        if(t_cnt==MAX_TCP_SERVERS) return IFACE_CONF_TCPDUPLICATE; // считаем есть дубликаты
 				id_t_argc[t_cnt++]=j;
         }
     }
 
   for(i=0; i<t_cnt; i++) {
 
-    if(argc - id_t_argc[i] < LANTCP_PARAMETERS) return CL_ERR_MIN_PARAM; // считаем ошибка в количестве параметров
+    if(argc - id_t_argc[i] < LANTCP_PARAMETERS) return IFACE_CONF_TCPSTRUCT; // считаем ошибка в структуре параметров
 
 		// port number
 		arg=argv[id_t_argc[i]+0];
@@ -403,7 +513,7 @@ int parse_IfaceTCP()
 		arg=argv[id_t_argc[i]+5];
 		get_ip_from_string(arg, &IfaceTCP[t_num].ethernet.ip2, &IfaceTCP[t_num].ethernet.port2);
 
-		if(IfaceTCP[t_num].modbus_mode!=IFACE_OFF) return CL_ERR_GATEWAY_MODE; // считаем есть дубликаты
+		if(IfaceTCP[t_num].modbus_mode!=IFACE_OFF) return IFACE_CONF_TCPDUPLICATE; // считаем есть дубликаты
 		IfaceTCP[t_num].modbus_mode=IFACE_TCPMASTER;
 
 		shift_counter=0;
@@ -420,112 +530,56 @@ int parse_IfaceTCP()
 			  shift_counter++;
 			  }
       }
+
+    argc_counter+=LANTCP_PARAMETERS+shift_counter;
 	  }
 
- 	return 0;
+ 	return COMMAND_LINE_OK;
   }
+
 ///-----------------------------------------------------------------------------
-//**** ЧТЕНИЕ ТАБЛИЦЫ ОПРОСА ****
-int parse_QT()
+//**** ЧТЕНИЕ ТАБЛИЦЫ НАЗНАЧЕНИЯ АДРЕСОВ ***
+int parse_AddressMap()
   {
 	unsigned int i;
 	unsigned int j;
 	unsigned int k;
 
   char *arg;
-  int shift_counter;
+	unsigned int val;
 
-	int id_qt=0, qt_entries_num;
+	int id_at;
 
-	for(j=0; j<argc; j++)
-		if(strcmp(argv[j], "PROXY_TABLE")==0) {
-			if(id_qt==0) id_qt=j;
-				else return CL_ERR_QT_CFG;
-			}
+  for(i=0; i<argc; i++)
+  if(strncmp(argv[i], "AT", 2)==0) {
+    id_at=i;
+	
+    arg=argv[id_at+0];
+    if(strlen(arg)!=3) return ATM_CONF_SPELLING;
+    k=arg[2]-48;
+    if((k<1) || (k>8)) return ATM_CONF_SPELLING;
+    if(argc - id_at < ADDRESSMAP_PARAMETERS+1) return ATM_CONF_STRUCT;
+    k--;
 
-	if(id_qt!=0) {
-	
-		sscanf(argv[id_qt+1], "%d", &qt_entries_num);
-    // это значение носит справочный характер и в алгоритме не участвует:
-		// if((qt_entries_num<1)||(qt_entries_num>MAX_QUERY_ENTRIES)) return CL_ERR_QT_CFG;
-		shift_counter=2;
-	
-    i=0;
-		do {
-							 
-      if(argc - (id_qt+shift_counter) < PROXY_TABLE_PARAMETERS) return CL_ERR_MIN_PARAM;
+    for(j=1; j<=ADDRESSMAP_PARAMETERS; j++) {
+      arg=argv[id_at+j];
+      val=atoi(arg);															 
+      if(val==0) continue; // значение для пустых элементов таблицы
+      AddressMap[ADDRESSMAP_PARAMETERS * k].iface=val >> 8;
+      // на уровне анализа командной строки проверяем допустимый тип интерфейса:
+      if(AddressMap[ADDRESSMAP_PARAMETERS * k].iface > GATEWAY_P8) return ATM_CONF_IFACE;
+      AddressMap[ADDRESSMAP_PARAMETERS * k].address=val & 0xff;
+      }
 
-      // интерфейс
-			arg=argv[id_qt+shift_counter+0];
-      if(((arg[0]=='P') || (arg[0]=='T')) && (arg[1]>47) && (arg[1]<58))
-			  query_table[i].iface=\
-          arg[0]=='P'?arg[1]-48-1:\
-          10*(arg[1]-48-1)+(arg[2]-48-1);
-        else break; // читаем записи таблицы до первой ошибки в названии интерфейса
-	
-      // адрес устройства
-			arg=argv[id_qt+shift_counter+1];
-			sscanf(arg, "%d", &query_table[i].device);
-	
-      // таблица MODBUS
-      arg=argv[id_qt+shift_counter+2];
-      k=strlen(arg);
-      for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
-           if(strcmp(arg, "COIL_STATUS")==0)      query_table[i].mbf=MBF_READ_COILS; 
-      else if(strcmp(arg, "INPUT_STATUS")==0)     query_table[i].mbf=MBF_READ_DECRETE_INPUTS;
-      else if(strcmp(arg, "HOLDING_REGISTER")==0) query_table[i].mbf=MBF_READ_HOLDING_REGISTERS;
-      else if(strcmp(arg, "INPUT_REGISTER")==0)   query_table[i].mbf=MBF_READ_INPUT_REGISTERS;
-      // else return CL_ERR_QT_CFG;
-
-      // режим доступа
-      arg=argv[id_qt+shift_counter+3];
-      k=strlen(arg);
-      for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
-           if(strcmp(arg, "RW")==0)  query_table[i].access=QT_ACCESS_READWRITE;
-      else if(strcmp(arg, "R")==0)   query_table[i].access=QT_ACCESS_READONLY;
-      else if(strcmp(arg, "OFF")==0) query_table[i].access=QT_ACCESS_DISABLED;
-      // else return CL_ERR_QT_CFG;
-
-			arg=argv[id_qt+shift_counter+4];
-			sscanf(arg, "%d", &query_table[i].start);
-	
-			arg=argv[id_qt+shift_counter+5];
-			sscanf(arg, "%d", &query_table[i].length);
-	
-			/// стартовый регистр области записи (номер регистра)
-			arg=argv[id_qt+shift_counter+6];
-			sscanf(arg, "%d", &query_table[i].offset);
-	
-			arg=argv[id_qt+shift_counter+7];
-			sscanf(arg, "%d", &query_table[i].delay);
-	
-			arg=argv[id_qt+shift_counter+8];
-			sscanf(arg, "%d", &query_table[i].critical);
-	
-      /// Наименование устройства
-      if(argc > id_qt+shift_counter+9+1 ) {
-        arg=argv[id_qt+shift_counter+9];
-        if(strcmp(arg, "--desc")==0) {
-          shift_counter++;
-          arg=argv[id_qt+shift_counter+9];
-          if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
-            arg[DEVICE_NAME_LENGTH-1]=0;
-          strcpy(query_table[i].device_name, arg);
-          shift_counter++;
-          }
-        }
-
-      shift_counter+=PROXY_TABLE_PARAMETERS;
-      i++;
-		  } while (id_qt+shift_counter < argc);
-
+    argc_counter+=ADDRESSMAP_PARAMETERS+1;
 		}
-	
- 	return 0;
+
+ 	return COMMAND_LINE_OK;
   }
+
 ///-----------------------------------------------------------------------------
 //**** ЧТЕНИЕ ТАБЛИЦЫ ВИРТУАЛЬНЫХ УСТРОЙСТВ ****
-int parse_RT()
+int parse_Vslaves()
   {
 	unsigned int i;
 	unsigned int j;
@@ -534,79 +588,166 @@ int parse_RT()
   char *arg;
   int shift_counter;
 
-	int id_vslaves=0, vslaves_num;
+	int id_rt;
 
-	for(j=0; j<argc; j++)
-		if(strcmp(argv[j], "RTM_TABLE")==0) {
-			if(id_vslaves==0) id_vslaves=j;
-				else return CL_ERR_VSLAVES_CFG;
-			}
+  for(i=0; i<argc; i++)
+  if(strcmp(argv[i], "RT")==0) {
+    id_rt=i;
+	
+    if(argc - id_rt < RTM_TABLE_PARAMETERS) return VSLAVE_CONF_STRUCT; // считаем ошибка в структуре параметров
 
-	if(id_vslaves!=0) {
+    // интерфейс
+    arg=argv[id_rt+1];
+    if(  ((arg[0]=='P') && (arg[1]>48) && (arg[1]<57)) ||
+         ((arg[0]=='T') && (arg[1]>47) && (arg[1]<52) && (arg[2]>47) && (arg[2]<58))
+      )
+      vslave[rt_current].iface=\
+      arg[0]=='P'?arg[1]-48-1:\
+      10*(arg[1]-48)+(arg[2]-48)-1+GATEWAY_T01;
+      else return VSLAVE_CONF_IFACE; // считаем ошибка в названии интерфейса
+	
+    arg=argv[id_rt+2];
+    sscanf(arg, "%d", &vslave[rt_current].device);
 
-		sscanf(argv[id_vslaves+1], "%d", &vslaves_num);
-    // это значение носит справочный характер и в алгоритме не участвует:
-    // if((vslaves_num<1)||(vslaves_num>MAX_VIRTUAL_SLAVES)) return CL_ERR_VSLAVES_CFG;
-		shift_counter=2;
-	
-		i=0;
-    do {
-	
-      if(argc - (id_vslaves+shift_counter) < RTM_TABLE_PARAMETERS) return CL_ERR_MIN_PARAM;
+    arg=argv[id_rt+3];
+    k=strlen(arg);
+    for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
+         if(strcmp(arg, "COIL_STATUS")==0)      vslave[rt_current].modbus_table=COIL_STATUS_TABLE;
+    else if(strcmp(arg, "INPUT_STATUS")==0)     vslave[rt_current].modbus_table=INPUT_STATUS_TABLE;
+    else if(strcmp(arg, "HOLDING_REGISTER")==0) vslave[rt_current].modbus_table=HOLDING_REGISTER_TABLE;
+    else if(strcmp(arg, "INPUT_REGISTER")==0)   vslave[rt_current].modbus_table=INPUT_REGISTER_TABLE;
+    // else return CL_ERR_VSLAVES_CFG;
 
-      // интерфейс
-			arg=argv[id_vslaves+shift_counter+0];
-      if(((arg[0]=='P') || (arg[0]=='T')) && (arg[1]>47) && (arg[1]<58))
-			  vslave[i].iface=\
-          arg[0]=='P'?arg[1]-48-1:\
-          10*(arg[1]-48-1)+(arg[2]-48-1);
-        else break; // читаем записи таблицы до первой ошибки в названии интерфейса
+    arg=argv[id_rt+4];
+    sscanf(arg, "%d", &vslave[rt_current].offset);
 	
-			arg=argv[id_vslaves+shift_counter+1];
-			sscanf(arg, "%d", &vslave[i].device);
+    arg=argv[id_rt+5];
+    sscanf(arg, "%d", &vslave[rt_current].start);
+    vslave[rt_current].start--;
+	
+    arg=argv[id_rt+6];
+    sscanf(arg, "%d", &vslave[rt_current].length);
 
-			arg=argv[id_vslaves+shift_counter+2];
-			k=strlen(arg);
-			for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
-			     if(strcmp(arg, "COIL_STATUS")==0)      vslave[i].modbus_table=COIL_STATUS_TABLE;
-      else if(strcmp(arg, "INPUT_STATUS")==0)     vslave[i].modbus_table=INPUT_STATUS_TABLE;
-      else if(strcmp(arg, "HOLDING_REGISTER")==0) vslave[i].modbus_table=HOLDING_REGISTER_TABLE;
-      else if(strcmp(arg, "INPUT_REGISTER")==0)   vslave[i].modbus_table=INPUT_REGISTER_TABLE;
-      // else return CL_ERR_VSLAVES_CFG;
-
-			arg=argv[id_vslaves+shift_counter+3];
-			sscanf(arg, "%d", &vslave[i].offset);
+    shift_counter=0;
 	
-			arg=argv[id_vslaves+shift_counter+4];
-			sscanf(arg, "%d", &vslave[i].start);
-			vslave[i].start--;
-	
-			arg=argv[id_vslaves+shift_counter+5];
-			sscanf(arg, "%d", &vslave[i].length);
-	
-			/// Наименование устройства
-			if(argc>id_vslaves+shift_counter+6+1) {
-			  arg=argv[id_vslaves+shift_counter+6];
-			  if(strcmp(arg, "--desc")==0) {
-				  shift_counter++;
-				  arg=argv[id_vslaves+shift_counter+6];
-				  if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
-					  arg[DEVICE_NAME_LENGTH-1]=0;
-				  strcpy(vslave[i].device_name, arg);
-				  shift_counter++;
-				  }
+    /// Наименование устройства
+    if(argc>id_rt+7+1) {
+      arg=argv[id_rt+7];
+      if(strcmp(arg, "--desc")==0) {
+        shift_counter++;
+        arg=argv[id_rt+7+1];
+        if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
+          arg[DEVICE_NAME_LENGTH-1]=0;
+        strcpy(vslave[rt_current].device_name, arg);
+        shift_counter++;
         }
+      }
 
-      shift_counter+=RTM_TABLE_PARAMETERS;
-      i++;
-		  } while(id_vslaves+shift_counter < argc);
+    if(rt_current < MAX_VIRTUAL_SLAVES) rt_current++;
+      else return VSLAVE_CONF_OVERFLOW; // считаем ошибка в количестве записей таблицы
 
+    argc_counter+=RTM_TABLE_PARAMETERS+shift_counter;
 		}
 
- 	return 0;
+ 	return COMMAND_LINE_OK;
   }
+
 ///-----------------------------------------------------------------------------
-//**** ЗАПИСЬ ТАБЛИЦЫ ИСКЛЮЧЕНИЙ ****
+//**** ЧТЕНИЕ ТАБЛИЦЫ ОПРОСА ****
+int parse_ProxyQueries()
+  {
+	unsigned int i;
+	unsigned int j;
+	unsigned int k;
+
+  char *arg;
+  int shift_counter;
+
+	int id_qt;
+
+	for(i=1; i<argc; i++)
+	if(strcmp(argv[i], "QT")==0) {
+    id_qt=i;
+	
+    if(argc - id_qt < PROXY_TABLE_PARAMETERS) return PQUERY_CONF_STRUCT; // считаем ошибка в структуре параметров
+
+    // интерфейс
+    arg=argv[id_qt+1];
+    if(  ((arg[0]=='P') && (arg[1]>48) && (arg[1]<57)) ||
+         ((arg[0]=='T') && (arg[1]>47) && (arg[1]<52) && (arg[2]>47) && (arg[2]<58))
+      )
+      query_table[qt_current].iface=\
+      arg[0]=='P'?arg[1]-48-1:\
+      10*(arg[1]-48)+(arg[2]-48)-1+GATEWAY_T01;
+      else return PQUERY_CONF_IFACE; // считаем ошибка в названии интерфейса
+	
+    // адрес устройства
+    arg=argv[id_qt+2];
+    sscanf(arg, "%d", &query_table[qt_current].device);
+	
+    // таблица MODBUS
+    arg=argv[id_qt+3];
+    k=strlen(arg);
+    for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
+         if(strcmp(arg, "COIL_STATUS")==0)      query_table[qt_current].mbf=MBF_READ_COILS; 
+    else if(strcmp(arg, "INPUT_STATUS")==0)     query_table[qt_current].mbf=MBF_READ_DECRETE_INPUTS;
+    else if(strcmp(arg, "HOLDING_REGISTER")==0) query_table[qt_current].mbf=MBF_READ_HOLDING_REGISTERS;
+    else if(strcmp(arg, "INPUT_REGISTER")==0)   query_table[qt_current].mbf=MBF_READ_INPUT_REGISTERS;
+    // else return CL_ERR_QT_CFG;
+
+    // режим доступа
+    arg=argv[id_qt+4];
+    k=strlen(arg);
+    for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
+         if(strcmp(arg, "RW")==0)  query_table[qt_current].access=QT_ACCESS_READWRITE;
+    else if(strcmp(arg, "R")==0)   query_table[qt_current].access=QT_ACCESS_READONLY;
+    else if(strcmp(arg, "OFF")==0) query_table[qt_current].access=QT_ACCESS_DISABLED;
+    // else return CL_ERR_QT_CFG;
+
+    arg=argv[id_qt+5];
+    sscanf(arg, "%d", &query_table[qt_current].start);
+    query_table[qt_current].start--;
+	
+    arg=argv[id_qt+6];
+    sscanf(arg, "%d", &query_table[qt_current].length);
+	
+    /// стартовый регистр области записи (номер регистра)
+    arg=argv[id_qt+7];
+    sscanf(arg, "%d", &query_table[qt_current].offset);
+    query_table[qt_current].offset--;
+	
+    arg=argv[id_qt+8];
+    sscanf(arg, "%d", &query_table[qt_current].delay);
+	
+    arg=argv[id_qt+9];
+    sscanf(arg, "%d", &query_table[qt_current].critical);
+
+    shift_counter=0;
+	
+    /// Наименование устройства
+    if(argc > id_qt+10+1 ) {
+      arg=argv[id_qt+10];
+      if(strcmp(arg, "--desc")==0) {
+        shift_counter++;
+        arg=argv[id_qt+10+1];
+        if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
+          arg[DEVICE_NAME_LENGTH-1]=0;
+        strcpy(query_table[qt_current].device_name, arg);
+        shift_counter++;
+        }
+      }
+
+    if(qt_current < MAX_QUERY_ENTRIES) qt_current++;
+      else return PQUERY_CONF_OVERFLOW; // считаем ошибка в количестве записей таблицы
+
+    argc_counter+=PROXY_TABLE_PARAMETERS+shift_counter;
+		}
+	
+ 	return COMMAND_LINE_OK;
+  }
+
+///-----------------------------------------------------------------------------
+//**** ЧТЕНИЕ ТАБЛИЦЫ ИСКЛЮЧЕНИЙ ****
 int parse_Exceptions()
   {
 	unsigned int i;
@@ -616,125 +757,69 @@ int parse_Exceptions()
   char *arg;
   int shift_counter;
 
-	int id_expt=0, expt_num;
+	int id_expt;
 
-	for(j=0; j<argc; j++)
-		if(strcmp(argv[j], "EXCEPTIONS")==0) {
-			if(id_expt==0) id_expt=j;
-				else return CL_ERR_EXPT_CFG;
-			}
-
-	if(id_expt!=0) {
-
-		sscanf(argv[id_expt+1], "%d", &expt_num);
-    // это значение носит справочный характер и в алгоритме не участвует:
-    // if((expt_num<1)||(expt_num>MOXAGATE_EXCEPTIONS_NUMBER)) return CL_ERR_EXPT_CFG;
-		shift_counter=2;
+  for(i=0; i<argc; i++)
+  if(strcmp(argv[i], "EXPT")==0) {
+    id_expt=i;
 	
-		i=0;
-    do {
-	
-      if(argc - (id_expt+shift_counter) < EXCEPTION_PARAMETERS) return CL_ERR_MIN_PARAM;
+      if(argc - id_expt < EXCEPTION_PARAMETERS) return EXPT_CONF_STRUCT;
 
-			arg=argv[id_expt+shift_counter+0];
+			arg=argv[id_expt+1];
 			k=strlen(arg);
 			for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
-			     if(strcmp(arg, "RESPONSE_RECV_RAW")==0)  Exception[i].stage=EXPT_STAGE_RESPONSE_RECV_RAW;
-      else if(strcmp(arg, "QUERY_RECV_RAW")==0)     Exception[i].stage=EXPT_STAGE_QUERY_RECV_RAW;
-      else if(strcmp(arg, "QUERY_RECV")==0)         Exception[i].stage=EXPT_STAGE_QUERY_RECV;
-      else if(strcmp(arg, "QUERY_FRWD")==0)         Exception[i].stage=EXPT_STAGE_QUERY_FRWD;
-      else if(strcmp(arg, "RESPONSE_RECV")==0)      Exception[i].stage=EXPT_STAGE_RESPONSE_RECV;
-      else if(strcmp(arg, "RESPONSE_SEND")==0)      Exception[i].stage=EXPT_STAGE_RESPONSE_SEND;
-      // else return CL_ERR_VSLAVES_CFG;
+			     if(strcmp(arg, "RESPONSE_RECV_RAW")==0)  Exception[expt_current].stage=EXPT_STAGE_RESPONSE_RECV_RAW;
+      else if(strcmp(arg, "QUERY_RECV_RAW")==0)     Exception[expt_current].stage=EXPT_STAGE_QUERY_RECV_RAW;
+      else if(strcmp(arg, "QUERY_RECV")==0)         Exception[expt_current].stage=EXPT_STAGE_QUERY_RECV;
+      else if(strcmp(arg, "QUERY_FRWD")==0)         Exception[expt_current].stage=EXPT_STAGE_QUERY_FRWD;
+      else if(strcmp(arg, "RESPONSE_RECV")==0)      Exception[expt_current].stage=EXPT_STAGE_RESPONSE_RECV;
+      else if(strcmp(arg, "RESPONSE_SEND")==0)      Exception[expt_current].stage=EXPT_STAGE_RESPONSE_SEND;
+      else return EXPT_CONF_STAGE;
 
 
-			arg=argv[id_expt+shift_counter+1];
+			arg=argv[id_expt+2];
 			k=strlen(arg);
 			for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
-			     if(strcmp(arg, "SKS07_DIOGEN")==0)      Exception[i].action=EXCP_SKS07_DIOGEN;
+			     if(strcmp(arg, "SKS07_DIOGEN")==0)      Exception[expt_current].action=EXPT_ACT_SKS07_DIOGEN;
       // else if(strcmp(arg, "INPUT_STATUS")==0)     vslave[i].modbus_table=INPUT_STATUS_TABLE;
       // else return CL_ERR_VSLAVES_CFG;
 
-			arg=argv[id_expt+shift_counter+2];
-			sscanf(arg, "%d", &Exception[i].prm1);
+			arg=argv[id_expt+3];
+			sscanf(arg, "%d", &Exception[expt_current].prm1);
 	
-			arg=argv[id_expt+shift_counter+3];
-			sscanf(arg, "%d", &Exception[i].prm2);
+			arg=argv[id_expt+4];
+			sscanf(arg, "%d", &Exception[expt_current].prm2);
 	
-			arg=argv[id_expt+shift_counter+4];
-			sscanf(arg, "%d", &Exception[i].prm3);
+			arg=argv[id_expt+5];
+			sscanf(arg, "%d", &Exception[expt_current].prm3);
 	
-			arg=argv[id_expt+shift_counter+5];
-			sscanf(arg, "%d", &Exception[i].prm4);
-	
+			arg=argv[id_expt+6];
+			sscanf(arg, "%d", &Exception[expt_current].prm4);
+																										 
+      shift_counter=0;
+
 			/// Комментарий
-			if(argc > id_expt+shift_counter+6+1) {
-			  arg=argv[id_expt+shift_counter+6];
+			if(argc > id_expt+7+1) {
+			  arg=argv[id_expt+7];
 			  if(strcmp(arg, "--desc")==0) {
-				  shift_counter++;
-				  arg=argv[id_expt+shift_counter+6];
+          shift_counter++;
+				  arg=argv[id_expt+7+1];
 				  if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
 					  arg[DEVICE_NAME_LENGTH-1]=0;
-				  strcpy(Exception[i].comment, arg);
-				  shift_counter++;
+				  strcpy(Exception[expt_current].comment, arg);
+          shift_counter++;
 				  }
         }
 
-      shift_counter+=EXCEPTION_PARAMETERS;
-      i++;
-		  } while(id_expt+shift_counter < argc);
+    if(expt_current < MOXAGATE_EXCEPTIONS_NUMBER) expt_current++;
+      else return EXPT_CONF_OVERFLOW; // считаем ошибка в количестве записей таблицы
 
+    argc_counter+=EXCEPTION_PARAMETERS+shift_counter;
 		}
 
- 	return 0;
+ 	return COMMAND_LINE_OK;
   }
-///-----------------------------------------------------------------------------
 
-int parse_AT()
-  {
-	unsigned int i;
-	unsigned int j;
-	unsigned int k;
-  
-  char *arg;
-  int shift_counter;
-
- 	return 0;
-  }
-///-----------------------------------------------------------------------------
-
-int check_gate_settings(GW_Iface *data)
-	{
-	
-	if(!(
-			strcmp(data->serial.p_mode, "RS232")==0 ||
-			strcmp(data->serial.p_mode, "RS422")==0 ||
-			strcmp(data->serial.p_mode, "RS485_2w")==0 ||
-			strcmp(data->serial.p_mode, "RS485_4w")==0
-		)) return 1;
-	
-	if(!(
-			strcmp(data->serial.speed, "2400")==0 ||
-			strcmp(data->serial.speed, "4800")==0 ||
-			strcmp(data->serial.speed, "9600")==0 ||
-			strcmp(data->serial.speed, "14400")==0 ||
-			strcmp(data->serial.speed, "19200")==0 ||
-			strcmp(data->serial.speed, "38400")==0 ||
-			strcmp(data->serial.speed, "56000")==0 ||
-			strcmp(data->serial.speed, "57600")==0 ||
-			strcmp(data->serial.speed, "115200")==0
-		)) return 2;
-
-	if(!(
-			strcmp(data->serial.parity, "none")==0 ||
-			strcmp(data->serial.parity, "even")==0 ||
-			strcmp(data->serial.parity, "odd")==0
-		)) return 3;
-
-	if((data->serial.timeout<100000) || (data->serial.timeout>10000000)) return 4;
-
-	return 0;
-	}
 /*//----------------------------------------------------------------------------------------------------------------
 void sigpipe_handler()
 {
@@ -748,89 +833,6 @@ printf("SIGIO! \n");
 return;
 }
 *///----------------------------------------------------------------------------------------------------------------
-int verify_vslaves()
-  {
-	int i;
-
-  for(i=0; i<MAX_VIRTUAL_SLAVES; i++) {
-    if(
-//			(vslave[i].start==0) ||
-			(vslave[i].length==0) ||
-//			(vslave[i].port==SERIAL_STUB) ||
-			(vslave[i].device==0)
-			) continue;
-
-			if(vslave[i].start>65534) return 1;
-			if(vslave[i].length==0) return 2;
-			if((vslave[i].start+vslave[i].length)>65535) return 3;
-			if((vslave[i].iface>GATEWAY_T32) ||
-        ((vslave[i].iface>GATEWAY_P8) && (vslave[i].iface<GATEWAY_T01))
-         ) return 4;
-			if((vslave[i].device==0)||(vslave[i].device>247)) return 5;
-			// if(vslave[i].offset<0) return 6; // comparison is always false due to limited range of data type
-
-			}
-  
-
-	return 0;
-  }
-///----------------------------------------------------------------------------------------------------------------
-int verify_proxy_queries()
-  {
-	int i;
-
-  for(i=0; i<MAX_QUERY_ENTRIES; i++) {
-    if(
-			(query_table[i].length==0) ||
-			(query_table[i].mbf==0) ||
-			(query_table[i].device==0)
-			) continue;
-
-		switch(query_table[i].mbf) {
-			case MBF_READ_COILS: 
-				if(	(query_table[i].start-1 < MIN_STARTING_ADDRESS_1X)||
-						(query_table[i].start-1 > MAX_STARTING_ADDRESS_1X)) return 11;
-				if(	(query_table[i].length < MBF_0x01_MIN_QUANTITY)||
-						(query_table[i].length > MBF_0x01_MAX_QUANTITY)) return 12;
-				if((query_table[i].start-1 + query_table[i].length) > MAX_STARTING_ADDRESS_1X) return 13;
-				if((query_table[i].offset-1+ query_table[i].length) > MAX_STARTING_ADDRESS_1X) return 16;
-				break;
-	
-			case MBF_READ_DECRETE_INPUTS: 
-				if(	(query_table[i].start-1 < MIN_STARTING_ADDRESS_2X)||
-						(query_table[i].start-1 > MAX_STARTING_ADDRESS_2X)) return 11;
-				if(	(query_table[i].length < MBF_0x02_MIN_QUANTITY)||
-						(query_table[i].length > MBF_0x02_MAX_QUANTITY)) return 12;
-				if((query_table[i].start-1 + query_table[i].length) > MAX_STARTING_ADDRESS_2X) return 13;
-				if((query_table[i].offset-1+ query_table[i].length) > MAX_STARTING_ADDRESS_2X) return 16;
-				break;
-	
-			case MBF_READ_HOLDING_REGISTERS: 
-				if(	(query_table[i].start-1 < MIN_STARTING_ADDRESS_4X)||
-						(query_table[i].start-1 > MAX_STARTING_ADDRESS_4X)) return 11;
-				if(	(query_table[i].length < MBF_0x03_MIN_QUANTITY)||
-						(query_table[i].length > MBF_0x03_MAX_QUANTITY)) return 12;
-				if((query_table[i].start-1 + query_table[i].length) > MAX_STARTING_ADDRESS_4X) return 13;
-				if((query_table[i].offset-1+ query_table[i].length) > MAX_STARTING_ADDRESS_4X) return 16;
-				break;
-	
-			case MBF_READ_INPUT_REGISTERS: 
-				if(	(query_table[i].start-1 < MIN_STARTING_ADDRESS_3X)||
-						(query_table[i].start-1 > MAX_STARTING_ADDRESS_3X)) return 11;
-				if(	(query_table[i].length < MBF_0x04_MIN_QUANTITY)||
-						(query_table[i].length > MBF_0x04_MAX_QUANTITY)) return 12;
-				if((query_table[i].start-1 + query_table[i].length) > MAX_STARTING_ADDRESS_3X) return 13;
-				if((query_table[i].offset-1+ query_table[i].length) > MAX_STARTING_ADDRESS_3X) return 16;
-				break;
-	
-			default: return 17;
-			}
-	
-//		if(query_table[i].port>PROXY_TCP) return 14;
-		if((query_table[i].device<MODBUS_ADDRESS_MIN)||(query_table[i].device>MODBUS_ADDRESS_MAX)) return 15;
-		}
-	return 0;
-  }
 ///----------------------------------------------------------------------------------------------------------------
 int get_ip_from_string(char *str, unsigned int *ip, unsigned int *port)
   {
@@ -884,7 +886,7 @@ int get_ip_from_string(char *str, unsigned int *ip, unsigned int *port)
 		*port=atoi(addr);
 		}
 
-	return CL_OK;
+	return COMMAND_LINE_OK;
   }
 
-///-----------------------------------------------------------------------------------------------------------------
+///-----------------------------------------------------------------------------

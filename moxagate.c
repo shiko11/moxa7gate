@@ -17,6 +17,43 @@
 #include "messages.h"
 
 ///-----------------------------------------------------------------------------------------------------------------
+int init_moxagate_h()
+  {
+
+	MoxaDevice.start_time=0;
+
+  MoxaDevice.modbus_address=1;
+  ///!!! должен быть ноль, т.к. это индекс. в настоящее время декрементируется при инициализации:
+  MoxaDevice.status_info=1;
+
+	// MoxaDevice.queue
+  // MoxaDevice.stat
+
+  MoxaDevice.map_2x_to_4x=0;
+
+  // MoxaDevice.moxa_mutex
+
+	// начало блока внутренних регистров Moxa (смещение)
+	//MoxaDevice.offset1xStatus=\
+    MoxaDevice.offset2xStatus=\
+    MoxaDevice.offset3xRegisters=\
+    MoxaDevice.offset4xRegisters=0;
+
+	// количество элементов в каждой из таблиц MODBUS
+	//MoxaDevice.amount1xStatus=\
+    MoxaDevice.amount2xStatus=\
+    MoxaDevice.amount3xRegisters=\
+    MoxaDevice.amount4xRegisters=0;
+
+	// указатели на массивы памяти
+	// MoxaDevice.wData1x
+	// MoxaDevice.wData2x
+	// MoxaDevice.wData3x
+	// MoxaDevice.wData4x
+
+  return 0;
+  }
+
 void *moxa_device(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
   {
 	u8			tcp_adu[MB_TCP_MAX_ADU_LENGTH];// TCP ADU

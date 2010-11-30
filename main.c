@@ -25,90 +25,8 @@ struct sockaddr_in	addr;
 int main(int argc, char *argv[])
 {
 /*** »Õ»÷»¿À»«¿÷»ﬂ œ≈–≈Ã≈ÕÕ€’ œ–Œ√–¿ÃÃ€ ***/
-	memset(IfaceRTU,0,sizeof(IfaceRTU));
-	memset(IfaceTCP,0,sizeof(IfaceTCP));
-
-	memset(vslave,0,sizeof(vslave));
-	memset(query_table,0,sizeof(query_table));
 
 	int			i, j;
-	for(i=0; i<MAX_MOXA_PORTS; i++) {
-
-///===CLIENTS_H
-
-		IfaceRTU[i].ssd=-1;
-		IfaceRTU[i].modbus_mode=MODBUS_PORT_OFF;
-		strcpy(IfaceRTU[i].bridge_status, "OFF");
-		sprintf(IfaceRTU[i].serial.p_name, "/dev/ttyM%d", i);
-
-		strcpy(IfaceRTU[i].serial.p_mode, "RS485_2w");
-		strcpy(IfaceRTU[i].serial.speed, "9600");
-		strcpy(IfaceRTU[i].serial.parity, "none");
-		IfaceRTU[i].serial.timeout=1000000;
-		IfaceRTU[i].Security.tcp_port=1000*i+502;
-		
-//		p_errors[i]=0; // this value for buzzer function
-		IfaceRTU[i].Security.start_time=0;
-
-//		IfaceRTU[i].queue_start=IfaceRTU[i].queue_len=0; /// obsolete
-
-		IfaceRTU[i].queue.port_id=i;
-		//queue.queue_adu[MAX_GATEWAY_QUEUE_LENGTH][MB_TCP_MAX_ADU_LENGTH];
-		memset(IfaceRTU[i].queue.queue_adu_len, 0, sizeof(IfaceRTU[i].queue.queue_adu_len));
-		//queue.queue_clients[MAX_GATEWAY_QUEUE_LENGTH];
-		//queue.queue_slaves[MAX_GATEWAY_QUEUE_LENGTH];
-		IfaceRTU[i].queue.queue_start = IfaceRTU[i].queue.queue_len = 0;
-		pthread_mutex_init(&IfaceRTU[i].queue.queue_mutex, NULL);
-		IfaceRTU[i].queue.operations[0].sem_flg=0;
-		IfaceRTU[i].queue.operations[0].sem_num=i;
-		}
-
-	for(i=0; i<MAX_TCP_SERVERS; i++) {
-
-		IfaceTCP[i].ssd=-1;
-		IfaceTCP[i].modbus_mode=MODBUS_PORT_OFF;
-		strcpy(IfaceTCP[i].bridge_status, "OFF");
-//		sprintf(IfaceTCP[i].serial.p_name, "/dev/ttyM%d", i);
-
-//		IfaceRTU[i].serial.p_num=i+1;
-//		strcpy(IfaceRTU[i].serial.p_mode, "RS485_2w");
-//		strcpy(IfaceRTU[i].serial.speed, "9600");
-//		strcpy(IfaceRTU[i].serial.parity, "none");
-//		IfaceRTU[i].serial.timeout=1000000;
-		IfaceTCP[i].Security.tcp_port=1000*i+502;
-		
-//		p_errors[i]=0; // this value for buzzer function
-		IfaceTCP[i].Security.start_time=0;
-
-//		IfaceRTU[i].queue_start=IfaceRTU[i].queue_len=0; /// obsolete
-
-		IfaceTCP[i].queue.port_id=EVENT_SRC_TCPBRIDGE;
-		//queue.queue_adu[MAX_GATEWAY_QUEUE_LENGTH][MB_TCP_MAX_ADU_LENGTH];
-		memset(IfaceTCP[i].queue.queue_adu_len, 0, sizeof(IfaceTCP[i].queue.queue_adu_len));
-		//queue.queue_clients[MAX_GATEWAY_QUEUE_LENGTH];
-		//queue.queue_slaves[MAX_GATEWAY_QUEUE_LENGTH];
-		IfaceTCP[i].queue.queue_start = IfaceTCP[i].queue.queue_len = 0;
-		pthread_mutex_init(&IfaceTCP[i].queue.queue_mutex, NULL);
-		IfaceTCP[i].queue.operations[0].sem_flg=0;
-		IfaceTCP[i].queue.operations[0].sem_num=MAX_MOXA_PORTS*2+i;
-		}
-
-		MoxaDevice.start_time=0;
-		MoxaDevice.modbus_address=0;
-		MoxaDevice.status_info=0;
-
-		Security.start_time=0;
-
-		Security.show_data_flow=0;
-		Security.show_sys_messages=0;
-		Security.watchdog_timer=0;
-		Security.use_buzzer=0;
-
-		Security.Object[0]=0;
-		Security.Location[0]=0;
-		Security.VersionNumber[0]=0;
-		Security.NetworkName[0]=0;
-		Security.NetworkAddress=0;
 
 		app_log_current_entry=app_log_entries_total=0;
 		app_log=NULL;
@@ -120,12 +38,12 @@ int main(int argc, char *argv[])
 		//queue.queue_clients[MAX_GATEWAY_QUEUE_LENGTH];
 		//queue.queue_slaves[MAX_GATEWAY_QUEUE_LENGTH];
 		MoxaDevice.queue.queue_start = MoxaDevice.queue.queue_len = 0;
-		pthread_mutex_init(&MoxaDevice.queue.queue_mutex, NULL);
+
+    pthread_mutex_init(&MoxaDevice.queue.queue_mutex, NULL);
+
 		MoxaDevice.queue.operations[0].sem_flg=0;
 		MoxaDevice.queue.operations[0].sem_num=MOXA_MB_DEVICE;
 
-		Security.halt=0;
-	
 		init_message_templates();
 		init_shm();
 
@@ -136,12 +54,7 @@ int main(int argc, char *argv[])
 //		signal(SIGIO, sigio_handler);
 
 /*** –¿«¡Œ– œ¿–¿Ã≈“–Œ¬  ŒÃ¿ÕƒÕŒ… —“–Œ » ***/
-	int res_cl = get_command_line (argc, argv,
-								 						 IfaceRTU,
-														 &MoxaDevice,
-														 vslave,
-														 query_table
-														 );
+	int res_cl = get_command_line(argc, argv);
 	switch(res_cl) {
 
 		case CL_ERR_NONE_PARAM:			// CMD LINE: NO PARAMETERS

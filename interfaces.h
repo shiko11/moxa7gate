@@ -78,6 +78,11 @@
 #define GATEWAY_T31 46
 #define GATEWAY_T32 47
 
+#define IFACETCP_MASK 0x01
+
+#define GATEWAY_NONE 63
+#define GATEWAY_ASSETS 63
+
 // режим применим только для serial-интерфейса шлюза
 // ввиду его простоты и надежности он остается прежним
 #define GATEWAY_SIMPLE				6
@@ -116,7 +121,8 @@
 #define   NAME_MOXA_PORT           "PORT"
 #define   NAME_MOXA_PORT_DEV  "/dev/ttyM"
 
-#define EXCEPTION_DIOGEN 0x00000001
+#define TIMEOUT_MIN 100000
+#define TIMEOUT_MAX 10000000
 
 ///=== INTERFACES_H data types
 
@@ -185,6 +191,9 @@ GW_Iface IfaceTCP[MAX_TCP_SERVERS]; // данные и параметры интерфейсов TCP
 // определенных ситуациях.
 
 ///=== INTERFACES_H public functions
+
+int init_interfaces_h();
+int check_Iface(GW_Iface *iface);
 
 void *iface_rtu_gws(void *arg); /// Потоковая функция режима GATEWAY_SIMPLE
 void *srvr_tcp_child2(void *arg); ///!!! Потоковая функция режимов GATEWAY_ATM, GATEWAY_RTM

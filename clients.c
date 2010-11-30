@@ -20,6 +20,7 @@
 #include "moxagate.h"
 #include "messages.h"
 #include "hmi_web.h"
+#include "cli.h"
 
 ///=== CLIENTS_H private variables
 
@@ -53,12 +54,35 @@ int init_clients()
 //		Client[j].mb_slave=MB_SLAVE_NOT_DEFINED;
 //		Client[j].address_shift=MB_ADDRESS_NO_SHIFT;
 	  }
+								 
+  // Security
+
+	Security.start_time=0;
+
+	Security.Object       [0]=0;
+	Security.Location     [0]=0;
+	Security.Label        [0]=0;
+	Security.NetworkName  [0]=0;
+	Security.LAN1Address     =0;
+	Security.LAN2Address     =0;
+	Security.VersionNumber[0]=0;
+	Security.VersionTime  [0]=0;
+	Security.Model        [0]=0;
+
+  Security.show_data_flow   =0;
+  Security.show_sys_messages=0;
+  Security.watchdog_timer   =0;
+  Security.use_buzzer       =0;
+
+ 	Security.halt=0;
 
 	Security.tcp_port=502;
+
   Security.accepted_connections_number=0;
   Security.current_connections_number=0;
   Security.rejected_connections_number=0;
 
+  // private variables
 	ssd=-1;
   current_client=0;
 
@@ -80,6 +104,36 @@ int close_clients()
   }
 
 ///----------------------------------------------------------------------------
+int check_Security()
+  {
+  // Œ¡Ÿ¿ﬂ »Õ‘Œ–Ã¿÷»ﬂ
+
+  // œ¿–¿Ã≈“–€ –¿¡Œ“€ œ–Œ√–¿ÃÃ€
+
+	if( (Security.tcp_port < TCP_PORT_MIN) ||
+      (Security.tcp_port > TCP_PORT_MAX)
+    ) return SECURITY_CONF_TCPPORT;
+
+  if(  (MoxaDevice.modbus_address < MODBUS_ADDRESS_MIN) ||
+       (MoxaDevice.modbus_address > MODBUS_ADDRESS_MAX)
+    ) return SECURITY_CONF_MBADDR;
+	
+	if( unsigned int(MoxaDevice.status_info-1+GATE_STATUS_BLOCK_LENGTH) > MB_ADDRESS_LAST)
+    return SECURITY_CONF_STATINFO;
+
+  // Security.show_sys_messages
+	// MoxaDevice.map2Xto4X
+
+  // Œœ÷»»
+
+	// Security.watchdog_timer
+	// Security.show_data_flow
+	// Security.use_buzzer
+
+ 	return COMMAND_LINE_OK;
+  }
+
+///-----------------------------------------------------------------------------
 int clear_client(int client)
   {
 

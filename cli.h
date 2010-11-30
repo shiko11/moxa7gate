@@ -15,31 +15,90 @@
 
 ///=== CLI_H constants
 
-#define MAX_COMMON_KEYS 17 // максимальное количество общих параметров настройки шлюза (с префиксом "--")
-#define SERIAL_PARAMETERS 6 // количество параметров настройки последовательного интерфейса
-#define LANTCP_PARAMETERS 8 // количество параметров настройки логического TCP интерфейса
-#define PROXY_TABLE_PARAMETERS 9 // количество параметров в одной записи таблицы опроса
-#define RTM_TABLE_PARAMETERS 6 // количество параметров в одной записи таблицы назначения регистров
-#define EXCEPTION_PARAMETERS 6 // количество параметров в одной записи таблицы исключений
+#define MAX_COMMON_KEYS 17 // максимальное количество общих параметров конфигурации шлюза (с префиксом "--")
+#define SERIAL_PARAMETERS 6 // количество параметров конфигурации последовательного интерфейса
+#define LANTCP_PARAMETERS 6 // количество параметров конфигурации логического TCP интерфейса
+#define PROXY_TABLE_PARAMETERS 10 // количество параметров конфигурации в одной записи таблицы опроса
+#define RTM_TABLE_PARAMETERS 7 // количество параметров конфигурации в одной записи таблицы назначения регистров
+#define EXCEPTION_PARAMETERS 7 // количество параметров конфигурации в одной записи таблицы исключений
+#define ADDRESSMAP_PARAMETERS 32 // количество параметров конфигурации в одной записи таблицы исключений
 
-//ошибки интерпретации командной строки
-#define   CL_ERR_NONE_PARAM        -1   // командная строка пуста
-#define   CL_INFO                  -5   // в консоль выведена справочная информация
-#define   CL_ERR_PORT_WORD         -2   // ошибка в ключевых словах // keyword PORT absent
-#define   CL_ERR_IN_STRUCT         -3   // ошибка в данных командной строки
-#define   CL_ERR_IN_PORT_SETT      -4   // ошибка в данных командной строки
-#define   CL_ERR_GATEWAY_MODE      -6
-#define   CL_ERR_IN_MAP						 -7
-#define   CL_ERR_MIN_PARAM				 -8
-#define   CL_ERR_MUTEX_PARAM			 -9
-#define   CL_ERR_VSLAVES_CFG			 -10
-#define   CL_ERR_QT_CFG						 -11
-#define   CL_ERR_TCPSRV_CFG				 -12
-#define   CL_ERR_NOT_ALLOWED			 -13
-#define   CL_OK                    0    //усе нормуль
+// ошибки анализа командной строки
+// и верификации полученных структур данных
 
-//#define   CL_ERR_MIN_PARAM         -1   //менее 9 параметров
-//#define   CL_ERR_NUM_STAT_BIT			 -4 //номер бита больше 16 (диапазон 1-16)
+#define COMMAND_LINE_OK 0
+#define COMMAND_LINE_ERROR 1
+#define COMMAND_LINE_INFO 2
+#define COMMAND_LINE_ARGC 3
+
+#define SECURITY_CONF_STRUCT 4
+#define SECURITY_CONF_DUPLICATE 5
+#define SECURITY_CONF_SPELLING 6
+
+#define SECURITY_CONF_TCPPORT 7
+#define SECURITY_CONF_MBADDR 8
+#define SECURITY_CONF_STATINFO 9
+
+#define IFACE_CONF_RTUDUPLICATE 10
+#define IFACE_CONF_RTUSTRUCT 11
+
+#define IFACE_CONF_MBMODE 12
+#define IFACE_CONF_RTUPHYSPROT 13
+#define IFACE_CONF_RTUSPEED 14
+#define IFACE_CONF_RTUPARITY 15
+#define IFACE_CONF_RTUTIMEOUT 16
+#define IFACE_CONF_RTUTCPPORT 17
+
+#define IFACE_CONF_TCPDUPLICATE 18
+#define IFACE_CONF_TCPSTRUCT 19
+
+#define IFACE_CONF_TCPIP1 20
+#define IFACE_CONF_TCPPORT1 21
+#define IFACE_CONF_TCPUNITID 22
+#define IFACE_CONF_TCPOFFSET 23
+#define IFACE_CONF_TCPMBADDR 24
+#define IFACE_CONF_TCPIP2 25
+#define IFACE_CONF_TCPPORT2 26
+
+#define ATM_CONF_SPELLING 27
+#define ATM_CONF_STRUCT 28
+
+#define ATM_CONF_IFACE 29
+#define ATM_CONF_MBADDR 30
+
+#define VSLAVE_CONF_OVERFLOW 31
+#define VSLAVE_CONF_STRUCT 32
+
+#define VSLAVE_CONF_IFACE 33
+#define VSLAVE_CONF_MBADDR 34
+#define VSLAVE_CONF_MBTABL 35
+#define VSLAVE_CONF_BEGDIAP 36
+#define VSLAVE_CONF_ENDDIAP 37
+#define VSLAVE_CONF_LENDIAP 38
+
+#define PQUERY_CONF_OVERFLOW 39
+#define PQUERY_CONF_STRUCT 40
+
+#define PQUERY_CONF_IFACE 41
+#define PQUERY_CONF_MBADDR 42
+#define PQUERY_CONF_MBTABL 43
+#define PQUERY_CONF_ACCESS 44
+#define PQUERY_CONF_ENDREGREAD 45
+#define PQUERY_CONF_LENPACKET 46
+#define PQUERY_CONF_ENDREGWRITE 47
+#define PQUERY_CONF_DELAYMIN 48
+#define PQUERY_CONF_DELAYMAX 49
+#define PQUERY_CONF_ERRCNTR 50
+
+#define EXPT_CONF_OVERFLOW 51
+#define EXPT_CONF_STRUCT 52
+
+#define EXPT_CONF_STAGE 53
+#define EXPT_CONF_ACTION 54
+#define EXPT_CONF_PRM1 55
+#define EXPT_CONF_PRM2 56
+#define EXPT_CONF_PRM3 57
+#define EXPT_CONF_PRM4 58
 
 ///=== CLI_H public variables
 
@@ -48,12 +107,7 @@
 int get_command_line (int 	argc, char	*argv[]);
 int get_ip_from_string(char *str, unsigned int *ip, unsigned int *port);
 
-int check_Security();
-int check_Iface(GW_Iface *data);
-int check_QTEntry();
-int check_RTEntry();
-int check_Exception();
-int check_AT();
+int check_Iface(GW_Iface *iface);
 
 //void sigpipe_handler();
 //void sigio_handler();

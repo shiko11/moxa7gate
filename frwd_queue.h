@@ -80,7 +80,7 @@ typedef struct {			// блок регистров внутреннего адресного пространства шлюза
 	unsigned short length;		// количество регистров дипазона адресного пространства шлюза
 
 	char device_name[DEVICE_NAME_LENGTH]; // наименование устройства
-  } RT_Table_Entry; // GW_Vslave_Entry
+  } RT_Table_Entry; // GW_VSlave_Entry
 
 typedef struct {			// modbus-запрос для циклического опроса ведомого устройства в режиме PROXY
 	unsigned char iface;		// интерфейс шлюза для опроса ведомого устройства

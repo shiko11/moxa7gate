@@ -22,7 +22,7 @@ Public Const SETTVersionTimeRow As Integer = 11
 Public Const SETTModelRow As Integer = 12
 ' ПАРАМЕТРЫ РАБОТЫ ПРОГРАММЫ
 Public Const SETTTCPPortRow As Integer = 15
-Public Const SETTMBAddressRow As Integer = 16
+'Public Const SETTMBAddressRow As Integer = 16
 Public Const SETTStatusInfoBlockRow As Integer = 17
 Public Const SETTShowSysMessagesRow As Integer = 18
 Public Const SETTMap2Xto4XRow As Integer = 19
@@ -45,12 +45,11 @@ Public Const SLCommentColumn As Integer = 8
 Public Const LANTCPIfaceColumn As Integer = 1
 Public Const LANTCPIPColumn As Integer = 2
 Public Const LANTCPTCPColumn As Integer = 3
-Public Const LANTCPMBAddressColumn As Integer = 4
+Public Const LANTCPUnitIDColumn As Integer = 4
 Public Const LANTCPOffsetColumn As Integer = 5
-Public Const LANTCPATMAddressColumn As Integer = 6
-Public Const LANTCPIP2Column As Integer = 7
-Public Const LANTCPTCP2Column As Integer = 8
-Public Const LANTCPCommentColumn As Integer = 9
+Public Const LANTCPIP2Column As Integer = 6
+Public Const LANTCPTCP2Column As Integer = 7
+Public Const LANTCPCommentColumn As Integer = 8
 
 ' ЛИСТ "Таблица опроса"
 Public Const PTIfaceColumn As Integer = 2
@@ -193,9 +192,9 @@ If ws.Cells(SETTTCPPortRow, 2).Value <> "" Then
     Print #1, "--tcp_port " + CStr(ws.Cells(SETTTCPPortRow, 2).Value) + " \"
 End If
 
-If ws.Cells(SETTMBAddressRow, 2).Value <> "" Then
-    Print #1, "--modbus_address " + CStr(ws.Cells(SETTMBAddressRow, 2).Value) + " \"
-End If
+'If ws.Cells(SETTMBAddressRow, 2).Value <> "" Then
+'    Print #1, "--modbus_address " + CStr(ws.Cells(SETTMBAddressRow, 2).Value) + " \"
+'End If
 
 If ws.Cells(SETTStatusInfoBlockRow, 2).Value <> "" Then
     Print #1, "--status_info " + CStr(ws.Cells(SETTStatusInfoBlockRow, 2).Value) + " \"
@@ -273,9 +272,8 @@ res = (ws.Cells(i, LANTCPIPColumn).Value <> "")
 
         str = str + CStr(ws.Cells(i, LANTCPIPColumn).Value) + ":"
         str = str + CStr(ws.Cells(i, LANTCPTCPColumn).Value) + " "
-        str = str + CStr(ws.Cells(i, LANTCPMBAddressColumn).Value) + " "
+        str = str + CStr(ws.Cells(i, LANTCPUnitIDColumn).Value) + " "
         str = str + CStr(ws.Cells(i, LANTCPOffsetColumn).Value) + " "
-        str = str + CStr(ws.Cells(i, LANTCPATMAddressColumn).Value) + " "
         
         If ws.Cells(i, LANTCPIP2Column).Value <> "" Then
           str = str + CStr(ws.Cells(i, LANTCPIP2Column).Value) + ":"
@@ -283,7 +281,11 @@ res = (ws.Cells(i, LANTCPIPColumn).Value <> "")
           str = str + "0.0.0.0:"
         End If
         
-        str = str + CStr(ws.Cells(i, LANTCPTCP2Column).Value) + " "
+        If ws.Cells(i, LANTCPTCP2Column).Value <> "" Then
+          str = str + CStr(ws.Cells(i, LANTCPTCP2Column).Value) + " "
+        Else
+          str = str + "502"
+        End If
         
         If ws.Cells(i, LANTCPCommentColumn).Value <> "" Then
             str = str + "--desc " + """"
@@ -307,13 +309,7 @@ For ATMIfaceColumn = ATMFirstColumn To 3 * ATMColumnsAmount - 1 Step 3
   ' Проверяем очередной столбец на наличие непустых сток
   GoodColumn = False
   For ATMRow = ATMFirstRow To ATMFirstRow + ATMRowsAmount - 1
-    If ws.Cells(ATMRow, ATMIfaceColumn).Value = "" Then
-      IfaceNumber = 0
-    Else
-      IfaceNumber = CInt(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 2, 1))
-    End If
-    
-    If CStr(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 1, 1)) = "P" And IfaceNumber > 0 And IfaceNumber < 9 Then
+    If CStr(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 1, 1)) = "P" Or CStr(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 1, 1)) = "T" Or ws.Cells(ATMRow, ATMIfaceColumn).Value = "M7G" Then
       GoodColumn = True
     End If
   Next ATMRow
@@ -322,16 +318,16 @@ For ATMIfaceColumn = ATMFirstColumn To 3 * ATMColumnsAmount - 1 Step 3
     str = "AT" + CStr(CInt(ATMIfaceColumn \ 3 + 1)) + " "
     For ATMRow = ATMFirstRow To ATMFirstRow + ATMRowsAmount - 1
   
-      If ws.Cells(ATMRow, ATMIfaceColumn).Value = "" Then
-        IfaceNumber = 0
-      Else
+      IfaceNumber = 0
+      If CStr(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 1, 1)) = "P" Then
         IfaceNumber = CInt(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 2, 1))
+      ElseIf CStr(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 1, 1)) = "T" Then
+        IfaceNumber = 10 * CInt(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 2, 1)) + CInt(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 3, 1)) + 16
+      ElseIf ws.Cells(ATMRow, ATMIfaceColumn).Value = "M7G" Then
+        IfaceNumber = 10 + 1
       End If
     
-      res = CStr(Mid(ws.Cells(ATMRow, ATMIfaceColumn).Value, 1, 1)) = "P"
-      res = res And IfaceNumber > 0 And IfaceNumber < 9
-
-      If res Then
+      If IfaceNumber <> 0 Then
         str = str + CStr(CInt(256 * (IfaceNumber - 1) + CByte(ws.Cells(ATMRow, ATMBusColumn).Value))) + " "
       Else
         str = str + "0 "
@@ -357,7 +353,13 @@ For i = 2 To 129
         str = "RT "
 
         str = str + CStr(ws.Cells(i, RTMIfaceColumn).Value) + " "
-        str = str + CStr(ws.Cells(i, RTMMBAddressColumn).Value) + " "
+        
+        If ws.Cells(i, RTMMBAddressColumn).Value <> "" Then
+          str = str + CStr(ws.Cells(i, RTMMBAddressColumn).Value) + " "
+        Else
+          str = str + "0 "
+        End If
+        
         str = str + CStr(ws.Cells(i, RTMMBTableColumn).Value) + " "
         str = str + CStr(ws.Cells(i, RTMOffsetColumn).Value) + " "
         str = str + CStr(ws.Cells(i, RTMStartColumn).Value) + " "
@@ -440,10 +442,30 @@ For i = 2 To 33
       End If
       
       str = str + CStr(ws.Cells(i, EXCPActionColumn).Value) + " "
-      str = str + CStr(ws.Cells(i, EXCPPrm1Column).Value) + " "
-      str = str + CStr(ws.Cells(i, EXCPPrm2Column).Value) + " "
-      str = str + CStr(ws.Cells(i, EXCPPrm3Column).Value) + " "
-      str = str + CStr(ws.Cells(i, EXCPPrm4Column).Value) + " "
+      
+      If ws.Cells(i, EXCPPrm1Column).Value <> "" Then
+        str = str + CStr(ws.Cells(i, EXCPPrm1Column).Value) + " "
+      Else
+        str = str + "0 "
+      End If
+      
+      If ws.Cells(i, EXCPPrm2Column).Value <> "" Then
+        str = str + CStr(ws.Cells(i, EXCPPrm2Column).Value) + " "
+      Else
+        str = str + "0 "
+      End If
+      
+      If ws.Cells(i, EXCPPrm3Column).Value <> "" Then
+        str = str + CStr(ws.Cells(i, EXCPPrm3Column).Value) + " "
+      Else
+        str = str + "0 "
+      End If
+      
+      If ws.Cells(i, EXCPPrm4Column).Value <> "" Then
+        str = str + CStr(ws.Cells(i, EXCPPrm4Column).Value) + " "
+      Else
+        str = str + "0 "
+      End If
       
       If ws.Cells(i, EXCPCommentColumn).Value <> "" Then
         str = str + "--desc " + """"

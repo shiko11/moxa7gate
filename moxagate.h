@@ -32,7 +32,7 @@ typedef struct {
 	GW_Queue queue;
   GW_StaticData stat;
 
-  unsigned char map_2x_to_4x;			// Режим отображения таблицы дискретных входов на таблицу holding-регистров
+  unsigned char map2Xto4X;			// Режим отображения таблицы дискретных входов на таблицу holding-регистров
 
   // мьютекс используется для синхронизации потоков при работе с памятью
   pthread_mutex_t moxa_mutex;

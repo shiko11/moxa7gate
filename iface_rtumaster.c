@@ -348,7 +348,7 @@ void *iface_rtu_master(void *arg)
 
 ///---------- специальный случай при подаче команд на СКС-7 Диоген, обрабатываем
 ///--- убираем третий с конца байт в полученном ответе на запрос
-if((exceptions&EXCEPTION_DIOGEN)!=0)					
+if((exceptions&EXPT_ACT_SKS07_DIOGEN)!=0)					
 		if(serial_adu[RTUADU_FUNCTION]==0x06)
 		if((except_prm[0]&(1 << port_id))!=0) {
 			serial_adu[serial_adu_len-3]=serial_adu[serial_adu_len-2];

@@ -10,6 +10,7 @@
 ///=== INTERFACES_H MODULE IMPLEMENTATION
 
 #include "interfaces.h"
+#include "cli.h"
 
 ///----------------------------------------------------------------------------
 // условно конструктор
@@ -120,7 +121,7 @@ int check_Iface(GW_Iface *iface)
        iface->modbus_mode==IFACE_RTUMASTER ||
        iface->modbus_mode==IFACE_RTUSLAVE  ||
        iface->modbus_mode==IFACE_TCPMASTER
-    ) return IFACE_CONF_MBMODE;
+    )) return IFACE_CONF_MBMODE;
 
 	if(iface->modbus_mode!=IFACE_TCPMASTER) {
 
@@ -185,7 +186,8 @@ int check_Iface(GW_Iface *iface)
       ) return IFACE_CONF_TCPMBADDR;
 
 		// LAN2Address, TCP
-    if(iface->ethernet.ip2==0) return IFACE_CONF_TCPIP2;
+    // допускаем ноль для резервного адреса:
+    // if(iface->ethernet.ip2==0) return IFACE_CONF_TCPIP2;
     
 	  if( (iface->ethernet.port2 < TCP_PORT_MIN) ||
         (iface->ethernet.port2 > TCP_PORT_MAX)
@@ -193,6 +195,9 @@ int check_Iface(GW_Iface *iface)
 
 		/// Описание шлейфа (сети ModBus)
     // iface->description
+
+    // основной и резервный адерса не должны совпадать
+    if(iface->ethernet.ip==iface->ethernet.ip2) return IFACE_CONF_TCPIPEQUAL;
 	  }
 
  	return COMMAND_LINE_OK;

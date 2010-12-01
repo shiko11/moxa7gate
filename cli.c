@@ -10,6 +10,7 @@
 ///=== CLI_H MODULE IMPLEMENTATION
 
 #include "cli.h"
+#include "messages.h"
 
 ///=== CLI_H private variables
 
@@ -23,13 +24,13 @@ int argc_counter=0;
 
 void help_print(void);    /* вывод информации о программе */
 
-int parse_Security();
-int parse_IfacesRTU();
-int parse_IfacesTCP();
-int parse_AddressMap();
-int parse_Vslaves();
-int parse_ProxyQueries();
-int parse_Exceptions();
+int parse_Security(int 	argc, char	*argv[]);
+int parse_IfacesRTU(int 	argc, char	*argv[]);
+int parse_IfacesTCP(int 	argc, char	*argv[]);
+int parse_AddressMap(int 	argc, char	*argv[]);
+int parse_Vslaves(int 	argc, char	*argv[]);
+int parse_ProxyQueries(int 	argc, char	*argv[]);
+int parse_Exceptions(int 	argc, char	*argv[]);
 
 ///----------------------------------------------------------------------------
 void help_print (void) /* вывод информации о программе */
@@ -68,15 +69,15 @@ int get_command_line(int argc, char *argv[])
       ((argc>1) && (strncmp(argv[1], "--h", 3)    ==0)) ||
       ((argc>1) && (strncmp(argv[1], "--help", 6) ==0)) ||
       ((argc>1) && (strncmp(argv[1], "help", 4)   ==0)) ||
-      ((argc>1) && (strncmp(argv[1], "?", 1)      ==0)) ||
+      ((argc>1) && (strncmp(argv[1], "?", 1)      ==0))
       ) {help_print(); return COMMAND_LINE_INFO;}
 
 	int i=COMMAND_LINE_OK;
 	unsigned int j;
-	unsigned int k;
+	int k;
 
   //**** ЧТЕНИЕ ОБЩИХ ПАРАМЕТРОВ НАСТРОЙКИ ШЛЮЗА ****
-  k=parse_Security();
+  k=parse_Security(argc, argv);
   if(k!=COMMAND_LINE_OK) {
     i=COMMAND_LINE_ERROR;
 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
@@ -89,7 +90,7 @@ int get_command_line(int argc, char *argv[])
     }
 
   //**** ЧТЕНИЕ ПАРАМЕТРОВ КОНФИГУРАЦИИ ПОСЛЕДОВАТЕЛЬНЫХ ИНТЕРФЕЙСОВ ****
-  k=parse_IfacesRTU();
+  k=parse_IfacesRTU(argc, argv);
   if(k!=COMMAND_LINE_OK) {
     i=COMMAND_LINE_ERROR;
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
@@ -106,7 +107,7 @@ int get_command_line(int argc, char *argv[])
       }
 
   //**** ЧТЕНИЕ ПАРАМЕТРОВ КОНФИГУРАЦИИ ЛОГИЧЕСКИХ TCP-ИНТЕРФЕЙСОВ ****
-  k=parse_IfacesTCP();
+  k=parse_IfacesTCP(argc, argv);
   if(k!=COMMAND_LINE_OK) {
     i=COMMAND_LINE_ERROR;
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
@@ -123,7 +124,7 @@ int get_command_line(int argc, char *argv[])
       }
 
   //**** ЧТЕНИЕ ТАБЛИЦЫ НАЗНАЧЕНИЯ АДРЕСОВ ***
-  k=parse_AddressMap();
+  k=parse_AddressMap(argc, argv);
   if(k!=COMMAND_LINE_OK) {
     i=COMMAND_LINE_ERROR;
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
@@ -140,7 +141,7 @@ int get_command_line(int argc, char *argv[])
       }
 
   //**** ЧТЕНИЕ ТАБЛИЦЫ ВИРТУАЛЬНЫХ УСТРОЙСТВ ****
-  k=parse_Vslaves();
+  k=parse_Vslaves(argc, argv);
   if(k!=COMMAND_LINE_OK) {
     i=COMMAND_LINE_ERROR;
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
@@ -157,7 +158,7 @@ int get_command_line(int argc, char *argv[])
       }
 
   //**** ЧТЕНИЕ ТАБЛИЦЫ ОПРОСА ****
-  k=parse_ProxyQueries();
+  k=parse_ProxyQueries(argc, argv);
   if(k!=COMMAND_LINE_OK) {
     i=COMMAND_LINE_ERROR;
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
@@ -174,13 +175,13 @@ int get_command_line(int argc, char *argv[])
       }
 
   //**** ЧТЕНИЕ ТАБЛИЦЫ ИСКЛЮЧЕНИЙ ****
-  k=parse_Exceptions();
+  k=parse_Exceptions(argc, argv);
   if(k!=COMMAND_LINE_OK) {
     i=COMMAND_LINE_ERROR;
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
     } else {
       for(j=0; j<MOXAGATE_EXCEPTIONS_NUMBER; j++) {
-        if(Exceptions[j].stage==EXPT_STAGE_UNDEFINED) continue;
+        if(Exception[j].stage==EXPT_STAGE_UNDEFINED) continue;
         k=check_Exception(j);
         if(k!=COMMAND_LINE_OK) {
           i=COMMAND_LINE_ERROR;	
@@ -197,7 +198,7 @@ int get_command_line(int argc, char *argv[])
 	}
 ///-----------------------------------------------------------------------------
 //**** ЧТЕНИЕ ОБЩИХ ПАРАМЕТРОВ НАСТРОЙКИ ШЛЮЗА ****
-int parse_Security()
+int parse_Security(int 	argc, char	*argv[])
   {
 	unsigned int i;
 	unsigned int j;
@@ -326,8 +327,7 @@ int parse_Security()
 		if(strcmp(argv[id_key_argc[i]],"--status_info")==0) {
       if(id_key_valset[11]==1) return SECURITY_CONF_DUPLICATE;
 			MoxaDevice.status_info=atoi(argv[id_key_argc[i]+1]);
-      ///!!! должен декрементироваться здесь, т.к. это индекс. в настоящее время декрементируется при инициализации:
-      //MoxaDevice.status_info--;
+      MoxaDevice.status_info--;
       id_key_valset[11]=1;
       j=2;
 			}
@@ -349,7 +349,7 @@ int parse_Security()
   }
 ///-----------------------------------------------------------------------------
 //**** ЧТЕНИЕ ПАРАМЕТРОВ КОНФИГУРАЦИИ ПОСЛЕДОВАТЕЛЬНЫХ ИНТЕРФЕЙСОВ ****
-int parse_IfacesRTU()
+int parse_IfacesRTU(int 	argc, char	*argv[])
   {
 	unsigned int i;
 	unsigned int j;
@@ -430,7 +430,8 @@ int parse_IfacesRTU()
 		if(IfaceRTU[p_num].modbus_mode==IFACE_TCPSERVER)
 		  if(argc > id_p_argc[i]+6+shift_counter) {
 			  arg=argv[id_p_argc[i]+6+shift_counter];
-			  sscanf(arg, "%d", &IfaceRTU[p_num].Security.tcp_port);
+			  sscanf(arg, "%d", &k);
+        if(k!=0) IfaceRTU[p_num].Security.tcp_port=k;
 			  shift_counter++;
 			  }
 
@@ -454,7 +455,7 @@ int parse_IfacesRTU()
   }
 ///-----------------------------------------------------------------------------
 //**** ЧТЕНИЕ ПАРАМЕТРОВ КОНФИГУРАЦИИ ЛОГИЧЕСКИХ TCP-ИНТЕРФЕЙСОВ ****
-int parse_IfacesTCP()
+int parse_IfacesTCP(int 	argc, char	*argv[])
   {
 	unsigned int i;
 	unsigned int j;
@@ -505,12 +506,8 @@ int parse_IfacesTCP()
 		arg=argv[id_t_argc[i]+3];
 		sscanf(arg, "%d", &IfaceTCP[t_num].ethernet.offset);
 
-		// Modbus Address for ATM
-		arg=argv[id_t_argc[i]+4];
-		sscanf(arg, "%d", &IfaceTCP[t_num].ethernet.mb_slave);
-
 		// LAN2Address, TCP
-		arg=argv[id_t_argc[i]+5];
+		arg=argv[id_t_argc[i]+4];
 		get_ip_from_string(arg, &IfaceTCP[t_num].ethernet.ip2, &IfaceTCP[t_num].ethernet.port2);
 
 		if(IfaceTCP[t_num].modbus_mode!=IFACE_OFF) return IFACE_CONF_TCPDUPLICATE; // считаем есть дубликаты
@@ -519,11 +516,11 @@ int parse_IfacesTCP()
 		shift_counter=0;
 
 		/// Описание шлейфа (сети ModBus)
-    if(argc > id_t_argc[i]+6+shift_counter+1) {
-		  arg=argv[id_t_argc[i]+6+shift_counter];
+    if(argc > id_t_argc[i]+5+shift_counter+1) {
+		  arg=argv[id_t_argc[i]+5+shift_counter];
 		  if(strcmp(arg, "--desc")==0) {
 			  shift_counter++;
-			  arg=argv[id_t_argc[i]+6+shift_counter];
+			  arg=argv[id_t_argc[i]+5+shift_counter];
 			  if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
 				  arg[DEVICE_NAME_LENGTH-1]=0;
 			  strcpy(IfaceTCP[t_num].description, arg);
@@ -539,7 +536,7 @@ int parse_IfacesTCP()
 
 ///-----------------------------------------------------------------------------
 //**** ЧТЕНИЕ ТАБЛИЦЫ НАЗНАЧЕНИЯ АДРЕСОВ ***
-int parse_AddressMap()
+int parse_AddressMap(int 	argc, char	*argv[])
   {
 	unsigned int i;
 	unsigned int j;
@@ -566,8 +563,9 @@ int parse_AddressMap()
       val=atoi(arg);															 
       if(val==0) continue; // значение для пустых элементов таблицы
       AddressMap[ADDRESSMAP_PARAMETERS * k].iface=val >> 8;
+      // нет ключевого поля в этой таблице:
       // на уровне анализа командной строки проверяем допустимый тип интерфейса:
-      if(AddressMap[ADDRESSMAP_PARAMETERS * k].iface > GATEWAY_P8) return ATM_CONF_IFACE;
+      //if(AddressMap[ADDRESSMAP_PARAMETERS * k].iface > GATEWAY_P8) return ATM_CONF_IFACE;
       AddressMap[ADDRESSMAP_PARAMETERS * k].address=val & 0xff;
       }
 
@@ -579,7 +577,7 @@ int parse_AddressMap()
 
 ///-----------------------------------------------------------------------------
 //**** ЧТЕНИЕ ТАБЛИЦЫ ВИРТУАЛЬНЫХ УСТРОЙСТВ ****
-int parse_Vslaves()
+int parse_Vslaves(int 	argc, char	*argv[])
   {
 	unsigned int i;
 	unsigned int j;
@@ -654,7 +652,7 @@ int parse_Vslaves()
 
 ///-----------------------------------------------------------------------------
 //**** ЧТЕНИЕ ТАБЛИЦЫ ОПРОСА ****
-int parse_ProxyQueries()
+int parse_ProxyQueries(int 	argc, char	*argv[])
   {
 	unsigned int i;
 	unsigned int j;
@@ -748,7 +746,7 @@ int parse_ProxyQueries()
 
 ///-----------------------------------------------------------------------------
 //**** ЧТЕНИЕ ТАБЛИЦЫ ИСКЛЮЧЕНИЙ ****
-int parse_Exceptions()
+int parse_Exceptions(int 	argc, char	*argv[])
   {
 	unsigned int i;
 	unsigned int j;
@@ -832,8 +830,149 @@ void sigio_handler()
 printf("SIGIO! \n");
 return;
 }
-*///----------------------------------------------------------------------------------------------------------------
-///----------------------------------------------------------------------------------------------------------------
+*///----------------------------------------------------------------------------
+///----------------------------------------------------------------------------
+int check_GatewayTCPPorts()
+  {
+  int i, j;
+
+  for(i=GATEWAY_P1; i<=GATEWAY_P8; i++) {
+    for(j=GATEWAY_P1; j<=GATEWAY_P8; j++)
+      if((j!=i) && (IfaceRTU[j].Security.tcp_port == IfaceRTU[i].Security.tcp_port)) break;
+    if(IfaceRTU[i].Security.tcp_port == Security.tcp_port) break;
+    }
+
+  if(i!=GATEWAY_P8+1)
+    if(j!=GATEWAY_P8+1) return (j<<8)|i;
+      else return (i<<8)|GATEWAY_SECURITY;
+
+  return 0;
+  }
+
+///----------------------------------------------------------------------------
+int check_GatewayAddressMap()
+  {
+  int j, m7g=0, lantcp[MAX_TCP_SERVERS];
+  memset(lantcp, 0, sizeof(lantcp));
+
+  for(j=MODBUS_ADDRESS_MIN; j<=MODBUS_ADDRESS_MAX; j++) {
+    if((AddressMap[j].iface>=GATEWAY_T01) && (AddressMap[j].iface<=GATEWAY_T32))
+      lantcp[AddressMap[j].iface-GATEWAY_T01]++;
+    if(AddressMap[j].iface==GATEWAY_MOXAGATE) m7g++;
+    }
+
+  if(m7g!=1) return GATEWAY_MOXAGATE;
+  for(j=0; j<MAX_TCP_SERVERS; j++)
+    if(lantcp[j]>1) return j+GATEWAY_T01;
+
+  return 0;
+  }
+
+///----------------------------------------------------------------------------
+int check_GatewayIfaces()
+  {
+  int i, j, k, if_type[4], if_num, res;
+  GW_Iface *iface;
+												 
+  if_type[0]=IFACE_TCPSERVER;
+  if_type[1]=IFACE_RTUMASTER;
+  if_type[2]=IFACE_TCPMASTER;
+  if_type[3]=IFACE_RTUSLAVE;
+
+  for(i=0; i<4; i++) for(j=GATEWAY_P1; j<=GATEWAY_ASSETS; j++) {
+
+    if( ((j > GATEWAY_P8) && (j < GATEWAY_T01)) ||
+        (j > GATEWAY_T32)
+      ) continue;
+
+    ifnum= j<GATEWAY_P8 ?           j  :          j-GATEWAY_T01 ;
+    iface= j<GATEWAY_P8 ? &IfaceRTU[j] : IfaceTCP[j-GATEWAY_T01];
+
+    if(iface->modbus_mode == if_type[i]) switch(if_type[i]) {
+
+      // проверка не требуется
+      case IFACE_TCPSERVER: 
+       break;
+
+      // должен быть активирован один из трех механизмов перенаправления
+      case IFACE_RTUMASTER:
+      case IFACE_TCPMASTER:
+
+        res=0;
+
+        for(k=MODBUS_ADDRESS_MIN; k<=MODBUS_ADDRESS_MAX; k++)
+          if(AddressMap[k].iface==ifnum) res++;
+
+        for(k=0; k<MAX_VIRTUAL_SLAVES; k++)
+          if(vslave[k].iface==ifnum) res++;
+
+        for(k=0; k<MAX_QUERY_ENTRIES; k++)
+          if(query_table[k].iface==ifnum) res++;
+
+       if(res==0) return ifnum;
+    
+       break;
+
+      // для этого типа интерфейса должен существовать хотя бы один корректно сконфигурированный
+      // интерфейс в режиме IFACE_RTUMASTER или IFACE_TCPMASTER
+      case IFACE_RTUSLAVE:
+
+        res=0;
+
+        for(k=GATEWAY_P1; k<=GATEWAY_ASSETS; k++) {
+
+          if( ((k > GATEWAY_P8) && (k < GATEWAY_T01)) ||
+              (k > GATEWAY_T32)
+            ) continue;
+
+          if(k<GATEWAY_P8) {
+            if(IfaceRTU[k].modbus_mode==IFACE_RTUMASTER) res++;
+            } else {
+              if(IfaceTCP[k-GATEWAY_T01].modbus_mode==IFACE_TCPMASTER) res++;
+              }
+          }
+
+       if(res==0) return ifnum;
+    
+       break;
+
+      default:;
+      }
+
+    }
+
+  return 0;
+  }
+
+///----------------------------------------------------------------------------
+int check_GatewayConf()
+  {
+
+  return 0;
+  }
+
+///----------------------------------------------------------------------------
+int check_IntegrityAddressMap()
+  {
+
+  return 0;
+  }
+
+///----------------------------------------------------------------------------
+int check_IntegrityVSlaves()
+  {
+
+  return 0;
+  }
+
+///----------------------------------------------------------------------------
+int check_IntegrityPQueries()
+  {
+
+  return 0;
+  }
+
+///----------------------------------------------------------------------------
 int get_ip_from_string(char *str, unsigned int *ip, unsigned int *port)
   {
 	int dot, colon, digit, k, j;
@@ -848,11 +987,11 @@ int get_ip_from_string(char *str, unsigned int *ip, unsigned int *port)
 	  if((str[j]>=48)&&(str[j]<=57)) digit++; else
 	    if(str[j]=='.') dot++; else
 	      if(str[j]==':') {
-				if(dot!=3) return CL_ERR_IN_MAP;
+				if(dot!=3) return 1;
 					colon++;
-			} else return CL_ERR_IN_MAP;
+			} else return 2;
 		}
-	if((dot!=3)||(colon>1))  return CL_ERR_IN_MAP;
+	if((dot!=3)||(colon>1))  return 3;
 	
 	digit=0;
 	for(j=digit; j<k; j++) if(str[j]=='.') {str[j]=0; break;}
@@ -888,5 +1027,4 @@ int get_ip_from_string(char *str, unsigned int *ip, unsigned int *port)
 
 	return COMMAND_LINE_OK;
   }
-
-///-----------------------------------------------------------------------------
+///----------------------------------------------------------------------------

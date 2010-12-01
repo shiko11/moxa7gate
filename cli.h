@@ -15,13 +15,13 @@
 
 ///=== CLI_H constants
 
-#define MAX_COMMON_KEYS 17 // максимальное количество общих параметров конфигурации шлюза (с префиксом "--")
+#define MAX_COMMON_KEYS 16 // максимальное количество общих параметров конфигурации шлюза (с префиксом "--")
 #define SERIAL_PARAMETERS 6 // количество параметров конфигурации последовательного интерфейса
-#define LANTCP_PARAMETERS 6 // количество параметров конфигурации логического TCP интерфейса
-#define PROXY_TABLE_PARAMETERS 10 // количество параметров конфигурации в одной записи таблицы опроса
+#define LANTCP_PARAMETERS 5 // количество параметров конфигурации логического TCP интерфейса
+#define ADDRESSMAP_PARAMETERS 32 // количество записей таблицы назначения адресов в конфигурационном блоке данных
 #define RTM_TABLE_PARAMETERS 7 // количество параметров конфигурации в одной записи таблицы назначения регистров
+#define PROXY_TABLE_PARAMETERS 10 // количество параметров конфигурации в одной записи таблицы опроса
 #define EXCEPTION_PARAMETERS 7 // количество параметров конфигурации в одной записи таблицы исключений
-#define ADDRESSMAP_PARAMETERS 32 // количество параметров конфигурации в одной записи таблицы исключений
 
 // ошибки анализа командной строки
 // и верификации полученных структур данных
@@ -59,46 +59,47 @@
 #define IFACE_CONF_TCPMBADDR 24
 #define IFACE_CONF_TCPIP2 25
 #define IFACE_CONF_TCPPORT2 26
+#define IFACE_CONF_TCPIPEQUAL 27
 
-#define ATM_CONF_SPELLING 27
-#define ATM_CONF_STRUCT 28
+#define ATM_CONF_SPELLING 28
+#define ATM_CONF_STRUCT 29
 
-#define ATM_CONF_IFACE 29
-#define ATM_CONF_MBADDR 30
+#define ATM_CONF_IFACE 30
+#define ATM_CONF_MBADDR 31
 
-#define VSLAVE_CONF_OVERFLOW 31
-#define VSLAVE_CONF_STRUCT 32
+#define VSLAVE_CONF_OVERFLOW 32
+#define VSLAVE_CONF_STRUCT 33
 
-#define VSLAVE_CONF_IFACE 33
-#define VSLAVE_CONF_MBADDR 34
-#define VSLAVE_CONF_MBTABL 35
-#define VSLAVE_CONF_BEGDIAP 36
-#define VSLAVE_CONF_ENDDIAP 37
-#define VSLAVE_CONF_LENDIAP 38
+#define VSLAVE_CONF_IFACE 34
+#define VSLAVE_CONF_MBADDR 35
+#define VSLAVE_CONF_MBTABL 36
+#define VSLAVE_CONF_BEGDIAP 37
+#define VSLAVE_CONF_ENDDIAP 38
+#define VSLAVE_CONF_LENDIAP 39
 
-#define PQUERY_CONF_OVERFLOW 39
-#define PQUERY_CONF_STRUCT 40
+#define PQUERY_CONF_OVERFLOW 40
+#define PQUERY_CONF_STRUCT 41
 
-#define PQUERY_CONF_IFACE 41
-#define PQUERY_CONF_MBADDR 42
-#define PQUERY_CONF_MBTABL 43
-#define PQUERY_CONF_ACCESS 44
-#define PQUERY_CONF_ENDREGREAD 45
-#define PQUERY_CONF_LENPACKET 46
-#define PQUERY_CONF_ENDREGWRITE 47
-#define PQUERY_CONF_DELAYMIN 48
-#define PQUERY_CONF_DELAYMAX 49
-#define PQUERY_CONF_ERRCNTR 50
+#define PQUERY_CONF_IFACE 42
+#define PQUERY_CONF_MBADDR 43
+#define PQUERY_CONF_MBTABL 44
+#define PQUERY_CONF_ACCESS 45
+#define PQUERY_CONF_ENDREGREAD 46
+#define PQUERY_CONF_LENPACKET 47
+#define PQUERY_CONF_ENDREGWRITE 48
+#define PQUERY_CONF_DELAYMIN 49
+#define PQUERY_CONF_DELAYMAX 50
+#define PQUERY_CONF_ERRCNTR 51
 
-#define EXPT_CONF_OVERFLOW 51
-#define EXPT_CONF_STRUCT 52
+#define EXPT_CONF_OVERFLOW 52
+#define EXPT_CONF_STRUCT 53
 
-#define EXPT_CONF_STAGE 53
-#define EXPT_CONF_ACTION 54
-#define EXPT_CONF_PRM1 55
-#define EXPT_CONF_PRM2 56
-#define EXPT_CONF_PRM3 57
-#define EXPT_CONF_PRM4 58
+#define EXPT_CONF_STAGE 54
+#define EXPT_CONF_ACTION 55
+#define EXPT_CONF_PRM1 56
+#define EXPT_CONF_PRM2 57
+#define EXPT_CONF_PRM3 58
+#define EXPT_CONF_PRM4 59
 
 ///=== CLI_H public variables
 
@@ -107,7 +108,13 @@
 int get_command_line (int 	argc, char	*argv[]);
 int get_ip_from_string(char *str, unsigned int *ip, unsigned int *port);
 
-int check_Iface(GW_Iface *iface);
+int check_GatewayTCPPorts();
+int check_GatewayAddressMap();
+int check_GatewayIfaces();
+int check_GatewayConf();
+int check_IntegrityAddressMap();
+int check_IntegrityVSlaves();
+int check_IntegrityPQueries();
 
 //void sigpipe_handler();
 //void sigio_handler();

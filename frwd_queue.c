@@ -13,6 +13,7 @@
 #include "interfaces.h"
 #include "moxagate.h"
 #include "messages.h"
+#include "cli.h"
 
 union semun {
 	int val;
@@ -43,12 +44,15 @@ int check_AddressMap_Entry(int index)
   {
 
   if( ((AddressMap[index].iface > GATEWAY_P8) && (AddressMap[index].iface < GATEWAY_T01)) ||
-      (AddressMap[index].iface > GATEWAY_T32)
+      (AddressMap[index].iface > GATEWAY_T32) ||
+      (AddressMap[index].iface != GATEWAY_MOXAGATE)
     ) return ATM_CONF_IFACE;
 
-  if(  (AddressMap[index].address < MODBUS_ADDRESS_MIN) ||
-       (AddressMap[index].address > MODBUS_ADDRESS_MAX)
-    ) return ATM_CONF_MBADDR;
+  // игнорируем адрес MODBUS, если указан не RTU-интерфейс:
+  if(AddressMap[index].iface<=GATEWAY_P8)
+    if(  (AddressMap[index].address < MODBUS_ADDRESS_MIN) ||
+         (AddressMap[index].address > MODBUS_ADDRESS_MAX)
+      ) return ATM_CONF_MBADDR;
 
  	return COMMAND_LINE_OK;
   }
@@ -77,24 +81,26 @@ int check_Vslave_Entry(int index)
       (vslave[index].iface > GATEWAY_T32)
     ) return VSLAVE_CONF_IFACE;
 	
-  if(  (vslave[index].device < MODBUS_ADDRESS_MIN) ||
-       (vslave[index].device > MODBUS_ADDRESS_MAX)
-    ) return VSLAVE_CONF_MBADDR;
+  // игнорируем адрес MODBUS, если указан не RTU-интерфейс:
+  if(AddressMap[index].iface<=GATEWAY_P8)
+    if(  (vslave[index].device < MODBUS_ADDRESS_MIN) ||
+         (vslave[index].device > MODBUS_ADDRESS_MAX)
+      ) return VSLAVE_CONF_MBADDR;
 
 	if(!(
 			vslave[index].modbus_table==COIL_STATUS_TABLE      ||
 			vslave[index].modbus_table==INPUT_STATUS_TABLE     ||
 			vslave[index].modbus_table==HOLDING_REGISTER_TABLE ||
-			vslave[index].modbus_table==INPUT_REGISTER_TABLE   ||
+			vslave[index].modbus_table==INPUT_REGISTER_TABLE
 		)) return VSLAVE_CONF_MBTABL;
 
   // параметры, задающие адресуемый диапазон, проверяем в комплексе
 
   // начальный регистр диапазона	
-  if( unsigned int(vslave[index].offset + vslave[index].start) > MB_ADDRESS_LAST) return VSLAVE_CONF_BEGDIAP;
+  if((unsigned int)(vslave[index].offset + vslave[index].start) > MB_ADDRESS_LAST) return VSLAVE_CONF_BEGDIAP;
 
   // конечный регистр диапазона	
-  if( unsigned int( \
+  if((unsigned int)( \
     vslave[index].offset + \
     vslave[index].start + \
     vslave[index].length) > MB_ADDRESS_LAST) return VSLAVE_CONF_ENDDIAP;
@@ -137,26 +143,28 @@ int check_ProxyQuery_Entry(int index)
       (query_table[index].iface > GATEWAY_T32)
     ) return PQUERY_CONF_IFACE;
 	
-  if(  (query_table[index].device < MODBUS_ADDRESS_MIN) ||
-       (query_table[index].device > MODBUS_ADDRESS_MAX)
-    ) return PQUERY_CONF_MBADDR;
+  // игнорируем адрес MODBUS, если указан не RTU-интерфейс:
+  if(AddressMap[index].iface<=GATEWAY_P8)
+    if(  (query_table[index].device < MODBUS_ADDRESS_MIN) ||
+         (query_table[index].device > MODBUS_ADDRESS_MAX)
+      ) return PQUERY_CONF_MBADDR;
 
 	if(!(
 			query_table[index].mbf==MBF_READ_COILS             ||
 			query_table[index].mbf==MBF_READ_DECRETE_INPUTS    ||
 			query_table[index].mbf==MBF_READ_HOLDING_REGISTERS ||
-			query_table[index].mbf==MBF_READ_INPUT_REGISTERS   ||
+			query_table[index].mbf==MBF_READ_INPUT_REGISTERS
 		)) return PQUERY_CONF_MBTABL;
 
 	if(!(
 			query_table[index].access==QT_ACCESS_READWRITE ||
 			query_table[index].access==QT_ACCESS_READONLY  ||
-			query_table[index].access==QT_ACCESS_DISABLED  ||
+			query_table[index].access==QT_ACCESS_DISABLED
 		)) return PQUERY_CONF_ACCESS;
 
   // начальный регистр области чтения
   // конечный регистр области чтения
-  if( unsigned int (query_table[index].start + query_table[index].length -1) > MB_ADDRESS_LAST)
+  if((unsigned int)(query_table[index].start + query_table[index].length -1) > MB_ADDRESS_LAST)
     return PQUERY_CONF_ENDREGREAD;
 
   // длина пакета данных
@@ -179,7 +187,7 @@ int check_ProxyQuery_Entry(int index)
 
   // начальный регистр области записи
   // конечный регистр области записи
-  if( unsigned int (query_table[index].offset + query_table[index].length) > MB_ADDRESS_LAST)
+  if((unsigned int)(query_table[index].offset + query_table[index].length) > MB_ADDRESS_LAST)
     return PQUERY_CONF_ENDREGWRITE;
 
   if( (((query_table[index].iface & IFACETCP_MASK)==0) && (query_table[index].delay < QT_DELAY_RTU_MIN)) ||
@@ -233,12 +241,12 @@ int check_Exception(int index)
   // проверяем набор параметров по каждому из определенных действий
 
 	if(Exception[index].action==EXPT_ACT_SKS07_DIOGEN) {
-    if( ((Exception[i].prm1 > GATEWAY_P8) && (Exception[i].prm1 < GATEWAY_T01)) ||
-        (Exception[i].prm1 > GATEWAY_T32)
+    if( ((Exception[index].prm1 > GATEWAY_P8) && (Exception[index].prm1 < GATEWAY_T01)) ||
+        (Exception[index].prm1 > GATEWAY_T32)
       ) return EXPT_CONF_PRM1;
 	
-    if(  (Exception[i].prm2 < MODBUS_ADDRESS_MIN) ||
-         (Exception[i].prm2 > MODBUS_ADDRESS_MAX)
+    if(  (Exception[index].prm2 < MODBUS_ADDRESS_MIN) ||
+         (Exception[index].prm2 > MODBUS_ADDRESS_MAX)
       ) return EXPT_CONF_PRM2;
     }
 	

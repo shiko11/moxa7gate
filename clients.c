@@ -118,7 +118,7 @@ int check_Security()
        (MoxaDevice.modbus_address > MODBUS_ADDRESS_MAX)
     ) return SECURITY_CONF_MBADDR;
 	
-	if( unsigned int(MoxaDevice.status_info-1+GATE_STATUS_BLOCK_LENGTH) > MB_ADDRESS_LAST)
+	if((unsigned int)(MoxaDevice.status_info+GATE_STATUS_BLOCK_LENGTH) > MB_ADDRESS_LAST)
     return SECURITY_CONF_STATINFO;
 
   // Security.show_sys_messages

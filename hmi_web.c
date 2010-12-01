@@ -244,7 +244,8 @@ int refresh_shm(void *arg)
 	strcpy(t_security->Location, Security.Location);
 	strcpy(t_security->VersionNumber, Security.VersionNumber);
 	strcpy(t_security->NetworkName, Security.NetworkName);
-	t_security->NetworkAddress=Security.NetworkAddress;
+	t_security->LAN1Address=Security.LAN1Address;
+	t_security->LAN2Address=Security.LAN2Address;
 	t_security->start_time=Security.start_time;
 
 	t_security->start_time=Security.start_time;

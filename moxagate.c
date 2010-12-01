@@ -24,12 +24,12 @@ int init_moxagate_h()
 
   MoxaDevice.modbus_address=1;
   ///!!! должен быть ноль, т.к. это индекс. в настоящее время декрементируется при инициализации:
-  MoxaDevice.status_info=1;
+  MoxaDevice.status_info=0;
 
 	// MoxaDevice.queue
   // MoxaDevice.stat
 
-  MoxaDevice.map_2x_to_4x=0;
+  MoxaDevice.map2Xto4X=0;
 
   // MoxaDevice.moxa_mutex
 

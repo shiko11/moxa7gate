@@ -190,6 +190,9 @@ int main(int argc, char *argv[])
 	if(MoxaDevice.offset3xRegisters==0xffff)	MoxaDevice.offset3xRegisters=0;
 	if(MoxaDevice.offset4xRegisters==0xffff)	MoxaDevice.offset4xRegisters=0;
 
+  ///!!! алгоритм ниже исправить: следующий оператор не должен выполняться здесь, он выполняется ранее
+  MoxaDevice.status_info++;
+
 	// блок статусной информации находится в области 4x, выделяем место для него
 	if(MoxaDevice.status_info!=0) { /// если должен быть инициализирован блок статусной информации шлюза
 		if(MoxaDevice.amount4xRegisters==0) { /// если 4х область адресного пространства не размечена
@@ -272,6 +275,7 @@ int main(int argc, char *argv[])
 
 /// для удобства в дальнейшей работе переводим номера регистров и битов в смещения, когда нумерация идет с нуля
 	for(i=0; i<MAX_QUERY_ENTRIES; i++) { query_table[i].offset--; query_table[i].start--; }
+  ///!!! алгоритм выше исправить: следующий оператор не должен выполняться здесь, он выполняется ранее
   MoxaDevice.status_info--;
 
   // мьютекс используется для синхронизации потоков при работе с памятью

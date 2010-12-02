@@ -121,7 +121,7 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 //		)==0) return;
 
 	if(Security.show_sys_messages==0 && (msgtype & EVENT_CAT_MASK)==EVENT_CAT_DEBUG) return;
-	if(Security.show_data_flow==0    && (msgtype & EVENT_CAT_MASK)==EVENT_CAT_TRAFFIC) return;
+	//if(Security.show_data_flow==0    && (msgtype & EVENT_CAT_MASK)==EVENT_CAT_TRAFFIC) return;
 	
 	/// создаем запись в журнале
 	time(&curtime);
@@ -153,19 +153,19 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 			}
 
 	switch(msgtype & EVENT_SRC_MASK) {
-			case EVENT_SRC_SYSTEM: 	printf("SYSTEM\t"); 	break;
-			case EVENT_SRC_GATE502: printf("GATE502\t"); 	break;
-			case EVENT_SRC_P1: 			printf("PORT1\t"); 		break;
-			case EVENT_SRC_P2: 			printf("PORT2\t"); 		break;
-			case EVENT_SRC_P3: 			printf("PORT3\t"); 		break;
-			case EVENT_SRC_P4: 			printf("PORT4\t"); 		break;
-			case EVENT_SRC_P5: 			printf("PORT5\t"); 		break;
-			case EVENT_SRC_P6: 			printf("PORT6\t"); 		break;
-			case EVENT_SRC_P7: 			printf("PORT7\t"); 		break;
-			case EVENT_SRC_P8: 			printf("PORT8\t"); 		break;
-			case EVENT_SRC_MOXAMB: 	printf("MOXAMB\t"); 	break;
-			case EVENT_SRC_MOXATCP: printf("MOXATCP\t"); 	break;
-			case EVENT_SRC_TCPBRIDGE: printf("BRIDGE%d\t", prm2+1); 	break;
+			case GATEWAY_SYSTEM: 	printf("SYSTEM\t"); 	break;
+			case GATEWAY_SECURITY:printf("SECURITY\t"); 	break;
+			case GATEWAY_P1: 			printf("PORT1\t"); 		break;
+			case GATEWAY_P2: 			printf("PORT2\t"); 		break;
+			case GATEWAY_P3: 			printf("PORT3\t"); 		break;
+			case GATEWAY_P4: 			printf("PORT4\t"); 		break;
+			case GATEWAY_P5: 			printf("PORT5\t"); 		break;
+			case GATEWAY_P6: 			printf("PORT6\t"); 		break;
+			case GATEWAY_P7: 			printf("PORT7\t"); 		break;
+			case GATEWAY_P8: 			printf("PORT8\t"); 		break;
+			case GATEWAY_MOXAGATE: 	printf("MOXAGATE\t"); 	break;
+			case GATEWAY_LANTCP: printf("LANTCP\t"); 	break;
+			// case GATEWAY_TCPBRIDGE: printf("BRIDGE%d\t", prm2+1); 	break;
 
 			default: 								printf("NONAME\t");
 			}

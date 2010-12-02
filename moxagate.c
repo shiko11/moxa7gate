@@ -95,7 +95,7 @@ void *moxa_device(void *arg) //прием - передача данных по Modbus TCP
 //	int fd=inputDATA->serial.fd;
 
   // THREAD STARTED
-	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_MOXAMB, 42, MOXA_MB_DEVICE, 0, 0, 0);
+	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_MOXAGATE, 42, MOXA_MB_DEVICE, 0, 0, 0);
 
 	while (1) {
 		
@@ -132,7 +132,7 @@ void *moxa_device(void *arg) //прием - передача данных по Modbus TCP
 		tmpstat.accepted++;
 
 			if(Security.show_data_flow==1)
-				show_traffic(TRAFFIC_TCP_SEND, EVENT_SRC_MOXAMB, client_id, memory_adu, memory_adu_len-2);
+				show_traffic(TRAFFIC_TCP_SEND, GATEWAY_MOXAGATE, client_id, memory_adu, memory_adu_len-2);
 
 			status = mb_tcp_send_adu(Client[client_id].csd,
 																&tmpstat, memory_adu, memory_adu_len-2, tcp_adu, &tcp_adu_len);
@@ -147,7 +147,7 @@ void *moxa_device(void *arg) //прием - передача данных по Modbus TCP
 		  	tmpstat.errors++;
 				func_res_err(memory_adu[RTUADU_FUNCTION], &tmpstat);
   			// POLLING: TCP SEND
-			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|EVENT_SRC_MOXAMB, 185, (unsigned) status, client_id, 0, 0);
+			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|GATEWAY_MOXAGATE, 185, (unsigned) status, client_id, 0, 0);
 		  	break;
 		  default:;
 		  };
@@ -162,7 +162,7 @@ void *moxa_device(void *arg) //прием - передача данных по Modbus TCP
 
 	EndRun: ;
 	// THREAD STOPPED
- 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|port_id, 43, 0, 0, 0, 0);
+ 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_MOXAGATE, 43, 0, 0, 0, 0);
 	pthread_exit (0);	
 }
 ///-----------------------------------------------------------------------------------------------------------------
@@ -260,7 +260,7 @@ int process_moxamb_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu, 
 
 		  if(status) {
 		 		// FRWD: PROXY TRANSLATION
-		 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|EVENT_SRC_MOXAMB, 130, client_id, ((adu[TCPADU_START_HI]<<8)|adu[TCPADU_START_LO])&0xffff, n, 0);
+		 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_MOXAGATE, 130, client_id, ((adu[TCPADU_START_HI]<<8)|adu[TCPADU_START_LO])&0xffff, n, 0);
 				return 1;
 				}
 														
@@ -279,7 +279,7 @@ int process_moxamb_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu, 
 
 		default: //!!! ДНАЮБХРЭ ЙНД ЯВЕРВХЙЮ ЯРЮРХЯРХЙХ. СФЕ МЕ ОЕПБЮЪ ОПНБЕПЙЮ ОН ОСРХ ОЮЙЕРЮ
 		 		// POLLING: FUNC NOT SUPPORTED
-		 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|EVENT_SRC_MOXAMB, 180, adu[TCPADU_FUNCTION], 0, 0, 0);
+		 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_MOXAGATE, 180, adu[TCPADU_FUNCTION], 0, 0, 0);
 				return 2;
 		}
 

@@ -72,12 +72,12 @@ int init_shm()
 	if(shm_segment_id==-1) {
 
 		switch(errno) {
-			case ENOENT: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 34, 0, 0, 0, 0); break;
-			case EACCES: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 31, 0, 0, 0, 0); break;
-			case EINVAL: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 33, 0, 0, 0, 0); break;
-			case ENOMEM: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 35, 0, 0, 0, 0); break;
-			case EEXIST: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 32, 0, 0, 0, 0); break;
-			default: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 36, 0, 0, 0, 0); break;
+			case ENOENT: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 34, 0, 0, 0, 0); break;
+			case EACCES: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 31, 0, 0, 0, 0); break;
+			case EINVAL: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 33, 0, 0, 0, 0); break;
+			case ENOMEM: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 35, 0, 0, 0, 0); break;
+			case EEXIST: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 32, 0, 0, 0, 0); break;
+			default: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 36, 0, 0, 0, 0); break;
 			}
 
 		return shm_segment_id;
@@ -107,7 +107,7 @@ int init_shm()
 ///  printf("%d %d %d\n", shm_data, shared_memory, app_log);
 ///  printf("%p %p %p\n", shm_data, shared_memory, app_log);
 	// SHARED MEM: OK
-	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_SYSTEM, 37, shmbuffer.shm_segsz, 0, 0, 0);
+	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 37, shmbuffer.shm_segsz, 0, 0, 0);
 
   return 0;
   }
@@ -355,7 +355,7 @@ int close_shm()
 	shmdt(pointer);
 	shmctl(shm_segment_id, IPC_RMID, 0);
 	// SHARED MEM: CLOSED
-	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 30, 0, 0, 0, 0);
+	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 30, 0, 0, 0, 0);
 	return 0;
 	}
 ///--------------------------------------------------------------------------

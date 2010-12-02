@@ -110,7 +110,7 @@ int get_ip_from_string(char *str, unsigned int *ip, unsigned int *port);
 
 int check_GatewayTCPPorts();
 int check_GatewayAddressMap();
-int check_GatewayIfaces();
+int check_GatewayIfaces_ex();
 int check_GatewayConf();
 int check_IntegrityAddressMap();
 int check_IntegrityVSlaves();

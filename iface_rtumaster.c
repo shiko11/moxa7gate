@@ -485,7 +485,7 @@ if((exceptions&EXPT_ACT_SKS07_DIOGEN)!=0)
 				  case MB_SERIAL_WRITE_ERR:
 				  	tmpstat.errors++;
 		  			// POLLING: RTU SEND
-					 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|Client[client_id].iface, 183, (unsigned) status, client_id, 0, 0);
+					 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|GATEWAY_SECURITY, 183, (unsigned) status, client_id, 0, 0);
 						update_stat(&Client[client_id].stat, &tmpstat);
 						update_stat(&IfaceRTU[Client[client_id].iface].stat, &tmpstat);
 						continue;

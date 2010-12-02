@@ -284,7 +284,7 @@ int init_queue()
 	key_t sem_key=ftok("/tmp/app", 'b');
 	
 	if((semaphore_id = semget(sem_key, MAX_MOXA_PORTS*2+MAX_TCP_SERVERS, IPC_CREAT|IPC_EXCL|0666)) == -1) {
-		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 29, 0, 0, 0, 0);
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 29, 0, 0, 0, 0);
 		return 1;
 	 	}
 	
@@ -305,7 +305,7 @@ int enqueue_query_ex(GW_Queue *queue, int client_id, int device_id, u8 *adu, u16
 
 			  if(queue->queue_len==MAX_GATEWAY_QUEUE_LENGTH) { ///!!! modbus exception response, reset queue
 			 		// QUEUE OVERLOADED
-			 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|queue->port_id, 149, client_id, 0, 0, 0);
+			 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_FRWD, 149, queue->port_id, client_id, 0, 0);
 					return 1;
 					}
 	
@@ -335,7 +335,7 @@ int enqueue_query_ex(GW_Queue *queue, int client_id, int device_id, u8 *adu, u16
 	//printf("mutex passed\n");
 
 //	printf("query_queued %d P%d, len=%d\n", queue_current, queue->port_id+1, queue->queue_len);
-	sysmsg_ex(EVENT_CAT_TRAFFIC|EVENT_TYPE_INF|queue->port_id, 220, client_id, queue->queue_len, 0, 0);
+//	sysmsg_ex(EVENT_CAT_TRAFFIC|EVENT_TYPE_INF|GATEWAY_FRWD, 220, queue->port_id, client_id, queue->queue_len, 0);
 
 	queue->operations[0].sem_op=1;
 //	printf("semaphore inc: port=%d\n", queue->port_id+1);
@@ -356,7 +356,7 @@ int get_query_from_queue(GW_Queue *queue, int *client_id, int *device_id, u8 *ad
 
 	  if(queue->queue_len==0) { /// внутренн€€ ошибка в программе
 	 		// QUEUE EMPTY
-	 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|queue->port_id, 148, 0, 0, 0, 0);
+	 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_FRWD, 148, queue->port_id, 0, 0, 0);
 			return 1;
 			}
 
@@ -381,7 +381,7 @@ int get_query_from_queue(GW_Queue *queue, int *client_id, int *device_id, u8 *ad
   	pthread_mutex_unlock(&queue->queue_mutex);
 	
 //		printf("query_accepted P%d, len=%d\n", queue->port_id+1, queue->queue_len);
-	sysmsg_ex(EVENT_CAT_TRAFFIC|EVENT_TYPE_INF|queue->port_id, 221, *client_id, queue->queue_len, 0, 0);
+//	sysmsg_ex(EVENT_CAT_TRAFFIC|EVENT_TYPE_INF|GATEWAY_FRWD, 221, queue->port_id, *client_id, queue->queue_len, 0);
 
   return 0;
   }

@@ -72,35 +72,35 @@ int get_command_line(int argc, char *argv[])
       ((argc>1) && (strncmp(argv[1], "?", 1)      ==0))
       ) {help_print(); return COMMAND_LINE_INFO;}
 
-	int i=COMMAND_LINE_OK;
+	int i=0;
 	unsigned int j;
 	int k;
 
   //**** ЧТЕНИЕ ОБЩИХ ПАРАМЕТРОВ НАСТРОЙКИ ШЛЮЗА ****
   k=parse_Security(argc, argv);
   if(k!=COMMAND_LINE_OK) {
-    i=COMMAND_LINE_ERROR;
-		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+    i++;
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
     } else {
     k=check_Security();
     if(k!=COMMAND_LINE_OK) {
-      i=COMMAND_LINE_ERROR;
-      sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+      i++;
+      sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
       }
     }
 
   //**** ЧТЕНИЕ ПАРАМЕТРОВ КОНФИГУРАЦИИ ПОСЛЕДОВАТЕЛЬНЫХ ИНТЕРФЕЙСОВ ****
   k=parse_IfacesRTU(argc, argv);
   if(k!=COMMAND_LINE_OK) {
-    i=COMMAND_LINE_ERROR;
-    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+    i++;
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
     } else {
       for(j=GATEWAY_P1; j<GATEWAY_P8; j++) {
         if(IfaceRTU[j].modbus_mode==IFACE_OFF) continue;
         k=check_Iface(&IfaceRTU[j]);
         if(k!=COMMAND_LINE_OK) {
-          i=COMMAND_LINE_ERROR;
-          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+          i++;
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
           break; // останавливаемся после первой ошибки
           } else strcpy(IfaceRTU[j].bridge_status, "INI");
         }
@@ -109,15 +109,15 @@ int get_command_line(int argc, char *argv[])
   //**** ЧТЕНИЕ ПАРАМЕТРОВ КОНФИГУРАЦИИ ЛОГИЧЕСКИХ TCP-ИНТЕРФЕЙСОВ ****
   k=parse_IfacesTCP(argc, argv);
   if(k!=COMMAND_LINE_OK) {
-    i=COMMAND_LINE_ERROR;
-    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+    i++;
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
     } else {
       for(j=GATEWAY_T01; j<GATEWAY_T32; j++) {
         if(IfaceTCP[j].modbus_mode==IFACE_OFF) continue;
         k=check_Iface(&IfaceTCP[j]);
         if(k!=COMMAND_LINE_OK) {
-          i=COMMAND_LINE_ERROR;	
-          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+          i++;
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
           break; // останавливаемся после первой ошибки
           } else strcpy(IfaceTCP[j].bridge_status, "INI");
         }
@@ -126,15 +126,15 @@ int get_command_line(int argc, char *argv[])
   //**** ЧТЕНИЕ ТАБЛИЦЫ НАЗНАЧЕНИЯ АДРЕСОВ ***
   k=parse_AddressMap(argc, argv);
   if(k!=COMMAND_LINE_OK) {
-    i=COMMAND_LINE_ERROR;
-    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+    i++;
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
     } else {
       for(j=MODBUS_ADDRESS_MIN; j<=MODBUS_ADDRESS_MAX; j++) {
         if(AddressMap[j].iface==GATEWAY_NONE) continue;
         k=check_AddressMap_Entry(j);
         if(k!=COMMAND_LINE_OK) {
-          i=COMMAND_LINE_ERROR;	
-          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+          i++;
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
           break; // останавливаемся после первой ошибки
           }
         }
@@ -143,15 +143,15 @@ int get_command_line(int argc, char *argv[])
   //**** ЧТЕНИЕ ТАБЛИЦЫ ВИРТУАЛЬНЫХ УСТРОЙСТВ ****
   k=parse_Vslaves(argc, argv);
   if(k!=COMMAND_LINE_OK) {
-    i=COMMAND_LINE_ERROR;
-    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+    i++;
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
     } else {
       for(j=0; j<MAX_VIRTUAL_SLAVES; j++) {
         if(vslave[j].iface==GATEWAY_NONE) continue;
         k=check_Vslave_Entry(j);
         if(k!=COMMAND_LINE_OK) {
-          i=COMMAND_LINE_ERROR;	
-          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+          i++;
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
           break; // останавливаемся после первой ошибки
           }
         }
@@ -160,15 +160,15 @@ int get_command_line(int argc, char *argv[])
   //**** ЧТЕНИЕ ТАБЛИЦЫ ОПРОСА ****
   k=parse_ProxyQueries(argc, argv);
   if(k!=COMMAND_LINE_OK) {
-    i=COMMAND_LINE_ERROR;
-    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+    i++;
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
     } else {
       for(j=0; j<MAX_QUERY_ENTRIES; j++) {
         if(query_table[j].iface==GATEWAY_NONE) continue;
         k=check_ProxyQuery_Entry(j);
         if(k!=COMMAND_LINE_OK) {
-          i=COMMAND_LINE_ERROR;	
-          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+          i++;
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
           break; // останавливаемся после первой ошибки
           }
         }
@@ -177,15 +177,15 @@ int get_command_line(int argc, char *argv[])
   //**** ЧТЕНИЕ ТАБЛИЦЫ ИСКЛЮЧЕНИЙ ****
   k=parse_Exceptions(argc, argv);
   if(k!=COMMAND_LINE_OK) {
-    i=COMMAND_LINE_ERROR;
-    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+    i++;
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
     } else {
       for(j=0; j<MOXAGATE_EXCEPTIONS_NUMBER; j++) {
         if(Exception[j].stage==EXPT_STAGE_UNDEFINED) continue;
         k=check_Exception(j);
         if(k!=COMMAND_LINE_OK) {
-          i=COMMAND_LINE_ERROR;	
-          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, k, 0, 0, 0, 0);
+          i++;
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
           break; // останавливаемся после первой ошибки
           }
         }
@@ -193,8 +193,9 @@ int get_command_line(int argc, char *argv[])
 
   // проверяем количество обработанных конфигурационных параметров
   if((argc_counter+1)!=argc) return COMMAND_LINE_ARGC;
+  if(i>0) return (i << 8) | COMMAND_LINE_ERROR;
 
-	return i;
+	return COMMAND_LINE_OK;
 	}
 ///-----------------------------------------------------------------------------
 //**** ЧТЕНИЕ ОБЩИХ ПАРАМЕТРОВ НАСТРОЙКИ ШЛЮЗА ****
@@ -372,14 +373,12 @@ int parse_IfacesRTU(int 	argc, char	*argv[])
 		strcat(dest, tmp);
 		for(j=0; j<argc; j++)
 			if(strncmp(argv[j], dest, 5)==0) {
-        if(p_cnt==MAX_MOXA_PORTS) return IFACE_CONF_RTUDUPLICATE; // считаем есть дубликаты
+        if(p_cnt==MAX_MOXA_PORTS) return (GATEWAY_NONE << 8) | IFACE_CONF_RTUDUPLICATE; // считаем есть дубликаты
 				id_p_argc[p_cnt++]=j;						
         }
     }
 
   for(i=0; i<p_cnt; i++) {
-
-    if(argc - id_p_argc[i] < SERIAL_PARAMETERS) return IFACE_CONF_RTUSTRUCT; // считаем ошибка в структуре параметров
 
 		// port number
 		arg=argv[id_p_argc[i]+0];
@@ -387,6 +386,9 @@ int parse_IfacesRTU(int 	argc, char	*argv[])
     // ошибка в номере интерфейса исключена, т.к. массив id_p_argc формируется заведомо корректными ключами:
 		// if((p_num<1)||(p_num>MAX_MOXA_PORTS)) return CL_ERR_MIN_PARAM;
     p_num--;
+																																									
+    // считаем ошибка в структуре параметров
+    if(argc - id_p_argc[i] < SERIAL_PARAMETERS) return (p_num << 8) | IFACE_CONF_RTUSTRUCT;
 
 		// port mode
 		arg=argv[id_p_argc[i]+1];
@@ -415,14 +417,15 @@ int parse_IfacesRTU(int 	argc, char	*argv[])
 		k=strlen(arg);
 		for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
 
-		if(IfaceRTU[p_num].modbus_mode!=IFACE_OFF) return IFACE_CONF_RTUDUPLICATE; // считаем есть дубликаты
+		if(IfaceRTU[p_num].modbus_mode!=IFACE_OFF) 
+      return (p_num << 8) | IFACE_CONF_RTUDUPLICATE; // считаем есть дубликаты
 
 		if(strcmp(arg, "TCP_SERVER")==0) IfaceRTU[p_num].modbus_mode=IFACE_TCPSERVER;
 		if(strcmp(arg, "RTU_MASTER")==0) IfaceRTU[p_num].modbus_mode=IFACE_RTUMASTER;
 		if(strcmp(arg, "RTU_SLAVE")==0)  IfaceRTU[p_num].modbus_mode=IFACE_RTUSLAVE;
 
     // считаем ошибка в названии режима работы
-		if(IfaceRTU[p_num].modbus_mode==IFACE_OFF) return IFACE_CONF_MBMODE;
+		if(IfaceRTU[p_num].modbus_mode==IFACE_OFF) return (p_num << 8) | IFACE_CONF_MBMODE;
 
 		shift_counter=0;
 
@@ -478,14 +481,12 @@ int parse_IfacesTCP(int 	argc, char	*argv[])
 		strcat(dest, tmp);
 		for(j=0; j<argc; j++)
 			if(strncmp(argv[j], dest, 5)==0) {
-        if(t_cnt==MAX_TCP_SERVERS) return IFACE_CONF_TCPDUPLICATE; // считаем есть дубликаты
+        if(t_cnt==MAX_TCP_SERVERS) return (GATEWAY_NONE << 8) | IFACE_CONF_TCPDUPLICATE; // считаем есть дубликаты
 				id_t_argc[t_cnt++]=j;
         }
     }
 
   for(i=0; i<t_cnt; i++) {
-
-    if(argc - id_t_argc[i] < LANTCP_PARAMETERS) return IFACE_CONF_TCPSTRUCT; // считаем ошибка в структуре параметров
 
 		// port number
 		arg=argv[id_t_argc[i]+0];
@@ -493,6 +494,9 @@ int parse_IfacesTCP(int 	argc, char	*argv[])
     // ошибка в номере интерфейса исключена, т.к. массив id_t_argc формируется заведомо корректными ключами:
 		// if((t_num<1)||(t_num > MAX_TCP_SERVERS)) return CL_ERR_MIN_PARAM;
     t_num--;
+
+    // считаем ошибка в структуре параметров
+    if(argc - id_t_argc[i] < LANTCP_PARAMETERS) return (t_num << 8) | IFACE_CONF_TCPSTRUCT;
 
 		// LAN1Address, TCP
 		arg=argv[id_t_argc[i]+1];
@@ -510,7 +514,8 @@ int parse_IfacesTCP(int 	argc, char	*argv[])
 		arg=argv[id_t_argc[i]+4];
 		get_ip_from_string(arg, &IfaceTCP[t_num].ethernet.ip2, &IfaceTCP[t_num].ethernet.port2);
 
-		if(IfaceTCP[t_num].modbus_mode!=IFACE_OFF) return IFACE_CONF_TCPDUPLICATE; // считаем есть дубликаты
+		if(IfaceTCP[t_num].modbus_mode!=IFACE_OFF) 
+      return (t_num << 8) | IFACE_CONF_TCPDUPLICATE; // считаем есть дубликаты
 		IfaceTCP[t_num].modbus_mode=IFACE_TCPMASTER;
 
 		shift_counter=0;
@@ -869,9 +874,9 @@ int check_GatewayAddressMap()
   }
 
 ///----------------------------------------------------------------------------
-int check_GatewayIfaces()
+int check_GatewayIfaces_ex()
   {
-  int i, j, k, if_type[4], if_num, res;
+  int i, j, k, if_type[4], res, index;
   GW_Iface *iface;
 												 
   if_type[0]=IFACE_TCPSERVER;
@@ -885,8 +890,7 @@ int check_GatewayIfaces()
         (j > GATEWAY_T32)
       ) continue;
 
-    ifnum= j<GATEWAY_P8 ?           j  :          j-GATEWAY_T01 ;
-    iface= j<GATEWAY_P8 ? &IfaceRTU[j] : IfaceTCP[j-GATEWAY_T01];
+    iface= j<GATEWAY_P8 ? &IfaceRTU[j] : &IfaceTCP[j-GATEWAY_T01];
 
     if(iface->modbus_mode == if_type[i]) switch(if_type[i]) {
 
@@ -901,17 +905,25 @@ int check_GatewayIfaces()
         res=0;
 
         for(k=MODBUS_ADDRESS_MIN; k<=MODBUS_ADDRESS_MAX; k++)
-          if(AddressMap[k].iface==ifnum) res++;
+          if(AddressMap[k].iface==j) {
+            res++;
+            iface->ethernet.mb_slave=AddressMap[k].address;
+            }
 
         for(k=0; k<MAX_VIRTUAL_SLAVES; k++)
-          if(vslave[k].iface==ifnum) res++;
+          if(vslave[k].iface==j) res++;
 
+        index=0;
         for(k=0; k<MAX_QUERY_ENTRIES; k++)
-          if(query_table[k].iface==ifnum) res++;
+          if(query_table[k].iface==j) {
+          res++;
+          iface->PQueryIndex[index++]=k;
+          }
+        iface->PQueryIndex[MAX_QUERY_ENTRIES]=index;
 
-       if(res==0) return ifnum;
+        if(res==0) return 0x100 | j;
     
-       break;
+        break;
 
       // для этого типа интерфейса должен существовать хотя бы один корректно сконфигурированный
       // интерфейс в режиме IFACE_RTUMASTER или IFACE_TCPMASTER
@@ -928,11 +940,11 @@ int check_GatewayIfaces()
           if(k<GATEWAY_P8) {
             if(IfaceRTU[k].modbus_mode==IFACE_RTUMASTER) res++;
             } else {
-              if(IfaceTCP[k-GATEWAY_T01].modbus_mode==IFACE_TCPMASTER) res++;
+              if(IfaceTCP[k&GATEWAY_IFACE].modbus_mode==IFACE_TCPMASTER) res++;
               }
           }
 
-       if(res==0) return ifnum;
+       if(res==0) return 0x100 | k;
     
        break;
 
@@ -947,6 +959,23 @@ int check_GatewayIfaces()
 ///----------------------------------------------------------------------------
 int check_GatewayConf()
   {
+  int k, res=0;
+	 
+  // для нормальной работы программы как минимум должен быть сконфигурирован один из интерфейсов
+  for(k=GATEWAY_P1; k<=GATEWAY_ASSETS; k++) {
+
+    if( ((k > GATEWAY_P8) && (k < GATEWAY_T01)) ||
+        (k > GATEWAY_T32)
+      ) continue;
+
+    if(k<GATEWAY_P8) {
+      if(IfaceRTU[k].modbus_mode!=IFACE_OFF) res++;
+      } else {
+        if(IfaceTCP[k-GATEWAY_T01].modbus_mode!=IFACE_OFF) res++;
+        }
+    }
+
+  if(res==0) return 1;
 
   return 0;
   }
@@ -954,6 +983,21 @@ int check_GatewayConf()
 ///----------------------------------------------------------------------------
 int check_IntegrityAddressMap()
   {
+  int j;
+  GW_Iface *iface;
+
+  for(j=MODBUS_ADDRESS_MIN; j<=MODBUS_ADDRESS_MAX; j++) {
+
+    if(AddressMap[j].iface!=GATEWAY_NONE)
+    if((AddressMap[j].iface&IFACETCP_MASK)!=0)
+      iface=&IfaceTCP[AddressMap[j].iface & GATEWAY_IFACE];
+      else iface=&IfaceRTU[AddressMap[j].iface];
+
+    if(!(
+       (iface->modbus_mode==IFACE_TCPMASTER) ||
+       (iface->modbus_mode==IFACE_RTUMASTER)
+       )) return j;
+    }
 
   return 0;
   }
@@ -961,6 +1005,21 @@ int check_IntegrityAddressMap()
 ///----------------------------------------------------------------------------
 int check_IntegrityVSlaves()
   {
+  int j;
+  GW_Iface *iface;
+
+  for(j=0; j<MAX_VIRTUAL_SLAVES; j++) {
+
+    if(vslave[j].iface!=GATEWAY_NONE)
+    if((vslave[j].iface&IFACETCP_MASK)!=0)
+      iface=&IfaceTCP[vslave[j].iface & GATEWAY_IFACE];
+      else iface=&IfaceRTU[vslave[j].iface];
+
+    if(!(
+       (iface->modbus_mode==IFACE_TCPMASTER) ||
+       (iface->modbus_mode==IFACE_RTUMASTER)
+       )) return j;
+    }
 
   return 0;
   }
@@ -968,6 +1027,21 @@ int check_IntegrityVSlaves()
 ///----------------------------------------------------------------------------
 int check_IntegrityPQueries()
   {
+  int j;
+  GW_Iface *iface;
+
+  for(j=0; j<MAX_QUERY_ENTRIES; j++) {
+
+    if(query_table[j].iface!=GATEWAY_NONE)
+    if((query_table[j].iface&IFACETCP_MASK)!=0)
+      iface=&IfaceTCP[query_table[j].iface & GATEWAY_IFACE];
+      else iface=&IfaceRTU[query_table[j].iface];
+
+    if(!(
+       (iface->modbus_mode==IFACE_TCPMASTER) ||
+       (iface->modbus_mode==IFACE_RTUMASTER)
+       )) return j;
+    }
 
   return 0;
   }

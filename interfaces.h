@@ -36,10 +36,10 @@
 #define GATEWAY_P9        8
 #define GATEWAY_SYSTEM    9
 #define GATEWAY_MOXAGATE  10
-#define GATEWAY_CLIENTS   11
+#define GATEWAY_LANTCP    11
 #define GATEWAY_SECURITY  12
 #define GATEWAY_FRWD      13
-#define GATEWAY_QT        14
+#define GATEWAY_RESERVE   14
 #define GATEWAY_HMI       15
 
 #define GATEWAY_T01 16
@@ -78,7 +78,8 @@
 #define GATEWAY_T31 46
 #define GATEWAY_T32 47
 
-#define IFACETCP_MASK 0x01
+#define GATEWAY_IFACE 0x0F
+#define IFACETCP_MASK 0x10
 
 #define GATEWAY_NONE 63
 #define GATEWAY_ASSETS 63
@@ -146,7 +147,7 @@ typedef struct {
 	unsigned int port;      // номер TCP-порта
 	unsigned char unit_id;  // адрес на который отвечает целевое устройство
 	unsigned short offset;  /// стартовый регистр внутри целевого устройства
-	unsigned char mb_slave; // адрес modbus-устройства для перенаправления запросов (ATM)
+	unsigned char mb_slave; // адрес modbus-устройства для перенаправления запросов (ATM) (вычисляемый)
 	unsigned int ip2;       // резервный сетевой адрес
 	unsigned int port2;     // резервный номер TCP-порта
 	} GW_TCPIface;
@@ -166,6 +167,9 @@ typedef struct {
 						 
 	GW_Queue queue;      // очередь запросов интерфейса
   GW_StaticData stat;  // структура данных со статистикой опроса
+
+  // массив индексов по полю iface таблицы опроса
+  unsigned char PQueryIndex[MAX_QUERY_ENTRIES+1];
 
   ///=== условно частные переменные (private members)
 

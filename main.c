@@ -24,9 +24,11 @@ struct sockaddr_in	addr;
 
 int main(int argc, char *argv[])
 {
+
 /*** ИНИЦИАЛИЗАЦИЯ ПЕРЕМЕННЫХ ПРОГРАММЫ ***/
 
 	int			i, j;
+	unsigned k;
 
 		app_log_current_entry=app_log_entries_total=0;
 		app_log=NULL;
@@ -49,94 +51,81 @@ int main(int argc, char *argv[])
 
 		init_clients();
 
-
-//		signal(SIGPIPE, sigpipe_handler);
-//		signal(SIGIO, sigio_handler);
-
 /*** РАЗБОР ПАРАМЕТРОВ КОМАНДНОЙ СТРОКИ ***/
-	int res_cl = get_command_line(argc, argv);
-	switch(res_cl) {
+	k = get_command_line(argc, argv);
+	switch(k & 0xff) {
 
-		case CL_ERR_NONE_PARAM:			// CMD LINE: NO PARAMETERS
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 1, 0, 0, 0, 0);
-			exit(1);
-
-		case CL_INFO: exit(1);
-
-		case CL_ERR_PORT_WORD:			// CMD LINE: KEYWORD PORT NOT FOUND
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 3, 0, 0, 0, 0);
-			exit(1);
-
-		case CL_ERR_IN_STRUCT:			// CMD LINE: INVALID AMOUNT OF PARAMETERS
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 2, 0, 0, 0, 0);
-			exit(1);
-
-		case CL_ERR_IN_PORT_SETT:			// CMD LINE: WRONG PORT PARAMETERS
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 9, 0, 0, 0, 0);
-			exit(1);
-
-		case CL_ERR_GATEWAY_MODE:			// CMD LINE: WRONG GATEWAY MODE
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 7, 0, 0, 0, 0);
-			exit(1);
-
-		case CL_ERR_IN_MAP:			// CMD LINE: WRONG MAP DATA
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 8, 0, 0, 0, 0);
-			exit(1);
-
-		case CL_ERR_MIN_PARAM:			// CMD LINE: TOO LOW PARAMETERS
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 6, 0, 0, 0, 0);
-			exit(1);
-
-		case CL_ERR_MUTEX_PARAM:			// CMD LINE: MUTUALY EXLUSIVE PARAMETERS
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 4, 0, 0, 0, 0);
-			exit(1);
-
-		case CL_ERR_VSLAVES_CFG:			// CMD LINE: WRONG RTM_TABLE
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 11, 0, 0, 0, 0);
-			exit(1);
-
-		case CL_ERR_QT_CFG:			// CMD LINE: WRONG PROXY_TABLE
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 10, 0, 0, 0, 0);
-			exit(1);
-
-		case CL_ERR_TCPSRV_CFG:			// CMD LINE: WRONG TCP_SERVERS
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 12, 0, 0, 0, 0);
-			exit(1);
-
-		case CL_ERR_NOT_ALLOWED:			// CMD LINE: PARAMETER NOT ALLOWED
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 5, 0, 0, 0, 0);
-			exit(1);
-
-		case CL_OK:			// CMD LINE: OK
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_SYSTEM, 13, 0, 0, 0, 0);
+		case COMMAND_LINE_OK:			// CMD LINE: OK
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 0, 0, 0, 0, 0);
 			break;
 
+		case COMMAND_LINE_ARGC:
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 0, 0, 0, 0, 0);
+			exit(1);
+
+		case COMMAND_LINE_ERROR:
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 0, k >> 8, 0, 0, 0);
+			exit(1);
+
+		case COMMAND_LINE_INFO: 
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 0, 0, 0, 0, 0);
+      exit(1);
+
 		default:;		  // CMD LINE: UNCERTAIN RESULT
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|EVENT_SRC_SYSTEM, 14, 0, 0, 0, 0);
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_SYSTEM, 0, 0, 0, 0, 0);
 		}
 
-//printf("\n\nCOMMAND LINE TESTING\n");
+/*** ПРОВЕРКА КОНФИГУРАЦИИ ШЛЮЗА В ЦЕЛОМ ***/
 
-//for(i=0; i<16; i++)
-//  if((exceptions&(1<<i))!=0)
-//		printf("exception %d, prm=%d\n", i+1, except_prm[i]);
+  k=check_GatewayTCPPorts();
+  if(k!=0) {
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 0, k >> 8, k & 0xff, 0, 0);
+    exit(1);
+    }
 
-//exit (1);
+  k=check_GatewayAddressMap();
+  if(k!=0) if((k==GATEWAY_MOXAGATE) && (AddressMap[MoxaDevice.modbus_address].iface==GATEWAY_NONE)) {
+    // присваиваем адрес шлюзу по умолчанию:
+    AddressMap[MoxaDevice.modbus_address].iface=GATEWAY_MOXAGATE;
+    } else {
+      sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 0, k, 0, 0, 0);
+      exit(1);
+      }
 
-/*		res_cl=read_conf();
-		if(res_cl) {
-			printf("Configuration read error %d: check settings\n", res_cl);
-			exit(1);
-			}
-		printf("Configuration read OK\n");
-*/
+  k=check_GatewayIfaces_ex();
+  if(k!=0) {
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 0, k & 0xff, 0, 0, 0);
+    exit(1);
+    }
+
+  k=check_GatewayConf();
+  if(k!=0) {
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 0, 0, 0, 0, 0);
+    exit(1);
+    }
+
+  k=check_IntegrityAddressMap();
+  if(k!=0) {
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 0, k, 0, 0, 0);
+    exit(1);
+    }
+
+  k=check_IntegrityVSlaves();
+  if(k!=0) {
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 0, k, 0, 0, 0);
+    exit(1);
+    }
+
+  k=check_IntegrityPQueries();
+  if(k!=0) {
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 0, k, 0, 0, 0);
+    exit(1);
+    }
 
 /*** ИНИЦИАЛИЗАЦИЯ МАССИВОВ ПАМЯТИ ПОД ТАБЛИЦЫ MODBUS ***/
 
 /* в результате разбора параметров командной строки получаем количество параметров,
    которые нужно сохранять локально. соответственно производим выделение памяти под них */
-
-	unsigned k;
 
 	MoxaDevice.amount1xStatus=\
 	MoxaDevice.amount2xStatus=\
@@ -208,7 +197,7 @@ int main(int argc, char *argv[])
 		
 				} else	{ /// ошибка, если диапазоны регистров перекрываются
 					// STATUS INFO OVERLAPS
-					sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 39, 0, 0, 0, 0);
+					sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 39, 0, 0, 0, 0);
 					MoxaDevice.status_info=0;
 					}
 		}
@@ -223,11 +212,11 @@ int main(int argc, char *argv[])
 		k=sizeof(u8)*((MoxaDevice.amount1xStatus-1)/8+1);
 		MoxaDevice.wData1x=(u8 *) malloc(k);
 		if(MoxaDevice.wData1x==NULL) {
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 28, 1, k, 0, 0);
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 28, 1, k, 0, 0);
 			exit(1);
 			}
 		memset(MoxaDevice.wData1x,0, k);
-		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_SYSTEM, 28, 1, k, 0, 0);
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 28, 1, k, 0, 0);
 		}
 
 	// отображаем таблицу дискретных входов на таблицу holding-регистров
@@ -248,11 +237,11 @@ int main(int argc, char *argv[])
 		k=sizeof(u16)*MoxaDevice.amount3xRegisters;
 		MoxaDevice.wData3x=(u16 *) malloc(k);
 		if(MoxaDevice.wData3x==NULL) {
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 28, 3, k, 0, 0);
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 28, 3, k, 0, 0);
 			exit(1);
 			}
 		memset(MoxaDevice.wData3x, 0, k);
-		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_SYSTEM, 28, 3, k, 0, 0);
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 28, 3, k, 0, 0);
 		}
 
   // выделение памяти под таблицу 4x
@@ -260,17 +249,17 @@ int main(int argc, char *argv[])
 		k=sizeof(u16)*MoxaDevice.amount4xRegisters;
 		MoxaDevice.wData4x=(u16 *) malloc(k);
 		if(MoxaDevice.wData4x==NULL) {
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 28, 4, k, 0, 0);
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 28, 4, k, 0, 0);
 			exit(1);
 			}
 		memset(MoxaDevice.wData4x, 0, k);
-		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_SYSTEM, 28, 4, k, 0, 0);
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 28, 4, k, 0, 0);
 
 		// отображаем таблицу дискретных входов на таблицу holding-регистров
 		MoxaDevice.offset2xStatus=MoxaDevice.offset4xRegisters*sizeof(u16)*8;
 		MoxaDevice.amount2xStatus=MoxaDevice.amount4xRegisters*sizeof(u16)*8;
 		MoxaDevice.wData2x=(u8 *) MoxaDevice.wData4x;
-		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_SYSTEM, 28, 2, k, 0, 0);
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 28, 2, k, 0, 0);
 		}
 
 /// для удобства в дальнейшей работе переводим номера регистров и битов в смещения, когда нумерация идет с нуля
@@ -283,16 +272,16 @@ int main(int argc, char *argv[])
 
 /*** ИНИЦИАЛИЗАЦИЯ УСТРОЙСТВ КОНТРОЛЯ И МОНИТОРИНГА: LCM, KEYPAD, BUZZER (ДИСПЛЕЙ, КЛАВИАТУРА, ЗУММЕР) ***/
 	mxkpd_handle=keypad_open();
-	sysmsg_ex(EVENT_CAT_MONITOR|(mxkpd_handle<0?EVENT_TYPE_ERR:EVENT_TYPE_INF)|EVENT_SRC_SYSTEM,
+	sysmsg_ex(EVENT_CAT_MONITOR|(mxkpd_handle<0?EVENT_TYPE_ERR:EVENT_TYPE_INF)|GATEWAY_SYSTEM,
 						26, 0, 0, 0, 0);
 
 	mxlcm_handle = mxlcm_open();
-	sysmsg_ex(EVENT_CAT_MONITOR|(mxlcm_handle<0?EVENT_TYPE_ERR:EVENT_TYPE_INF)|EVENT_SRC_SYSTEM,
+	sysmsg_ex(EVENT_CAT_MONITOR|(mxlcm_handle<0?EVENT_TYPE_ERR:EVENT_TYPE_INF)|GATEWAY_SYSTEM,
 						27, 0, 0, 0, 0);
   mxlcm_control(mxlcm_handle, IOCTL_LCM_AUTO_SCROLL_OFF);
 
 	mxbzr_handle = mxbuzzer_open();
-	sysmsg_ex(EVENT_CAT_MONITOR|(mxbzr_handle<0?EVENT_TYPE_ERR:EVENT_TYPE_INF)|EVENT_SRC_SYSTEM,
+	sysmsg_ex(EVENT_CAT_MONITOR|(mxbzr_handle<0?EVENT_TYPE_ERR:EVENT_TYPE_INF)|GATEWAY_SYSTEM,
 						25, 0, 0, 0, 0);
 
 	screen.current_screen=LCM_SCREEN_MAIN;
@@ -560,7 +549,7 @@ gateway_common_processing();
 	// PROGRAM TERMINATED
 	time_t curtime;
 	time(&curtime);
-	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_SYSTEM, 44, curtime-MoxaDevice.start_time, 0, 0, 0);
+	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 44, curtime-MoxaDevice.start_time, 0, 0, 0);
 
 	return (0);
 }

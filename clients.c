@@ -183,7 +183,7 @@ int init_main_socket()
 	ssd = socket(AF_INET, SOCK_STREAM, 0);
 	if (ssd < 0) {
 		perror("csdet");
-		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_GATE502, 65, 1, MOXAGATE_CLIENTS_NUMBER, 0, 0);
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SECURITY, 65, 1, MOXAGATE_CLIENTS_NUMBER, 0, 0);
 		return 1;
 		}
 	
@@ -194,14 +194,14 @@ int init_main_socket()
 	if (bind(ssd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		perror("bind");
 		close(ssd);
-		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_GATE502, 65, 2, MOXAGATE_CLIENTS_NUMBER, 0, 0);
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SECURITY, 65, 2, MOXAGATE_CLIENTS_NUMBER, 0, 0);
 		return 2;
 		}
 
 	listen(ssd, MOXAGATE_CLIENTS_NUMBER);
 	fcntl(ssd, F_SETFL, fcntl(ssd, F_GETFL, 0) | O_NONBLOCK);
 
-	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_GATE502, 65, 3, MOXAGATE_CLIENTS_NUMBER, 0, 0);
+	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SECURITY, 65, 3, MOXAGATE_CLIENTS_NUMBER, 0, 0);
 
   return 0;
   }
@@ -351,7 +351,7 @@ int gateway_single_port_processing()
 			if (csd < 0) {
 				perror("accept");
 				// CONNECTION ACCEPTED
-				sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_GATE502, 67, 0, 0, 0, 0);
+				sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SECURITY, 67, 0, 0, 0, 0);
 			} else {
 
 		 /// ищем свободный слот для нового соединения
@@ -361,7 +361,7 @@ int gateway_single_port_processing()
 
 			 Security.rejected_connections_number++;
 			 // CONNECTION REJECTED
-			 sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|EVENT_SRC_GATE502, 70, addr.sin_addr.s_addr, 0, 0, 0);
+			 sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_SECURITY, 70, addr.sin_addr.s_addr, 0, 0, 0);
 			 close(csd);
 
 	     } else {
@@ -369,7 +369,7 @@ int gateway_single_port_processing()
 				  FD_SET(Client[current_client].csd, &watchset);
 	  	
 				 // CONNECTION ACCEPTED
-				 sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_GATE502, 67, addr.sin_addr.s_addr, current_client, 0, 0);
+				 sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SECURITY, 67, addr.sin_addr.s_addr, current_client, 0, 0);
 			
 				 time(&Client[current_client].connection_time);
 				 Client[current_client].disconnection_time=0;
@@ -382,7 +382,7 @@ int gateway_single_port_processing()
 					 addr.sin_addr.s_addr >> 24, (addr.sin_addr.s_addr >> 16) & 0xff, \
 					 (addr.sin_addr.s_addr >> 8) & 0xff, addr.sin_addr.s_addr & 0xff);
 			//printf("ip%X\n", addr.sin_addr.s_addr);
-         Client[current_client].iface=EVENT_SRC_GATE502;
+         Client[current_client].iface=GATEWAY_SECURITY;
 			
 		  	Security.accepted_connections_number++;
 		  	Security.current_connections_number++;
@@ -431,7 +431,7 @@ int query_translating()
 	    		if(diff>=MAX_CLIENT_ACTIVITY_TIMEOUT) {
             clear_client(i);
 			 			// CONNECTION CLOSED (TIMEOUT)
-			 			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|EVENT_SRC_GATE502, 72, i, 0, 0, 0);
+			 			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_SECURITY, 72, i, 0, 0, 0);
 						};
       }
 
@@ -455,7 +455,7 @@ int query_translating()
 			status = mb_tcp_receive_adu(Client[i].csd, &tmpstat, tcp_adu, &tcp_adu_len);
 	
 			if(Security.show_data_flow==1)
-				show_traffic(TRAFFIC_TCP_RECV, EVENT_SRC_GATE502, i, tcp_adu, tcp_adu_len);
+				show_traffic(TRAFFIC_TCP_RECV, GATEWAY_SECURITY, i, tcp_adu, tcp_adu_len);
 
 			switch(status) {
 			  case 0:
@@ -469,14 +469,14 @@ int query_translating()
 			  case TCP_PDU_ERR:
 			  	//tmpstat.errors++;
 	  			// POLLING: TCP RECV
-				 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|EVENT_SRC_GATE502, 184, (unsigned) status, i, 0, 0);
+				 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|GATEWAY_SECURITY, 184, (unsigned) status, i, 0, 0);
 
 					//update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 					//update_stat(&IfaceRTU[port_id].stat, &tmpstat);
 				  if(status==TCP_COM_ERR_NULL) {
 						clear_client(i);
 			 			// CONNECTION CLOSED (LINK DOWN)
-			 			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|EVENT_SRC_GATE502, 071, i, 0, 0, 0);
+			 			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_SECURITY, 071, i, 0, 0, 0);
 						}
 					return 0;
 			  	break;
@@ -516,7 +516,7 @@ int query_translating()
 		
 				default: ///!!! функция не поддерживается шлюзом, добавить счетчик статистики
 					// POLLING: FUNC NOT SUPPORTED
-			 		sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|EVENT_SRC_GATE502, 180, i, (unsigned) tcp_adu[TCPADU_FUNCTION], 0, 0);
+			 		sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|GATEWAY_SECURITY, 180, i, (unsigned) tcp_adu[TCPADU_FUNCTION], 0, 0);
 					continue;
 				}
 	
@@ -542,7 +542,7 @@ int query_translating()
 
 					  if(status) {
 		  			// FRWD: REGISTERS TRANSLATION
-			 			sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|EVENT_SRC_GATE502, 131, i, (unsigned) (tcp_adu[TCPADU_START_HI]<<8)|tcp_adu[TCPADU_START_LO], (unsigned) j, 0);
+			 			sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|GATEWAY_SECURITY, 131, i, (unsigned) (tcp_adu[TCPADU_START_HI]<<8)|tcp_adu[TCPADU_START_LO], (unsigned) j, 0);
 							continue;
 							}
 
@@ -554,7 +554,7 @@ int query_translating()
 					
 					case MOXA_DIAPASON_OVERLAPPED:
 		  			// FRWD: BLOCK OVERLAPS
-			 			sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|EVENT_SRC_GATE502, 129, i, (unsigned) (tcp_adu[TCPADU_START_HI]<<8)|tcp_adu[TCPADU_START_LO], (unsigned) j, 0);
+			 			sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|GATEWAY_SECURITY, 129, i, (unsigned) (tcp_adu[TCPADU_START_HI]<<8)|tcp_adu[TCPADU_START_LO], (unsigned) j, 0);
 						break;
 	
 					default:;
@@ -565,7 +565,7 @@ int query_translating()
 
 				  if(status) {
 		  			// FRWD: ADDRESS TRANSLATION
-			 			sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|EVENT_SRC_GATE502, 128, i, (unsigned) tcp_adu[TCPADU_ADDRESS], 0, 0);
+			 			sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|GATEWAY_SECURITY, 128, i, (unsigned) tcp_adu[TCPADU_ADDRESS], 0, 0);
 						continue;
 						}
 

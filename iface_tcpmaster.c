@@ -33,6 +33,7 @@ void *iface_tcp_master(void *arg) //прием - передача данных по Modbus TCP
 //	u16			exception_adu_len;
 
 	int		status;
+	int		port_id;
 
 //  printf("port %d cliet %d\n", port_id, client_id);
 	GW_StaticData tmpstat;
@@ -71,7 +72,7 @@ void *iface_tcp_master(void *arg) //прием - передача данных по Modbus TCP
 	int queue_current;
 
   // THREAD STARTED
-	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_TCPBRIDGE, 42, inputDATA->modbus_mode, client_id, 0, 0);
+	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_LANTCP, 42, port_id, client_id, 0, 0);
 
 //	for(i=0; i<IfaceRTU[port_id].accepted_connections_number; i++)
 //		bridge_reset_tcp(&IfaceRTU[port_id], i);
@@ -217,7 +218,7 @@ void *iface_tcp_master(void *arg) //прием - передача данных по Modbus TCP
 		  case TCP_COM_ERR_SEND:
 		  	tmpstat.errors++;
   			// POLLING: TCP SEND
-			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|EVENT_SRC_TCPBRIDGE, 185, (unsigned) status, client_id, 0, 0);
+			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|GATEWAY_LANTCP, 185, port_id, (unsigned) status, client_id, 0);
 				shutdown(Client[0].csd, SHUT_RDWR);
 				close(Client[0].csd);
 				Client[0].csd=-1;
@@ -249,7 +250,7 @@ void *iface_tcp_master(void *arg) //прием - передача данных по Modbus TCP
 		  case TCP_PDU_ERR:
 		  	tmpstat.errors++;
   			// POLLING: TCP RECV ERROR
-			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|EVENT_SRC_TCPBRIDGE, 184, (unsigned) status, client_id, 0, 0);
+			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|GATEWAY_LANTCP, 184, port_id, (unsigned) status, client_id, 0);
 				update_stat(&Client[0].stat, &tmpstat);
 				update_stat(&inputDATA->stat, &tmpstat);
 
@@ -411,7 +412,7 @@ void *iface_tcp_master(void *arg) //прием - передача данных по Modbus TCP
 //	inputDATA->current_connections_number--;
 	Client[0].rc=1;
 	// THREAD STOPPED
- 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|EVENT_SRC_TCPBRIDGE, 43, 0, client_id, 0, 0);
+ 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_LANTCP, 43, port_id, client_id, 0, 0);
 	pthread_exit (0);	
 }
 
@@ -449,17 +450,17 @@ int bridge_reset_tcp(GW_Iface *bridge)
 	(setsockopt(Client[0].csd, SOL_SOCKET, SO_SNDTIMEO, &tvs, optlen)!=0)||
 	(setsockopt(Client[0].csd, SOL_SOCKET, SO_RCVTIMEO, &tvr, optlen)!=0)) 
 	// SOCKET INITIALIZED
- 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_TCPBRIDGE, 65, 2, 0, 0, 0);
+ 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, 65, 2, IfaceTCP[0].ethernet.ip, 0, 0);
 //	printf("for client%d send_timeout=%dms, receive_timeout=%dms\n", client, tvs.tv_sec*1000+tvs.tv_usec/1000, tvr.tv_sec*1000+tvr.tv_usec/1000);
 
 	// бШГНБ ТСМЙЖХХ connect()
 	if(connect(Client[0].csd, (struct sockaddr *)&server, sizeof(server))==-1) {
 		perror("bridge tcp connection");																			
 		// CONNECTION FAILED
-	 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_TCPBRIDGE, 69, IfaceTCP[0].ethernet.ip, 0, 0, 0);
+	 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, 69, IfaceTCP[0].ethernet.ip, 0, 0, 0);
 		return 2;
 		} else // CONNECTION ESTABLISHED
-		 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_TCPBRIDGE, 68, IfaceTCP[0].ethernet.ip, 0, 0, 0);
+		 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_LANTCP, 68, IfaceTCP[0].ethernet.ip, 0, 0, 0);
 
 
 	Client[0].status=GW_CLIENT_CLOSED; /// :)

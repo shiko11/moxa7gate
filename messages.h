@@ -24,17 +24,19 @@
 //    - внешние (monitor)
 //    - внутренние (debug)
 
-#define EVENT_CAT_MONITOR			0x40
-#define EVENT_CAT_DEBUG				0x80
-#define EVENT_CAT_TRAFFIC			0xC0
-#define EVENT_CAT_RESERV			0x00
-#define EVENT_CAT_MASK				0xC0
+#define EVENT_CAT_MONITOR     0x40
+#define EVENT_CAT_DEBUG       0x80
+#define EVENT_CAT_RESERVE1    0xC0
+#define EVENT_CAT_RESERVE2    0x00
+#define EVENT_CAT_MASK        0xC0
 
-#define EVENT_TYPE_INF				0x10
-#define EVENT_TYPE_WRN				0x20
-#define EVENT_TYPE_ERR				0x30
-#define EVENT_TYPE_RESERV			0x00
-#define EVENT_TYPE_MASK				0x30
+#define EVENT_TYPE_INF        0x10
+#define EVENT_TYPE_WRN        0x20
+#define EVENT_TYPE_ERR        0x30
+#define EVENT_TYPE_RESERV     0x00
+#define EVENT_TYPE_MASK       0x30
+
+#define EVENT_SRC_MASK        0x0F
 
 /*//!!! Глобальные идентификаторы объектов moxa7gate:
 
@@ -69,25 +71,6 @@
     - GW_CLIENT_RTU_SLV
 
 */
-#define EVENT_SRC_P1					0x00
-#define EVENT_SRC_P2					0x01
-#define EVENT_SRC_P3					0x02
-#define EVENT_SRC_P4					0x03
-#define EVENT_SRC_P5					0x04
-#define EVENT_SRC_P6					0x05
-#define EVENT_SRC_P7					0x06
-#define EVENT_SRC_P8					0x07
-
-#define EVENT_SRC_SYSTEM			0x08
-#define EVENT_SRC_GATE502			0x09
-#define EVENT_SRC_MOXAMB			0x0A
-//#define   MOXA_MB_DEVICE		0x0A
-#define EVENT_SRC_MOXATCP			0x0B
-#define EVENT_SRC_TCPBRIDGE		0x0C
-#define EVENT_SRC_RESERV1			0x0D
-#define EVENT_SRC_RESERV2			0x0E
-#define EVENT_SRC_RESERV3			0x0F
-#define EVENT_SRC_MASK				0x0F
 
 #define TRAFFIC_RTU_RECV	182
 #define TRAFFIC_RTU_SEND	183

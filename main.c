@@ -27,102 +27,95 @@ int main(int argc, char *argv[])
 
 /*** ИНИЦИАЛИЗАЦИЯ ПЕРЕМЕННЫХ ПРОГРАММЫ ***/
 
-	int			i, j;
-	unsigned k;
+	int k;
 
-		app_log_current_entry=app_log_entries_total=0;
-		app_log=NULL;
-		msg_filter=0xFFffFFff;
-
-		MoxaDevice.queue.port_id=MOXA_MB_DEVICE;
-		//queue.queue_adu[MAX_GATEWAY_QUEUE_LENGTH][MB_TCP_MAX_ADU_LENGTH];
-		memset(MoxaDevice.queue.queue_adu_len, 0, sizeof(MoxaDevice.queue.queue_adu_len));
-		//queue.queue_clients[MAX_GATEWAY_QUEUE_LENGTH];
-		//queue.queue_slaves[MAX_GATEWAY_QUEUE_LENGTH];
-		MoxaDevice.queue.queue_start = MoxaDevice.queue.queue_len = 0;
-
-    pthread_mutex_init(&MoxaDevice.queue.queue_mutex, NULL);
-
-		MoxaDevice.queue.operations[0].sem_flg=0;
-		MoxaDevice.queue.operations[0].sem_num=MOXA_MB_DEVICE;
-
-		init_message_templates();
-		init_shm();
-
-		init_clients();
+  init_moxagate_h();
+  init_interfaces_h();
+  init_frwd_queue_h();
+  init_messages_h(); // обязательно перед init_hmi_web_h()
+  init_hmi_web_h();
+  init_statistics_h();
+  init_clients();
 
 /*** РАЗБОР ПАРАМЕТРОВ КОМАНДНОЙ СТРОКИ ***/
 	k = get_command_line(argc, argv);
 	switch(k & 0xff) {
 
 		case COMMAND_LINE_OK:			// CMD LINE: OK
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 0, 0, 0, 0, 0);
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, k & 0xff, 0, 0, 0, 0);
 			break;
 
 		case COMMAND_LINE_ARGC:
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 0, 0, 0, 0, 0);
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k & 0xff, 0, 0, 0, 0);
 			exit(1);
 
 		case COMMAND_LINE_ERROR:
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 0, k >> 8, 0, 0, 0);
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k & 0xff, k >> 8, 0, 0, 0);
 			exit(1);
 
 		case COMMAND_LINE_INFO: 
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 0, 0, 0, 0, 0);
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, k & 0xff, 0, 0, 0, 0);
       exit(1);
 
 		default:;		  // CMD LINE: UNCERTAIN RESULT
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_SYSTEM, 0, 0, 0, 0, 0);
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, COMMAND_LINE_UNDEFINED, 0, 0, 0, 0);
+      exit(1);
 		}
 
 /*** ПРОВЕРКА КОНФИГУРАЦИИ ШЛЮЗА В ЦЕЛОМ ***/
 
   k=check_GatewayTCPPorts();
   if(k!=0) {
-    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 0, k >> 8, k & 0xff, 0, 0);
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_TCPPORT_CONFLICT, k >> 8, k & 0xff, 0, 0);
     exit(1);
     }
 
   k=check_GatewayAddressMap();
-  if(k!=0) if((k==GATEWAY_MOXAGATE) && (AddressMap[MoxaDevice.modbus_address].iface==GATEWAY_NONE)) {
+  if((k&0xff)!=0) 
+  if( ((k&0xff)==GATEWAY_MOXAGATE) &&
+      ((k >> 8)==0) &&
+      (AddressMap[MoxaDevice.modbus_address].iface==GATEWAY_NONE)
+    ) {
     // присваиваем адрес шлюзу по умолчанию:
     AddressMap[MoxaDevice.modbus_address].iface=GATEWAY_MOXAGATE;
     } else {
-      sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 0, k, 0, 0, 0);
+      sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_ADDRMAP, k & 0xff, k >> 8, 0, 0);
       exit(1);
       }
 
   k=check_GatewayIfaces_ex();
   if(k!=0) {
-    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 0, k & 0xff, 0, 0, 0);
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_FORWARDING, k & 0xff, 0, 0, 0);
     exit(1);
     }
 
   k=check_GatewayConf();
   if(k!=0) {
-    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 0, 0, 0, 0, 0);
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_GATEWAY, 0, 0, 0, 0);
     exit(1);
     }
 
   k=check_IntegrityAddressMap();
   if(k!=0) {
-    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 0, k, 0, 0, 0);
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_ADDRMAP_INTEGRITY, k, 0, 0, 0);
     exit(1);
     }
 
   k=check_IntegrityVSlaves();
   if(k!=0) {
-    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 0, k, 0, 0, 0);
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_VSLAVES_INTEGRITY, k, 0, 0, 0);
     exit(1);
     }
 
   k=check_IntegrityPQueries();
   if(k!=0) {
-    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 0, k, 0, 0, 0);
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_PQUERIES_INTEGRITY, k, 0, 0, 0);
     exit(1);
     }
 
 /*** ИНИЦИАЛИЗАЦИЯ МАССИВОВ ПАМЯТИ ПОД ТАБЛИЦЫ MODBUS ***/
+
+  int i, j;
 
 /* в результате разбора параметров командной строки получаем количество параметров,
    которые нужно сохранять локально. соответственно производим выделение памяти под них */

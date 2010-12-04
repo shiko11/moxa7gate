@@ -22,7 +22,7 @@ int init_interfaces_h()
 	// memset(IfaceRTU,0,sizeof(IfaceRTU));
 	// memset(IfaceTCP,0,sizeof(IfaceTCP));
 
-	for(j=0; j<=GATEWAY_ASSETS; j++) {
+	for(j=0; j<GATEWAY_ASSETS; j++) {
     
     if( ((j > GATEWAY_P8) && (j < GATEWAY_T01)) ||
         (j > GATEWAY_T32)
@@ -32,7 +32,7 @@ int init_interfaces_h()
       i=j;
       iface=&IfaceRTU[i];
     } else {
-      i=j-GATEWAY_T01;
+      i=j & GATEWAY_IFACE;
       iface=&IfaceTCP[i];
     }
 
@@ -121,7 +121,7 @@ int check_Iface(GW_Iface *iface)
        iface->modbus_mode==IFACE_RTUMASTER ||
        iface->modbus_mode==IFACE_RTUSLAVE  ||
        iface->modbus_mode==IFACE_TCPMASTER
-    )) return IFACE_CONF_MBMODE;
+    )) return IFACE_MBMODE;
 
 	if(iface->modbus_mode!=IFACE_TCPMASTER) {
 
@@ -130,7 +130,7 @@ int check_Iface(GW_Iface *iface)
 		    strcmp(iface->serial.p_mode, "RS422")==0    ||
 		    strcmp(iface->serial.p_mode, "RS485_2w")==0 ||
 		    strcmp(iface->serial.p_mode, "RS485_4w")==0
-		  )) return IFACE_CONF_RTUPHYSPROT;
+		  )) return IFACE_RTUPHYSPROT;
 
     if(!( // port speed
 		    strcmp(iface->serial.speed, "2400")==0  ||
@@ -142,23 +142,23 @@ int check_Iface(GW_Iface *iface)
 		    strcmp(iface->serial.speed, "56000")==0 ||
 		    strcmp(iface->serial.speed, "57600")==0 ||
 		    strcmp(iface->serial.speed, "115200")==0
-		  )) return IFACE_CONF_RTUSPEED;
+		  )) return IFACE_RTUSPEED;
 
     if(!( // parity
 		    strcmp(iface->serial.parity, "none")==0 ||
 		    strcmp(iface->serial.parity, "even")==0 ||
 		    strcmp(iface->serial.parity, "odd")==0
-		  )) return IFACE_CONF_RTUPARITY;
+		  )) return IFACE_RTUPARITY;
 
 		// timeout
     if( (iface->serial.timeout < TIMEOUT_MIN) ||
         (iface->serial.timeout > TIMEOUT_MAX)
-      ) return IFACE_CONF_RTUTIMEOUT;
+      ) return IFACE_RTUTIMEOUT;
 
     ///!!! надо сделать проверку на наличие дублирующихся TCP-портов
 	  if( (iface->Security.tcp_port < TCP_PORT_MIN) ||
         (iface->Security.tcp_port > TCP_PORT_MAX)
-      ) return IFACE_CONF_RTUTCPPORT;
+      ) return IFACE_RTUTCPPORT;
 
 		/// Описание шлейфа (сети ModBus)
     // iface->description
@@ -166,16 +166,16 @@ int check_Iface(GW_Iface *iface)
 	  } else {
 
 		// LAN1Address, TCP
-    if(iface->ethernet.ip==0) return IFACE_CONF_TCPIP1;
+    if(iface->ethernet.ip==0) return IFACE_TCPIP1;
     
 	  if( (iface->ethernet.port < TCP_PORT_MIN) ||
         (iface->ethernet.port > TCP_PORT_MAX)
-      ) return IFACE_CONF_TCPPORT1;
+      ) return IFACE_TCPPORT1;
 
 		// Unit ID
     if(  (iface->ethernet.unit_id < MODBUS_ADDRESS_MIN) ||
          (iface->ethernet.unit_id > MODBUS_ADDRESS_MAX)
-      ) return IFACE_CONF_TCPUNITID;
+      ) return IFACE_TCPUNITID;
 
 		// Offset
     // iface->ethernet.offset
@@ -183,7 +183,7 @@ int check_Iface(GW_Iface *iface)
 		// Modbus Address for ATM
     if(  (iface->ethernet.mb_slave < MODBUS_ADDRESS_MIN) ||
          (iface->ethernet.mb_slave > MODBUS_ADDRESS_MAX)
-      ) return IFACE_CONF_TCPMBADDR;
+      ) return IFACE_TCPMBADDR;
 
 		// LAN2Address, TCP
     // допускаем ноль для резервного адреса:
@@ -191,16 +191,16 @@ int check_Iface(GW_Iface *iface)
     
 	  if( (iface->ethernet.port2 < TCP_PORT_MIN) ||
         (iface->ethernet.port2 > TCP_PORT_MAX)
-      ) return IFACE_CONF_TCPPORT2;
+      ) return IFACE_TCPPORT2;
 
 		/// Описание шлейфа (сети ModBus)
     // iface->description
 
     // основной и резервный адерса не должны совпадать
-    if(iface->ethernet.ip==iface->ethernet.ip2) return IFACE_CONF_TCPIPEQUAL;
+    if(iface->ethernet.ip == iface->ethernet.ip2) return IFACE_TCPIPEQUAL;
 	  }
 
- 	return COMMAND_LINE_OK;
+ 	return 0;
   }
 
 ///-----------------------------------------------------------------------------

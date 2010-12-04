@@ -12,6 +12,8 @@
 
 ///=== STATISTICS_H constants
 
+#define MB_SCAN_RATE_INFINITE			100000
+
 #define STAT_FUNC_0x01		0
 #define STAT_FUNC_0x02		1
 #define STAT_FUNC_0x03		2
@@ -85,6 +87,8 @@ typedef struct {
 ///=== STATISTICS_H public variables
 
 ///=== STATISTICS_H public functions
+
+int init_statistics_h();
 
 void copy_stat(GW_StaticData *dst, GW_StaticData *src);
 void update_stat(GW_StaticData *dst, GW_StaticData *src);

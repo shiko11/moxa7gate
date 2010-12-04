@@ -13,7 +13,6 @@
 #include "interfaces.h"
 #include "moxagate.h"
 #include "messages.h"
-#include "cli.h"
 
 union semun {
 	int val;
@@ -46,15 +45,15 @@ int check_AddressMap_Entry(int index)
   if( ((AddressMap[index].iface > GATEWAY_P8) && (AddressMap[index].iface < GATEWAY_T01)) ||
       (AddressMap[index].iface > GATEWAY_T32) ||
       (AddressMap[index].iface != GATEWAY_MOXAGATE)
-    ) return ATM_CONF_IFACE;
+    ) return ATM_IFACE;
 
   // игнорируем адрес MODBUS, если указан не RTU-интерфейс:
   if(AddressMap[index].iface<=GATEWAY_P8)
     if(  (AddressMap[index].address < MODBUS_ADDRESS_MIN) ||
          (AddressMap[index].address > MODBUS_ADDRESS_MAX)
-      ) return ATM_CONF_MBADDR;
+      ) return ATM_MBADDR;
 
- 	return COMMAND_LINE_OK;
+ 	return 0;
   }
 
 ///-----------------------------------------------------------------------------
@@ -79,38 +78,38 @@ int check_Vslave_Entry(int index)
 
   if( ((vslave[index].iface > GATEWAY_P8) && (vslave[index].iface < GATEWAY_T01)) ||
       (vslave[index].iface > GATEWAY_T32)
-    ) return VSLAVE_CONF_IFACE;
+    ) return VSLAVE_IFACE;
 	
   // игнорируем адрес MODBUS, если указан не RTU-интерфейс:
   if(AddressMap[index].iface<=GATEWAY_P8)
     if(  (vslave[index].device < MODBUS_ADDRESS_MIN) ||
          (vslave[index].device > MODBUS_ADDRESS_MAX)
-      ) return VSLAVE_CONF_MBADDR;
+      ) return VSLAVE_MBADDR;
 
 	if(!(
 			vslave[index].modbus_table==COIL_STATUS_TABLE      ||
 			vslave[index].modbus_table==INPUT_STATUS_TABLE     ||
 			vslave[index].modbus_table==HOLDING_REGISTER_TABLE ||
 			vslave[index].modbus_table==INPUT_REGISTER_TABLE
-		)) return VSLAVE_CONF_MBTABL;
+		)) return VSLAVE_MBTABL;
 
   // параметры, задающие адресуемый диапазон, проверяем в комплексе
 
   // начальный регистр диапазона	
-  if((unsigned int)(vslave[index].offset + vslave[index].start) > MB_ADDRESS_LAST) return VSLAVE_CONF_BEGDIAP;
+  if((unsigned int)(vslave[index].offset + vslave[index].start) > MB_ADDRESS_LAST) return VSLAVE_BEGDIAP;
 
   // конечный регистр диапазона	
   if((unsigned int)( \
     vslave[index].offset + \
     vslave[index].start + \
-    vslave[index].length) > MB_ADDRESS_LAST) return VSLAVE_CONF_ENDDIAP;
+    vslave[index].length) > MB_ADDRESS_LAST) return VSLAVE_ENDDIAP;
 
-  if(vslave[index].length==0) return VSLAVE_CONF_LENDIAP;
+  if(vslave[index].length==0) return VSLAVE_LENDIAP;
 	
   /// Наименование устройства
   // vslave[index].device_name
 
- 	return COMMAND_LINE_OK;
+ 	return 0;
   }
 
 ///-----------------------------------------------------------------------------
@@ -141,68 +140,68 @@ int check_ProxyQuery_Entry(int index)
 
   if( ((query_table[index].iface > GATEWAY_P8) && (query_table[index].iface < GATEWAY_T01)) ||
       (query_table[index].iface > GATEWAY_T32)
-    ) return PQUERY_CONF_IFACE;
+    ) return PQUERY_IFACE;
 	
   // игнорируем адрес MODBUS, если указан не RTU-интерфейс:
   if(AddressMap[index].iface<=GATEWAY_P8)
     if(  (query_table[index].device < MODBUS_ADDRESS_MIN) ||
          (query_table[index].device > MODBUS_ADDRESS_MAX)
-      ) return PQUERY_CONF_MBADDR;
+      ) return PQUERY_MBADDR;
 
 	if(!(
 			query_table[index].mbf==MBF_READ_COILS             ||
 			query_table[index].mbf==MBF_READ_DECRETE_INPUTS    ||
 			query_table[index].mbf==MBF_READ_HOLDING_REGISTERS ||
 			query_table[index].mbf==MBF_READ_INPUT_REGISTERS
-		)) return PQUERY_CONF_MBTABL;
+		)) return PQUERY_MBTABL;
 
 	if(!(
 			query_table[index].access==QT_ACCESS_READWRITE ||
 			query_table[index].access==QT_ACCESS_READONLY  ||
 			query_table[index].access==QT_ACCESS_DISABLED
-		)) return PQUERY_CONF_ACCESS;
+		)) return PQUERY_ACCESS;
 
   // начальный регистр области чтения
   // конечный регистр области чтения
   if((unsigned int)(query_table[index].start + query_table[index].length -1) > MB_ADDRESS_LAST)
-    return PQUERY_CONF_ENDREGREAD;
+    return PQUERY_ENDREGREAD;
 
   // длина пакета данных
   if( (query_table[index].mbf==MBF_READ_COILS) && (
       (query_table[index].length < MBF_0x01_MIN_QUANTITY) ||
       (query_table[index].length > MBF_0x01_MAX_QUANTITY)
-      )) return PQUERY_CONF_LENPACKET;
+      )) return PQUERY_LENPACKET;
   if( (query_table[index].mbf==MBF_READ_DECRETE_INPUTS) && (
       (query_table[index].length < MBF_0x02_MIN_QUANTITY) ||
       (query_table[index].length > MBF_0x02_MAX_QUANTITY)
-      )) return PQUERY_CONF_LENPACKET;
+      )) return PQUERY_LENPACKET;
   if( (query_table[index].mbf==MBF_READ_HOLDING_REGISTERS) && (
       (query_table[index].length < MBF_0x03_MIN_QUANTITY) ||
       (query_table[index].length > MBF_0x03_MAX_QUANTITY)
-      )) return PQUERY_CONF_LENPACKET;
+      )) return PQUERY_LENPACKET;
   if( (query_table[index].mbf==MBF_READ_INPUT_REGISTERS) && (
       (query_table[index].length < MBF_0x04_MIN_QUANTITY) ||
       (query_table[index].length > MBF_0x04_MAX_QUANTITY)
-      )) return PQUERY_CONF_LENPACKET;
+      )) return PQUERY_LENPACKET;
 
   // начальный регистр области записи
   // конечный регистр области записи
   if((unsigned int)(query_table[index].offset + query_table[index].length) > MB_ADDRESS_LAST)
-    return PQUERY_CONF_ENDREGWRITE;
+    return PQUERY_ENDREGWRITE;
 
   if( (((query_table[index].iface & IFACETCP_MASK)==0) && (query_table[index].delay < QT_DELAY_RTU_MIN)) ||
       (((query_table[index].iface & IFACETCP_MASK)!=0) && (query_table[index].delay < QT_DELAY_TCP_MIN))
-    ) return PQUERY_CONF_DELAYMIN;
+    ) return PQUERY_DELAYMIN;
   if( (((query_table[index].iface & IFACETCP_MASK)==0) && (query_table[index].delay > QT_DELAY_RTU_MAX)) ||
       (((query_table[index].iface & IFACETCP_MASK)!=0) && (query_table[index].delay > QT_DELAY_TCP_MAX))
-    ) return PQUERY_CONF_DELAYMAX;
+    ) return PQUERY_DELAYMAX;
 
-  if(query_table[index].critical > QT_CRITICAL_MAX) return PQUERY_CONF_ERRCNTR;
+  if(query_table[index].critical > QT_CRITICAL_MAX) return PQUERY_ERRCNTR;
 	
   /// Наименование устройства
   // query_table[i].device_name
 
- 	return COMMAND_LINE_OK;
+ 	return 0;
   }
 
 ///-----------------------------------------------------------------------------
@@ -232,22 +231,22 @@ int check_Exception(int index)
 			Exception[index].stage==EXPT_STAGE_RESPONSE_RECV_RAW ||
 			Exception[index].stage==EXPT_STAGE_RESPONSE_RECV ||
 			Exception[index].stage==EXPT_STAGE_RESPONSE_SEND
-		)) return EXPT_CONF_STAGE;
+		)) return EXPT_STAGE;
 
 	if(!( // действие
 			Exception[index].action==EXPT_ACT_SKS07_DIOGEN
-		)) return EXPT_CONF_ACTION;
+		)) return EXPT_ACTION;
 
   // проверяем набор параметров по каждому из определенных действий
 
 	if(Exception[index].action==EXPT_ACT_SKS07_DIOGEN) {
     if( ((Exception[index].prm1 > GATEWAY_P8) && (Exception[index].prm1 < GATEWAY_T01)) ||
         (Exception[index].prm1 > GATEWAY_T32)
-      ) return EXPT_CONF_PRM1;
+      ) return EXPT_PRM1;
 	
     if(  (Exception[index].prm2 < MODBUS_ADDRESS_MIN) ||
          (Exception[index].prm2 > MODBUS_ADDRESS_MAX)
-      ) return EXPT_CONF_PRM2;
+      ) return EXPT_PRM2;
     }
 	
   // Exception[i].prm1
@@ -258,7 +257,7 @@ int check_Exception(int index)
   /// Комментарий
   // Exception[i].comment
 
- 	return COMMAND_LINE_OK;
+ 	return 0;
   }
 
 ///-----------------------------------------------------------------------------
@@ -283,7 +282,7 @@ int init_queue()
 
 	key_t sem_key=ftok("/tmp/app", 'b');
 	
-	if((semaphore_id = semget(sem_key, MAX_MOXA_PORTS*2+MAX_TCP_SERVERS, IPC_CREAT|IPC_EXCL|0666)) == -1) {
+	if((semaphore_id = semget(sem_key, GATEWAY_ASSETS, IPC_CREAT|IPC_EXCL|0666)) == -1) {
 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 29, 0, 0, 0, 0);
 		return 1;
 	 	}

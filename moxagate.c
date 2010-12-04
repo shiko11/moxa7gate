@@ -51,6 +51,18 @@ int init_moxagate_h()
 	// MoxaDevice.wData3x
 	// MoxaDevice.wData4x
 
+/*  MoxaDevice.queue.port_id=MOXA_MB_DEVICE;
+  //queue.queue_adu[MAX_GATEWAY_QUEUE_LENGTH][MB_TCP_MAX_ADU_LENGTH];
+  memset(MoxaDevice.queue.queue_adu_len, 0, sizeof(MoxaDevice.queue.queue_adu_len));
+  //queue.queue_clients[MAX_GATEWAY_QUEUE_LENGTH];
+  //queue.queue_slaves[MAX_GATEWAY_QUEUE_LENGTH];
+  MoxaDevice.queue.queue_start = MoxaDevice.queue.queue_len = 0;
+
+  pthread_mutex_init(&MoxaDevice.queue.queue_mutex, NULL);
+
+  MoxaDevice.queue.operations[0].sem_flg=0;
+  MoxaDevice.queue.operations[0].sem_num=MOXA_MB_DEVICE;*/
+
   return 0;
   }
 

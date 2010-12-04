@@ -25,18 +25,19 @@
 //#define DEFAULT_CLIENT 0
 //#define MB_SLAVE_NOT_DEFINED			0xff
 
-///!!! эти константы не в том модуле:
-#define MB_ADDRESS_NO_SHIFT				0
-#define MB_SCAN_RATE_INFINITE			100000
-
 #define TCP_PORT_MIN 1
 #define TCP_PORT_MAX 0xFFFF
 
+/// коды ошибок верификации конфигурации
+#define SECURITY_TCPPORT 7
+#define MOXAGATE_MBADDR 8
+#define MOXAGATE_STATINFO 9
+
 /*--- Всего возможны 4 различных типа клиентов шлюза:
-	1. Клиент на стороне TCP, подключенный к порту GATEWAY_SIMPLE;
-	2. Клиент на стороне TCP, подключенный к шлюзу через общий TCP порт (обычно 502);
-	3. Клиент на стороне RTU, подключенный к порту BRIDGE_PROXY;
-	4. HMI клиент (выдает управляющие команды на запись внутренних регистров);
+	1. Клиент на стороне TCP, подключенный к порту IFACE_TCPSERVER;
+	2. Клиент на стороне TCP, подключенный к шлюзу через основной TCP порт (обычно 502);
+	3. Клиент на стороне RTU, подключенный к порту IFACE_RTUSLAVE;
+	4. HMI клиент (выдает управляющие команды на изменение конфигурации);
 */
 
 // состояние клиентского соединения
@@ -106,19 +107,16 @@ typedef struct { // параметры клиентского устройства
 
 ///=== CLIENTS_H public variables
 
-	// переменная для контроля состояния объекта программы (модуля, механизма, потока)
-  int clients_h_state;
-
   GW_Security Security;
 	GW_Client	Client[MOXAGATE_CLIENTS_NUMBER];
 
 ///=== CLIENTS_H public functions
 
   int init_clients();     // условно конструктор
-  int check_Security();
-
-  int init_main_socket();
   int close_clients();    // условно деструктор
+
+  int check_Security();
+  int init_main_socket();
 	int clear_client(int client);
 
   int gateway_common_processing();

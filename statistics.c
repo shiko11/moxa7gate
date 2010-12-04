@@ -14,6 +14,12 @@
 
 //*************************************************************************************
 
+int init_statistics_h()
+  {
+
+  return 0;
+  }
+
 void copy_stat(GW_StaticData *dst, GW_StaticData *src)
 	{
 	dst->accepted=src->accepted;

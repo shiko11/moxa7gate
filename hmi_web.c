@@ -53,7 +53,7 @@ struct shmid_ds {
 }; 
 
 *///--------------------------------------------------------------------------
-int init_shm()
+int init_hmi_web_h()
   {
 	struct shmid_ds shmbuffer;
 

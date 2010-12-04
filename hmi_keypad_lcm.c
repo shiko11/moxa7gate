@@ -355,6 +355,17 @@ void process_key_security(int key)
   }
 ///---------------------------------------------------------------
 /*
+EVENTS SCREEN-----
+| LOG EVENT #XXX |
+|----------------|
+|03DEC10 14:32:00|
+|                |
+|COMMAND LINE PAR|
+|SED SUCCESSFULLY|
+|                |
+|F2-BACK  F4-NEXT|
+------------------
+
 MAIN SCREEN-------
 | MODBUS GATEWAY |
 |----------------|

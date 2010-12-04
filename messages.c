@@ -14,37 +14,100 @@
 #include "messages.h"
 #include "interfaces.h"
 #include "moxagate.h"
+#include "cli.h"
 
 ///=== MESSAGES_H private variables
 
 char eventmsg[EVENT_MESSAGE_LENGTH];
+//char message_template[GATEWAY_IFACE+1][EVENT_TEMPLATE_AMOUNT][EVENT_MESSAGE_LENGTH];
 char message_template[EVENT_TEMPLATE_AMOUNT][EVENT_MESSAGE_LENGTH];
 
 ///=== MESSAGES_H private functions
 
-//*************************************************************************************
+void init_message_templates();
 
+//******************************************************************************
+int init_messages_h()
+  {
+
+  app_log_current_entry=app_log_entries_total=0;
+  app_log=NULL;
+  msg_filter=0xFFffFFff;
+
+  init_message_templates();
+
+  return 0;
+  }
+
+///----------------------------------------------------------------------------
 void init_message_templates()
   {
 	memset(message_template, 0, sizeof(message_template));
 
-  /// COMAND LINE ( ŒÃ¿ÕƒÕ¿ﬂ —“–Œ ¿) [1..24, 24]
-strcpy(message_template[  1], "CMD LINE: NO PARAMETERS");
-strcpy(message_template[  2], "CMD LINE: INVALID AMOUNT OF PARAMETERS");
-strcpy(message_template[  3], "CMD LINE: KEYWORD PORT NOT FOUND");
-strcpy(message_template[  4], "CMD LINE: MUTUALY EXLUSIVE PARAMETERS");
-strcpy(message_template[  5], "CMD LINE: PARAMETER NOT ALLOWED");
-strcpy(message_template[  6], "CMD LINE: TOO LOW PARAMETERS");
-strcpy(message_template[  7], "CMD LINE: WRONG GATEWAY MODE");
-strcpy(message_template[  8], "CMD LINE: WRONG MAP DATA");
-strcpy(message_template[  9], "CMD LINE: WRONG PORT PARAMETERS");
-strcpy(message_template[ 10], "CMD LINE: WRONG PROXY_TABLE");
-strcpy(message_template[ 11], "CMD LINE: WRONG RTM_TABLE");
-strcpy(message_template[ 12], "CMD LINE: WRONG TCP_SERVERS");
-strcpy(message_template[ 13], "CMD LINE: OK");
-strcpy(message_template[ 14], "CMD LINE: UNCERTAIN RESULT");
+/// COMAND LINE ( ŒÃ¿ÕƒÕ¿ﬂ —“–Œ ¿) [XX..XX, XX]
 
-	/// SYSTEM (—»—“≈ÃÕ€≈) [25..64, 40]
+strcpy(message_template[COMMAND_LINE_OK        ], "CLI: COMMAND LINE PARSED SUCCESSFULLY");
+strcpy(message_template[COMMAND_LINE_ERROR     ], "CLI: WHERE IS %d PARSING ERROR(S)");
+strcpy(message_template[COMMAND_LINE_INFO      ], "CLI: SYSINFO DISPLAYED AND EXIT");
+strcpy(message_template[COMMAND_LINE_ARGC      ], "CLI: WHERE IS UNKNOWN PARAMETER(S)");
+strcpy(message_template[COMMAND_LINE_UNDEFINED ], "CLI: COMMAND LINE UNDEFINED RESULT");
+
+strcpy(message_template[SECURITY_CONF_STRUCT   ], "CLI: SECURITY STRUCTURE");
+strcpy(message_template[SECURITY_CONF_DUPLICATE], "CLI: SECURITY PARAM DUPLICATED");
+strcpy(message_template[SECURITY_CONF_SPELLING ], "CLI: SECURITY PARAM UNKNOWN");
+
+strcpy(message_template[IFACE_CONF_RTUDUPLICATE], "CLI: IFACERTU %s DUPLICATED");
+strcpy(message_template[IFACE_CONF_RTUSTRUCT   ], "CLI: IFACERTU %s STRUCTURE");
+strcpy(message_template[IFACE_CONF_GWMODE      ], "CLI: IFACE %s GATEWAY MODE");
+
+strcpy(message_template[IFACE_CONF_TCPDUPLICATE], "CLI: IFACETCP %s DUPLICATED");
+strcpy(message_template[IFACE_CONF_TCPSTRUCT   ], "CLI: IFACETCP %s STRUCTURE");
+
+strcpy(message_template[ATM_CONF_SPELLING      ], "CLI: ADDRESS MAP SPELLING");
+strcpy(message_template[ATM_CONF_STRUCT        ], "CLI: ADDRESS MAP STRUCTURE");
+
+strcpy(message_template[VSLAVE_CONF_OVERFLOW   ], "CLI: VSLAVES OVERFLOW");
+strcpy(message_template[VSLAVE_CONF_STRUCT     ], "CLI: VSLAVES STRUCTURE");
+strcpy(message_template[VSLAVE_CONF_IFACE      ], "CLI: VSLAVES IFACE");
+
+strcpy(message_template[PQUERY_CONF_OVERFLOW   ], "CLI: PQUERIES OVERFLOW");
+strcpy(message_template[PQUERY_CONF_STRUCT     ], "CLI: PQUERIES STRUCTURE");
+strcpy(message_template[PQUERY_CONF_IFACE      ], "CLI: PQUERIES IFACE");
+
+strcpy(message_template[EXPT_CONF_OVERFLOW     ], "CLI: EXCEPTIONS OVERFLOW");
+strcpy(message_template[EXPT_CONF_STRUCT       ], "CLI: EXCEPTIONS STRUCTURE");
+strcpy(message_template[EXPT_CONF_STAGE        ], "CLI: EXCEPTIONS STAGE");
+
+/// SECURITY (œŒƒ—»—“≈Ã¿ –¿¡Œ“€ —  À»≈Õ“¿Ã») [XX..XX, XX]
+
+strcpy(message_template[SECURITY_TCPPORT ], "CONFIGURATION TCP PORT");
+
+	/// MOXAGATE (ÿÀﬁ«) [XX..XX, XX]
+
+strcpy(message_template[MOXAGATE_MBADDR  ], "CONFIGURATION MBADDR");
+strcpy(message_template[MOXAGATE_STATINFO], "CONFIGURATION STATINFO");
+
+/// IFACES (»Õ“≈–‘≈…—€) [XX..XX, XX]
+
+strcpy(message_template[IFACE_MBMODE     ], "CONFIGURATION IFACE %s GATEWAY MODE");
+
+strcpy(message_template[IFACE_RTUPHYSPROT], "CONFIGURATION IFACERTU %s PHYSPROTO");
+strcpy(message_template[IFACE_RTUSPEED   ], "CONFIGURATION IFACERTU %s SPEED");
+strcpy(message_template[IFACE_RTUPARITY  ], "CONFIGURATION IFACERTU %s PARITY");
+strcpy(message_template[IFACE_RTUTIMEOUT ], "CONFIGURATION IFACERTU %s TIMEOUT");
+strcpy(message_template[IFACE_RTUTCPPORT ], "CONFIGURATION IFACERTU %s TCP PORT");
+
+strcpy(message_template[IFACE_TCPIP1     ], "CONFIGURATION IFACETCP %s IP ADDRESS");
+strcpy(message_template[IFACE_TCPPORT1   ], "CONFIGURATION IFACETCP %s TCP PORT");
+strcpy(message_template[IFACE_TCPUNITID  ], "CONFIGURATION IFACETCP %s UNIT ID");
+strcpy(message_template[IFACE_TCPOFFSET  ], "CONFIGURATION IFACETCP %s OFFSET");
+strcpy(message_template[IFACE_TCPMBADDR  ], "CONFIGURATION IFACETCP %s ATM ADDRESS");
+strcpy(message_template[IFACE_TCPIP2     ], "CONFIGURATION IFACETCP %s IP ADDRESS 2");
+strcpy(message_template[IFACE_TCPPORT2   ], "CONFIGURATION IFACETCP %s TCP PORT 2");
+strcpy(message_template[IFACE_TCPIPEQUAL ], "IFACETCP %s IP EQUALS");
+
+
+/// SYSTEM (—»—“≈ÃÕ€≈) [25..64, 40]
 strcpy(message_template[ 25], "BUZZER INITIALIZED");
 strcpy(message_template[ 26], "KEYPAD INITIALIZED");
 strcpy(message_template[ 27], "LCM INITIALIZED");
@@ -61,13 +124,14 @@ strcpy(message_template[ 37], "SHARED MEM: OK SIZE %db");
 strcpy(message_template[ 38], ""); // –≈«≈–¬
 strcpy(message_template[ 39], "STATUS INFO OVERLAPS");
 
+/*
 strcpy(message_template[ 40], "SERIAL PORT INITIALIZED MODE %s");
 strcpy(message_template[ 41], "THREAD INITIALIZED CODE %d");
 strcpy(message_template[ 42], "THREAD STARTED MODE %s CLIENT %s");
 strcpy(message_template[ 43], "THREAD STOPPED");
 strcpy(message_template[ 44], "PROGRAM TERMINATED (WORKTIME %d)");
 	
-	/// CONNECTION (—≈“≈¬Œ≈ —Œ≈ƒ»Õ≈Õ»≈) [65..127, 63]
+/// CONNECTION (—≈“≈¬Œ≈ —Œ≈ƒ»Õ≈Õ»≈) [65..127, 63]
 strcpy(message_template[ 65], "SOCKET INITIALIZED STAGE %d TCPSERVER %s");
 strcpy(message_template[ 66], ""); // –≈«≈–¬
 strcpy(message_template[ 67], "CONNECTION ACCEPTED FROM %s CLIENT %d");
@@ -76,8 +140,39 @@ strcpy(message_template[ 69], "CONNECTION FAILED TO %d.%d.%d.%d");
 strcpy(message_template[ 70], "CONNECTION REJECTED FROM %d.%d.%d.%d");
 strcpy(message_template[ 71], "CONNECTION CLOSED (LINK DOWN) CLIENT %d");
 strcpy(message_template[ 72], "CONNECTION CLOSED (TIMEOUT) CLIENT %d");
+*/
 	
-/// FORWARDING (œ≈–≈Õ¿œ–¿¬À≈Õ»≈) [128..147, 20]
+/// FORWARDING (œ≈–≈Õ¿œ–¿¬À≈Õ»≈) [XX..XX, XX]
+
+strcpy(message_template[ATM_IFACE         ], "CONFIGURATION ADDRESS MAP #%d IFACE");
+strcpy(message_template[ATM_MBADDR        ], "CONFIGURATION ADDRESS MAP #%d MBADDR");
+
+strcpy(message_template[VSLAVE_IFACE      ], "CONFIGURATION VSLAVE #%d IFACE");
+strcpy(message_template[VSLAVE_MBADDR     ], "CONFIGURATION VSLAVE #%d MBADDR");
+strcpy(message_template[VSLAVE_MBTABL     ], "CONFIGURATION VSLAVE #%d MBTABLE");
+strcpy(message_template[VSLAVE_BEGDIAP    ], "INCORRECT VSLAVE #%d BEGDIAP");
+strcpy(message_template[VSLAVE_ENDDIAP    ], "INCORRECT VSLAVE #%d ENDDIAP");
+strcpy(message_template[VSLAVE_LENDIAP    ], "INCORRECT VSLAVE #%d LENDIAP");
+
+strcpy(message_template[PQUERY_IFACE      ], "CONFIGURATION PQUERY #%d IFACE");
+strcpy(message_template[PQUERY_MBADDR     ], "CONFIGURATION PQUERY #%d MBADDR");
+strcpy(message_template[PQUERY_MBTABL     ], "CONFIGURATION PQUERY #%d MBTABLE");
+strcpy(message_template[PQUERY_ACCESS     ], "CONFIGURATION PQUERY #%d ACCESS");
+strcpy(message_template[PQUERY_ENDREGREAD ], "CONFIGURATION PQUERY #%d ENDREAD");
+strcpy(message_template[PQUERY_LENPACKET  ], "CONFIGURATION PQUERY #%d PACKET LENGTH");
+strcpy(message_template[PQUERY_ENDREGWRITE], "CONFIGURATION PQUERY #%d ENDWRITE");
+strcpy(message_template[PQUERY_DELAYMIN   ], "CONFIGURATION PQUERY #%d DELAY MIN");
+strcpy(message_template[PQUERY_DELAYMAX   ], "CONFIGURATION PQUERY #%d DELAY MAX");
+strcpy(message_template[PQUERY_ERRCNTR    ], "CONFIGURATION PQUERY #%d CRITICAL");
+
+strcpy(message_template[EXPT_STAGE        ], "CONFIGURATION EXCEPTION #%d STAGE");
+strcpy(message_template[EXPT_ACTION       ], "CONFIGURATION EXCEPTION #%d ACTION");
+strcpy(message_template[EXPT_PRM1         ], "CONFIGURATION EXCEPTION #%d PRM1");
+strcpy(message_template[EXPT_PRM2         ], "CONFIGURATION EXCEPTION #%d PRM2");
+strcpy(message_template[EXPT_PRM3         ], "CONFIGURATION EXCEPTION #%d PRM3");
+strcpy(message_template[EXPT_PRM4         ], "CONFIGURATION EXCEPTION #%d PRM4");
+
+/*
 strcpy(message_template[128], "CLIENT\tFRWD: ADDRESS [%d] NOT TRANSLATED");
 strcpy(message_template[129], "CLIENT\tFRWD: BLOCK OVERLAPS [%d, %d]");
 strcpy(message_template[130], "CLIENT\tFRWD: PROXY TRANSLATION [%d, %d]");
@@ -98,6 +193,7 @@ strcpy(message_template[185], "CLIENT\tPOLLING: TCP  SEND - %s");
 /// TRAFFIC (ƒ¿ÕÕ€≈) [220..239, 20]
 strcpy(message_template[220], "CLIENT\tTRAFFIC: QUEUE  IN [%d]");
 strcpy(message_template[221], "CLIENT\tTRAFFIC: QUEUE OUT [%d]");
+*/
 
   return;
   }

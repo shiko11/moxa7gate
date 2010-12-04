@@ -49,6 +49,35 @@
 #define EXPT_ACT_NONE 0x00
 #define EXPT_ACT_SKS07_DIOGEN 0x01
 
+/// коды ошибок верификации конфигурации
+#define ATM_IFACE 30
+#define ATM_MBADDR 31
+
+#define VSLAVE_IFACE 34
+#define VSLAVE_MBADDR 35
+#define VSLAVE_MBTABL 36
+#define VSLAVE_BEGDIAP 37
+#define VSLAVE_ENDDIAP 38
+#define VSLAVE_LENDIAP 39
+
+#define PQUERY_IFACE 42
+#define PQUERY_MBADDR 43
+#define PQUERY_MBTABL 44
+#define PQUERY_ACCESS 45
+#define PQUERY_ENDREGREAD 46
+#define PQUERY_LENPACKET 47
+#define PQUERY_ENDREGWRITE 48
+#define PQUERY_DELAYMIN 49
+#define PQUERY_DELAYMAX 50
+#define PQUERY_ERRCNTR 51
+
+#define EXPT_STAGE 54
+#define EXPT_ACTION 55
+#define EXPT_PRM1 56
+#define EXPT_PRM2 57
+#define EXPT_PRM3 58
+#define EXPT_PRM4 59
+
 ///=== FRWD_QUEUE_H data types
 
 typedef struct { // очередь на семафорах
@@ -128,6 +157,10 @@ RT_Table_Entry vslave[MAX_VIRTUAL_SLAVES];
 Query_Table_Entry query_table[MAX_QUERY_ENTRIES];
 GW_Exception Exception[MOXAGATE_EXCEPTIONS_NUMBER];
 
+// массив исключительных ситуаций служит для устранения проблем при обмене, вызванных особенностями
+// конечных устройств modbus-slave. он содержит набор флагов, включающих определенные алгоритмы в
+// определенных ситуациях.
+
 // obsolete
 // исключение для СКС-07, параметр - битовый массив номеров последовательных портов, к которым подключены диогены
 unsigned int exceptions; // obsolete // массив из 16 флагов
@@ -135,7 +168,7 @@ unsigned int except_prm[16]; // obsolete // параметр исключения
 
 ///=== FRWD_QUEUE_H public functions
 
-int init_frwd_queue_h();
+int init_frwd_queue_h(); // инициализация переменных
 
 int init_AddressMap_Entry(int index);
 int check_AddressMap_Entry(int index);
@@ -149,7 +182,7 @@ int check_ProxyQuery_Entry(int index);
 int init_Exception(int index);
 int check_Exception(int index);
 
-int init_queue();
+int init_queue(); // инициализация семафоров
 int enqueue_query_ex(GW_Queue *queue, int client_id, int device_id, u8 *adu, u16 adu_len);
 int get_query_from_queue(GW_Queue *queue, int *client_id, int *device_id, u8 *adu, u16 *adu_len);
 

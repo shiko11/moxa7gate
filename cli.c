@@ -34,25 +34,19 @@ int parse_Exceptions(int 	argc, char	*argv[]);
 
 ///----------------------------------------------------------------------------
 void help_print (void) /* вывод информации о программе */
-{
+  {
 printf("%s\n", "\
-Usage: moxa7gate [OPTIONS] [PORTx mode speed parity timeout GATEWAY tcp_port]...\n\n\
-Opens serial port(s) for transfer Modbus messages to communicate with modbus-enabled devices.\n\n\
-Read the manual for details.\n\
-");
-
-//printf("%s\n", "\
-MOXA7GATE R1.00\n\
+MOXA7GATE V1.2\n\
 Modbus gateway\n\
      software\n\
 SEM-ENGINEERING\n\
 +7(4832)41-88-23\n\
 www.semgroup.ru\n\
-   Bryansk 2009\n\
+   Bryansk 2010\n\
 ");
 
-return;
-}
+  return;
+  }
 
 ///-------------------------------------------------------------------------
 //обработка параметров командной строки
@@ -85,22 +79,24 @@ int get_command_line(int argc, char *argv[])
     k=check_Security();
     if(k!=COMMAND_LINE_OK) {
       i++;
-      sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
+      if(k==SECURITY_TCPPORT)
+             sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SECURITY, k, 0, 0, 0, 0);
+        else sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_MOXAGATE, k, 0, 0, 0, 0);
       }
     }
 
   //**** ЧТЕНИЕ ПАРАМЕТРОВ КОНФИГУРАЦИИ ПОСЛЕДОВАТЕЛЬНЫХ ИНТЕРФЕЙСОВ ****
   k=parse_IfacesRTU(argc, argv);
-  if(k!=COMMAND_LINE_OK) {
+  if((k & 0xff)!=COMMAND_LINE_OK) {
     i++;
-    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k & 0xff, k >> 8, 0, 0, 0);
     } else {
       for(j=GATEWAY_P1; j<GATEWAY_P8; j++) {
         if(IfaceRTU[j].modbus_mode==IFACE_OFF) continue;
         k=check_Iface(&IfaceRTU[j]);
         if(k!=COMMAND_LINE_OK) {
           i++;
-          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|j, k, 0, 0, 0, 0);
           break; // останавливаемся после первой ошибки
           } else strcpy(IfaceRTU[j].bridge_status, "INI");
         }
@@ -108,16 +104,16 @@ int get_command_line(int argc, char *argv[])
 
   //**** ЧТЕНИЕ ПАРАМЕТРОВ КОНФИГУРАЦИИ ЛОГИЧЕСКИХ TCP-ИНТЕРФЕЙСОВ ****
   k=parse_IfacesTCP(argc, argv);
-  if(k!=COMMAND_LINE_OK) {
+  if((k & 0xff)!=COMMAND_LINE_OK) {
     i++;
-    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k & 0xff, k >> 8, 0, 0, 0);
     } else {
       for(j=GATEWAY_T01; j<GATEWAY_T32; j++) {
         if(IfaceTCP[j].modbus_mode==IFACE_OFF) continue;
         k=check_Iface(&IfaceTCP[j]);
         if(k!=COMMAND_LINE_OK) {
           i++;
-          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, k, j, 0, 0, 0);
           break; // останавливаемся после первой ошибки
           } else strcpy(IfaceTCP[j].bridge_status, "INI");
         }
@@ -134,7 +130,7 @@ int get_command_line(int argc, char *argv[])
         k=check_AddressMap_Entry(j);
         if(k!=COMMAND_LINE_OK) {
           i++;
-          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_FRWD, k, j, 0, 0, 0);
           break; // останавливаемся после первой ошибки
           }
         }
@@ -151,7 +147,7 @@ int get_command_line(int argc, char *argv[])
         k=check_Vslave_Entry(j);
         if(k!=COMMAND_LINE_OK) {
           i++;
-          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_FRWD, k, j, 0, 0, 0);
           break; // останавливаемся после первой ошибки
           }
         }
@@ -168,7 +164,7 @@ int get_command_line(int argc, char *argv[])
         k=check_ProxyQuery_Entry(j);
         if(k!=COMMAND_LINE_OK) {
           i++;
-          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_FRWD, k, j, 0, 0, 0);
           break; // останавливаемся после первой ошибки
           }
         }
@@ -185,7 +181,7 @@ int get_command_line(int argc, char *argv[])
         k=check_Exception(j);
         if(k!=COMMAND_LINE_OK) {
           i++;
-          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_FRWD, k, j, 0, 0, 0);
           break; // останавливаемся после первой ошибки
           }
         }
@@ -372,7 +368,7 @@ int parse_IfacesRTU(int 	argc, char	*argv[])
 		sprintf(tmp, "%d", i+1);
 		strcat(dest, tmp);
 		for(j=0; j<argc; j++)
-			if(strncmp(argv[j], dest, 5)==0) {
+			if(strcmp(argv[j], dest)==0) {
         if(p_cnt==MAX_MOXA_PORTS) return (GATEWAY_NONE << 8) | IFACE_CONF_RTUDUPLICATE; // считаем есть дубликаты
 				id_p_argc[p_cnt++]=j;						
         }
@@ -425,7 +421,7 @@ int parse_IfacesRTU(int 	argc, char	*argv[])
 		if(strcmp(arg, "RTU_SLAVE")==0)  IfaceRTU[p_num].modbus_mode=IFACE_RTUSLAVE;
 
     // считаем ошибка в названии режима работы
-		if(IfaceRTU[p_num].modbus_mode==IFACE_OFF) return (p_num << 8) | IFACE_CONF_MBMODE;
+		if(IfaceRTU[p_num].modbus_mode==IFACE_OFF) return (p_num << 8) | IFACE_CONF_GWMODE;
 
 		shift_counter=0;
 
@@ -480,7 +476,7 @@ int parse_IfacesTCP(int 	argc, char	*argv[])
       else  strcpy(dest, "TCP");
 		strcat(dest, tmp);
 		for(j=0; j<argc; j++)
-			if(strncmp(argv[j], dest, 5)==0) {
+			if(strcmp(argv[j], dest)==0) {
         if(t_cnt==MAX_TCP_SERVERS) return (GATEWAY_NONE << 8) | IFACE_CONF_TCPDUPLICATE; // считаем есть дубликаты
 				id_t_argc[t_cnt++]=j;
         }
@@ -862,13 +858,13 @@ int check_GatewayAddressMap()
 
   for(j=MODBUS_ADDRESS_MIN; j<=MODBUS_ADDRESS_MAX; j++) {
     if((AddressMap[j].iface>=GATEWAY_T01) && (AddressMap[j].iface<=GATEWAY_T32))
-      lantcp[AddressMap[j].iface-GATEWAY_T01]++;
+      lantcp[AddressMap[j].iface & GATEWAY_IFACE]++;
     if(AddressMap[j].iface==GATEWAY_MOXAGATE) m7g++;
     }
 
-  if(m7g!=1) return GATEWAY_MOXAGATE;
+  if(m7g!=1) return (m7g << 8) | GATEWAY_MOXAGATE;
   for(j=0; j<MAX_TCP_SERVERS; j++)
-    if(lantcp[j]>1) return j+GATEWAY_T01;
+    if(lantcp[j]>1) return (lantcp[j] << 8) | j+GATEWAY_T01;
 
   return 0;
   }
@@ -884,7 +880,7 @@ int check_GatewayIfaces_ex()
   if_type[2]=IFACE_TCPMASTER;
   if_type[3]=IFACE_RTUSLAVE;
 
-  for(i=0; i<4; i++) for(j=GATEWAY_P1; j<=GATEWAY_ASSETS; j++) {
+  for(i=0; i<4; i++) for(j=GATEWAY_P1; j<GATEWAY_ASSETS; j++) {
 
     if( ((j > GATEWAY_P8) && (j < GATEWAY_T01)) ||
         (j > GATEWAY_T32)
@@ -931,7 +927,7 @@ int check_GatewayIfaces_ex()
 
         res=0;
 
-        for(k=GATEWAY_P1; k<=GATEWAY_ASSETS; k++) {
+        for(k=GATEWAY_P1; k<GATEWAY_ASSETS; k++) {
 
           if( ((k > GATEWAY_P8) && (k < GATEWAY_T01)) ||
               (k > GATEWAY_T32)
@@ -962,7 +958,7 @@ int check_GatewayConf()
   int k, res=0;
 	 
   // для нормальной работы программы как минимум должен быть сконфигурирован один из интерфейсов
-  for(k=GATEWAY_P1; k<=GATEWAY_ASSETS; k++) {
+  for(k=GATEWAY_P1; k<GATEWAY_ASSETS; k++) {
 
     if( ((k > GATEWAY_P8) && (k < GATEWAY_T01)) ||
         (k > GATEWAY_T32)
@@ -988,7 +984,7 @@ int check_IntegrityAddressMap()
 
   for(j=MODBUS_ADDRESS_MIN; j<=MODBUS_ADDRESS_MAX; j++) {
 
-    if(AddressMap[j].iface!=GATEWAY_NONE)
+    if((AddressMap[j].iface!=GATEWAY_NONE)&&(AddressMap[j].iface!=GATEWAY_MOXAGATE))
     if((AddressMap[j].iface&IFACETCP_MASK)!=0)
       iface=&IfaceTCP[AddressMap[j].iface & GATEWAY_IFACE];
       else iface=&IfaceRTU[AddressMap[j].iface];

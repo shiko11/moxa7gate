@@ -14,13 +14,11 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#include "modbus.h"
 #include "clients.h"
 #include "interfaces.h"
 #include "moxagate.h"
 #include "messages.h"
 #include "hmi_web.h"
-#include "cli.h"
 
 ///=== CLIENTS_H private variables
 
@@ -43,16 +41,12 @@ int init_clients()
   {
 	int j;
 
-	clients_h_state=0;
-
 	memset(Client, 0, sizeof(Client));
+
 	for(j=0; j<MOXAGATE_CLIENTS_NUMBER; j++) {
 		Client[j].rc=1;
 		Client[j].csd=-1;
 		Client[j].status=GW_CLIENT_CLOSED;
-
-//		Client[j].mb_slave=MB_SLAVE_NOT_DEFINED;
-//		Client[j].address_shift=MB_ADDRESS_NO_SHIFT;
 	  }
 								 
   // Security
@@ -112,14 +106,14 @@ int check_Security()
 
 	if( (Security.tcp_port < TCP_PORT_MIN) ||
       (Security.tcp_port > TCP_PORT_MAX)
-    ) return SECURITY_CONF_TCPPORT;
+    ) return SECURITY_TCPPORT;
 
   if(  (MoxaDevice.modbus_address < MODBUS_ADDRESS_MIN) ||
        (MoxaDevice.modbus_address > MODBUS_ADDRESS_MAX)
-    ) return SECURITY_CONF_MBADDR;
+    ) return MOXAGATE_MBADDR;
 	
 	if((unsigned int)(MoxaDevice.status_info+GATE_STATUS_BLOCK_LENGTH) > MB_ADDRESS_LAST)
-    return SECURITY_CONF_STATINFO;
+    return MOXAGATE_STATINFO;
 
   // Security.show_sys_messages
 	// MoxaDevice.map2Xto4X
@@ -130,7 +124,7 @@ int check_Security()
 	// Security.show_data_flow
 	// Security.use_buzzer
 
- 	return COMMAND_LINE_OK;
+ 	return 0;
   }
 
 ///-----------------------------------------------------------------------------

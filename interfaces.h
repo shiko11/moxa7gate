@@ -22,7 +22,43 @@
 #define   MAX_MOXA_PORTS 8
 #define MAX_TCP_SERVERS 32
 
+/*//!!! Глобальные идентификаторы объектов moxa7gate:
+
+ИНТЕРФЕЙСОВ
+  - 9 физических последовательных, возможны 3 режима работы:
+     - IFACE_GATEWAY_SIMPLE
+     - IFACE_RTU_MASTER
+     - IFACE_RTU_SLAVE
+  - 2 физических сетевых Ethernet
+  - 32 логических IFACE_TCP_MASTER
+
+МОДУЛЕЙ
+
+  - CLI_H
+  - MODBUS_H
+  - MAIN_H
+
+  - CLIENTS_H
+  - FRWD_QUEUE_H
+  - INTERFACES_H
+  - MOXAGATE_H
+
+  - MESSAGES_H
+  - STATISTICS_H
+  - HMI_KEYPAD_LCM_H
+  - HMI_WEB_H
+
+КЛИЕНТОВ
+  - 32 логических клиента шлюза, возможны следующие варианты:
+    - GW_CLIENT_TCP_GWS
+    - GW_CLIENT_TCP_502
+    - GW_CLIENT_RTU_SLV
+
+*/
+
 /// MOXA7GATE ASSETS
+
+#define GATEWAY_ASSETS 64
 
 #define GATEWAY_P1	0
 #define GATEWAY_P2	1
@@ -78,11 +114,28 @@
 #define GATEWAY_T31 46
 #define GATEWAY_T32 47
 
-#define GATEWAY_IFACE 0x0F
-#define IFACETCP_MASK 0x10
-
 #define GATEWAY_NONE 63
-#define GATEWAY_ASSETS 63
+
+#define GATEWAY_IFACE 0x0F
+#define IFACETCP_MASK 0x30
+
+/// коды ошибок верификации конфигурации
+#define IFACE_MBMODE 12
+
+#define IFACE_RTUPHYSPROT 13
+#define IFACE_RTUSPEED 14
+#define IFACE_RTUPARITY 15
+#define IFACE_RTUTIMEOUT 16
+#define IFACE_RTUTCPPORT 17
+
+#define IFACE_TCPIP1 20
+#define IFACE_TCPPORT1 21
+#define IFACE_TCPUNITID 22
+#define IFACE_TCPOFFSET 23
+#define IFACE_TCPMBADDR 24
+#define IFACE_TCPIP2 25
+#define IFACE_TCPPORT2 26
+#define IFACE_TCPIPEQUAL 27
 
 // режим применим только для serial-интерфейса шлюза
 // ввиду его простоты и надежности он остается прежним
@@ -188,15 +241,10 @@ typedef struct {
 GW_Iface IfaceRTU[MAX_MOXA_PORTS];  // данные и параметры интерфейсов RTU
 GW_Iface IfaceTCP[MAX_TCP_SERVERS]; // данные и параметры интерфейсов TCP
 
-//GW_TCPIface tcp_servers[MAX_TCP_SERVERS]; ///!!!
-
-// массив исключительных ситуаций служит для устранения проблем при обмене, вызванных особенностями
-// конечных устройств modbus-slave. он содержит набор флагов, включающих определенные алгоритмы в
-// определенных ситуациях.
-
 ///=== INTERFACES_H public functions
 
-int init_interfaces_h();
+int init_interfaces_h(); // условно конструктор
+
 int check_Iface(GW_Iface *iface);
 
 void *iface_rtu_gws(void *arg); /// Потоковая функция режима GATEWAY_SIMPLE

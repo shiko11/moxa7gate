@@ -23,7 +23,7 @@
 ///=== HMI_WEB_H public functions
 
 ///--- shared memory operations
-int init_shm();
+int init_hmi_web_h();
 int close_shm();
 
 #endif  /* HMI_WEB_H */

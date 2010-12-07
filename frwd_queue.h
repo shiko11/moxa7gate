@@ -157,6 +157,9 @@ RT_Table_Entry vslave[MAX_VIRTUAL_SLAVES];
 Query_Table_Entry query_table[MAX_QUERY_ENTRIES];
 GW_Exception Exception[MOXAGATE_EXCEPTIONS_NUMBER];
 
+unsigned short vsmem_offset1xStatus, vsmem_offset2xStatus, vsmem_offset3xRegisters, vsmem_offset4xRegisters;
+unsigned short vsmem_amount1xStatus, vsmem_amount2xStatus, vsmem_amount3xRegisters, vsmem_amount4xRegisters;
+
 // массив исключительных ситуаций служит для устранения проблем при обмене, вызванных особенностями
 // конечных устройств modbus-slave. он содержит набор флагов, включающих определенные алгоритмы в
 // определенных ситуациях.

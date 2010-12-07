@@ -1004,9 +1004,11 @@ int check_IntegrityVSlaves()
   int j;
   GW_Iface *iface;
 
+  // проверяем, что поле iface ссылается на соответсвующим образом настроенные интерфейсы
   for(j=0; j<MAX_VIRTUAL_SLAVES; j++) {
 
-    if(vslave[j].iface!=GATEWAY_NONE)
+    if(vslave[j].iface==GATEWAY_NONE) continue;
+
     if((vslave[j].iface&IFACETCP_MASK)!=0)
       iface=&IfaceTCP[vslave[j].iface & GATEWAY_IFACE];
       else iface=&IfaceRTU[vslave[j].iface];
@@ -1014,8 +1016,86 @@ int check_IntegrityVSlaves()
     if(!(
        (iface->modbus_mode==IFACE_TCPMASTER) ||
        (iface->modbus_mode==IFACE_RTUMASTER)
-       )) return j;
+       )) return 0x100|j;
     }
+
+  // проверяем, что диапазоны виртуальных устройств не пересекаются,
+  // определяем область памяти, занятую определениями виртуальных устройств
+
+  unsigned int i, begreg1, endreg1, begreg2, endreg2;
+  char first_low_significant, first_high_significant;
+
+  vsmem_offset1xStatus=vsmem_offset2xStatus=vsmem_offset3xRegisters=vsmem_offset4xRegisters=0xffff;
+
+  for(j=0; j<MAX_VIRTUAL_SLAVES; j++) {
+
+    if(vslave[j].modbus_table==MB_TABLE_NONE) continue;
+
+    // очередное виртуальное устройство сравниваем со всеми, кроме самого себя, на
+    // предмет пересечений занимаемого диапазона регистров
+    for(i==0; i<MAX_VIRTUAL_SLAVES; i++) {
+      if((i==j) || (vslave[i].modbus_table==MB_TABLE_NONE)) continue;
+
+      begreg1=vslave[j].start;
+      begreg2=vslave[i].start;
+      endreg1=vslave[j].start + vslave[j].length;
+      endreg2=vslave[i].start + vslave[i].length;
+
+      first_low_significant = endreg1 < begreg2 ? 1 : 0 ;
+      first_high_significant= begreg1 > endreg2 ? 1 : 0 ;
+      
+      if( (first_low_significant !=1) &&
+          (first_high_significant!=1)
+        ) return (i<<8)|j;
+      }
+
+    // очередное виртуальное устройство учитываем в области памяти виртуальных устройств
+		switch(vslave[j].modbus_table) {
+
+			case COIL_STATUS_TABLE:
+				if(vsmem_offset1xStatus > vslave[j].start) 
+           vsmem_offset1xStatus = vslave[j].start;
+				if(vsmem_amount1xStatus < vslave[j].start+vslave[j].length)
+					 vsmem_amount1xStatus = vslave[j].start+vslave[j].length;
+				break;
+
+			case INPUT_STATUS_TABLE:
+				if(vsmem_offset2xStatus > vslave[j].start)
+           vsmem_offset2xStatus = vslave[j].start;
+				if(vsmem_amount2xStatus < vslave[j].start+vslave[j].length)
+					 vsmem_amount2xStatus = vslave[j].start+vslave[j].length;
+				break;
+
+			case HOLDING_REGISTER_TABLE:
+				if(vsmem_offset4xRegisters > vslave[j].start)
+           vsmem_offset4xRegisters = vslave[j].start;
+				if(vsmem_amount4xRegisters < vslave[j].start+vslave[j].length)
+					 vsmem_amount4xRegisters = vslave[j].start+vslave[j].length;
+				break;
+
+			case INPUT_REGISTER_TABLE:
+				if(vsmem_offset3xRegisters > vslave[j].start)
+           vsmem_offset3xRegisters = vslave[j].start;
+				if(vsmem_amount3xRegisters < vslave[j].start+vslave[j].length)
+					 vsmem_amount3xRegisters = vslave[j].start+vslave[j].length;
+				break;
+
+			default: continue;
+			}
+
+    }
+
+  // если не было инициализации, возвращаем исходное значение в переменную
+	if(vsmem_offset1xStatus   ==0xffff) vsmem_offset1xStatus   =0;
+	if(vsmem_offset2xStatus   ==0xffff) vsmem_offset2xStatus   =0;
+	if(vsmem_offset3xRegisters==0xffff) vsmem_offset3xRegisters=0;
+	if(vsmem_offset4xRegisters==0xffff) vsmem_offset4xRegisters=0;
+						 
+  // заменяем индекс последнего регистра диапазона общим количеством регистров
+	vsmem_amount1xStatus   -= vsmem_offset1xStatus;
+	vsmem_amount2xStatus   -= vsmem_offset2xStatus;
+	vsmem_amount3xRegisters-= vsmem_offset3xRegisters;
+	vsmem_amount4xRegisters-= vsmem_offset4xRegisters;
 
   return 0;
   }
@@ -1028,7 +1108,8 @@ int check_IntegrityPQueries()
 
   for(j=0; j<MAX_QUERY_ENTRIES; j++) {
 
-    if(query_table[j].iface!=GATEWAY_NONE)
+    if(query_table[j].iface==GATEWAY_NONE) continue;
+
     if((query_table[j].iface&IFACETCP_MASK)!=0)
       iface=&IfaceTCP[query_table[j].iface & GATEWAY_IFACE];
       else iface=&IfaceRTU[query_table[j].iface];
@@ -1036,8 +1117,89 @@ int check_IntegrityPQueries()
     if(!(
        (iface->modbus_mode==IFACE_TCPMASTER) ||
        (iface->modbus_mode==IFACE_RTUMASTER)
-       )) return j;
+       )) return 0x100|j;
     }
+
+  // проверяем, что блоки данных из таблицы опроса не пересекаются,
+  // определяем область памяти, занятую блоками данных из таблицы опроса
+
+  unsigned int i, begreg1, endreg1, begreg2, endreg2;
+  char first_low_significant, first_high_significant;
+
+  MoxaDevice.offset1xStatus=\
+  MoxaDevice.offset2xStatus=\
+  MoxaDevice.offset3xRegisters=\
+  MoxaDevice.offset4xRegisters=0xffff;
+
+  for(j=0; j<MAX_QUERY_ENTRIES; j++) {
+
+    if(query_table[j].mbf=MB_FUNC_NONE) continue;
+
+    // очередной блок данных опроса сравниваем со всеми, кроме самого себя, на
+    // предмет пересечений занимаемого диапазона регистров в собственной памяти шлюза
+    for(i==0; i<MAX_QUERY_ENTRIES; i++) {
+      if((i==j) || (query_table[i].mbf=MB_FUNC_NONE)) continue;
+
+      begreg1=query_table[j].offset;
+      begreg2=query_table[i].offset;
+      endreg1=query_table[j].offset + query_table[j].length;
+      endreg2=query_table[i].offset + query_table[i].length;
+
+      first_low_significant = endreg1 < begreg2 ? 1 : 0 ;
+      first_high_significant= begreg1 > endreg2 ? 1 : 0 ;
+      
+      if( (first_low_significant !=1) &&
+          (first_high_significant!=1)
+        ) return (i<<8)|j;
+      }
+
+    // очередной блок данных из таблицы опроса учитываем при определении области памяти шлюза
+		switch(query_table[j].mbf) {
+
+			case MBF_READ_COILS:
+				if(MoxaDevice.offset1xStatus > query_table[j].offset) 
+           MoxaDevice.offset1xStatus = query_table[j].offset;
+				if(MoxaDevice.amount1xStatus < query_table[j].offset+query_table[j].length)
+					 MoxaDevice.amount1xStatus = query_table[j].offset+query_table[j].length;
+				break;
+
+			case MBF_READ_DECRETE_INPUTS:
+				if(MoxaDevice.offset2xStatus > query_table[j].offset)
+           MoxaDevice.offset2xStatus = query_table[j].offset;
+				if(MoxaDevice.amount2xStatus < query_table[j].offset+query_table[j].length)
+					 MoxaDevice.amount2xStatus = query_table[j].offset+query_table[j].length;
+				break;
+
+			case MBF_READ_HOLDING_REGISTERS:
+				if(MoxaDevice.offset4xRegisters > query_table[j].offset)
+           MoxaDevice.offset4xRegisters = query_table[j].offset;
+				if(MoxaDevice.amount4xRegisters < query_table[j].offset+query_table[j].length)
+					 MoxaDevice.amount4xRegisters = query_table[j].offset+query_table[j].length;
+				break;
+
+			case MBF_READ_INPUT_REGISTERS:
+				if(MoxaDevice.offset3xRegisters > query_table[j].offset)
+           MoxaDevice.offset3xRegisters = query_table[j].offset;
+				if(MoxaDevice.amount3xRegisters < query_table[j].offset+query_table[j].length)
+					 MoxaDevice.amount3xRegisters = query_table[j].offset+query_table[j].length;
+				break;
+
+			default:;
+			}
+
+    }
+
+  // если не было инициализации, возвращаем исходное значение в переменную
+	if(MoxaDevice.offset1xStatus   ==0xffff) MoxaDevice.offset1xStatus   =0;
+	if(MoxaDevice.offset2xStatus   ==0xffff) MoxaDevice.offset2xStatus   =0;
+	if(MoxaDevice.offset3xRegisters==0xffff) MoxaDevice.offset3xRegisters=0;
+	if(MoxaDevice.offset4xRegisters==0xffff) MoxaDevice.offset4xRegisters=0;
+						 
+  // заменяем индекс последнего регистра области памяти общим количеством регистров
+	MoxaDevice.amount1xStatus   -= MoxaDevice.offset1xStatus;
+	MoxaDevice.amount2xStatus   -= MoxaDevice.offset2xStatus;
+	MoxaDevice.amount3xRegisters-= MoxaDevice.offset3xRegisters;
+	MoxaDevice.amount4xRegisters-= MoxaDevice.offset4xRegisters;
 
   return 0;
   }

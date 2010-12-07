@@ -21,6 +21,7 @@
 char eventmsg[EVENT_MESSAGE_LENGTH];
 //char message_template[GATEWAY_IFACE+1][EVENT_TEMPLATE_AMOUNT][EVENT_MESSAGE_LENGTH];
 char message_template[EVENT_TEMPLATE_AMOUNT][EVENT_MESSAGE_LENGTH];
+unsigned int message_index[EVENT_TEMPLATE_AMOUNT];
 
 ///=== MESSAGES_H private functions
 
@@ -43,6 +44,47 @@ int init_messages_h()
 void init_message_templates()
   {
 	memset(message_template, 0, sizeof(message_template));
+	memset(message_index   , 0, sizeof(message_index   ));
+
+/*
+/// чисто дурацкая проверка для тестовой компиляции на отсуствие косяков при присвоении значений константам,
+/// для генерации кода ниже рекомендуется обработать код этой функции при помощи регулярных выражений,
+/// что обеспечит отсуствие ошибок ручного ввода.
+/// значения, выданные кодом ниже, должны быть: 1. уникальными; 2. меньше константы EVENT_TEMPLATE_AMOUNT
+printf("COMMAND_LINE_OK	%d", COMMAND_LINE_OK);
+printf("COMMAND_LINE_ERROR	%d", COMMAND_LINE_ERROR);
+printf("COMMAND_LINE_INFO	%d", COMMAND_LINE_INFO);
+printf("COMMAND_LINE_ARGC	%d", COMMAND_LINE_ARGC);
+printf("COMMAND_LINE_UNDEFINED	%d", COMMAND_LINE_UNDEFINED);
+
+printf("SECURITY_CONF_STRUCT	%d", SECURITY_CONF_STRUCT);
+printf("SECURITY_CONF_DUPLICATE	%d", SECURITY_CONF_DUPLICATE);
+printf("SECURITY_CONF_SPELLING	%d", SECURITY_CONF_SPELLING);
+
+printf("IFACE_CONF_RTUDUPLICATE	%d", IFACE_CONF_RTUDUPLICATE);
+printf("IFACE_CONF_RTUSTRUCT	%d", IFACE_CONF_RTUSTRUCT);
+printf("IFACE_CONF_GWMODE	%d", IFACE_CONF_GWMODE);
+
+printf("IFACE_CONF_TCPDUPLICATE	%d", IFACE_CONF_TCPDUPLICATE);
+printf("IFACE_CONF_TCPSTRUCT	%d", IFACE_CONF_TCPSTRUCT);
+
+printf("ATM_CONF_SPELLING	%d", ATM_CONF_SPELLING);
+printf("ATM_CONF_STRUCT	%d", ATM_CONF_STRUCT);
+
+printf("VSLAVE_CONF_OVERFLOW	%d", VSLAVE_CONF_OVERFLOW);
+printf("VSLAVE_CONF_STRUCT	%d", VSLAVE_CONF_STRUCT);
+printf("VSLAVE_CONF_IFACE	%d", VSLAVE_CONF_IFACE);
+
+printf("PQUERY_CONF_OVERFLOW	%d", PQUERY_CONF_OVERFLOW);
+printf("PQUERY_CONF_STRUCT	%d", PQUERY_CONF_STRUCT);
+printf("PQUERY_CONF_IFACE	%d", PQUERY_CONF_IFACE);
+
+printf("EXPT_CONF_OVERFLOW	%d", EXPT_CONF_OVERFLOW);
+printf("EXPT_CONF_STRUCT	%d", EXPT_CONF_STRUCT);
+printf("EXPT_CONF_STAGE	%d", EXPT_CONF_STAGE);
+
+exit(1);
+*/
 
 /// COMAND LINE (КОМАНДНАЯ СТРОКА) [XX..XX, XX]
 
@@ -89,22 +131,22 @@ strcpy(message_template[MOXAGATE_STATINFO], "CONFIGURATION STATINFO");
 
 /// IFACES (ИНТЕРФЕЙСЫ) [XX..XX, XX]
 
-strcpy(message_template[IFACE_MBMODE     ], "CONFIGURATION IFACE %s GATEWAY MODE");
+strcpy(message_template[IFACE_MBMODE     ], "CONFIGURATION IFACE GATEWAY MODE");
 
-strcpy(message_template[IFACE_RTUPHYSPROT], "CONFIGURATION IFACERTU %s PHYSPROTO");
-strcpy(message_template[IFACE_RTUSPEED   ], "CONFIGURATION IFACERTU %s SPEED");
-strcpy(message_template[IFACE_RTUPARITY  ], "CONFIGURATION IFACERTU %s PARITY");
-strcpy(message_template[IFACE_RTUTIMEOUT ], "CONFIGURATION IFACERTU %s TIMEOUT");
-strcpy(message_template[IFACE_RTUTCPPORT ], "CONFIGURATION IFACERTU %s TCP PORT");
+strcpy(message_template[IFACE_RTUPHYSPROT], "CONFIGURATION IFACERTU PHYSPROTO");
+strcpy(message_template[IFACE_RTUSPEED   ], "CONFIGURATION IFACERTU SPEED");
+strcpy(message_template[IFACE_RTUPARITY  ], "CONFIGURATION IFACERTU PARITY");
+strcpy(message_template[IFACE_RTUTIMEOUT ], "CONFIGURATION IFACERTU TIMEOUT");
+strcpy(message_template[IFACE_RTUTCPPORT ], "CONFIGURATION IFACERTU TCP PORT");
 
-strcpy(message_template[IFACE_TCPIP1     ], "CONFIGURATION IFACETCP %s IP ADDRESS");
-strcpy(message_template[IFACE_TCPPORT1   ], "CONFIGURATION IFACETCP %s TCP PORT");
-strcpy(message_template[IFACE_TCPUNITID  ], "CONFIGURATION IFACETCP %s UNIT ID");
-strcpy(message_template[IFACE_TCPOFFSET  ], "CONFIGURATION IFACETCP %s OFFSET");
-strcpy(message_template[IFACE_TCPMBADDR  ], "CONFIGURATION IFACETCP %s ATM ADDRESS");
-strcpy(message_template[IFACE_TCPIP2     ], "CONFIGURATION IFACETCP %s IP ADDRESS 2");
-strcpy(message_template[IFACE_TCPPORT2   ], "CONFIGURATION IFACETCP %s TCP PORT 2");
-strcpy(message_template[IFACE_TCPIPEQUAL ], "IFACETCP %s IP EQUALS");
+strcpy(message_template[IFACE_TCPIP1     ], "CONFIGURATION IFACETCP IP ADDRESS");
+strcpy(message_template[IFACE_TCPPORT1   ], "CONFIGURATION IFACETCP TCP PORT");
+strcpy(message_template[IFACE_TCPUNITID  ], "CONFIGURATION IFACETCP UNIT ID");
+strcpy(message_template[IFACE_TCPOFFSET  ], "CONFIGURATION IFACETCP OFFSET");
+strcpy(message_template[IFACE_TCPMBADDR  ], "CONFIGURATION IFACETCP ATM ADDRESS");
+strcpy(message_template[IFACE_TCPIP2     ], "CONFIGURATION IFACETCP IP ADDRESS 2");
+strcpy(message_template[IFACE_TCPPORT2   ], "CONFIGURATION IFACETCP TCP PORT 2");
+strcpy(message_template[IFACE_TCPIPEQUAL ], "CONFIGURATION IFACETCP IP EQUALS");
 
 
 /// SYSTEM (СИСТЕМНЫЕ) [25..64, 40]
@@ -195,6 +237,32 @@ strcpy(message_template[220], "CLIENT\tTRAFFIC: QUEUE  IN [%d]");
 strcpy(message_template[221], "CLIENT\tTRAFFIC: QUEUE OUT [%d]");
 */
 
+  /// анализируем массив шаблонов сообщений, заполняем массив типов шаблонов по комбинациям параметров
+
+  int i, j, k, msglen;
+  int d[5], s[5];
+
+  for(i=0; i<EVENT_TEMPLATE_AMOUNT; i++) {
+								 
+    d[0]=d[1]=d[2]=d[3]=d[4]=0;
+    s[0]=s[1]=s[2]=s[3]=s[4]=0;
+
+    msglen=strlen(message_template[i]);
+    if(msglen>0) {
+
+      for(j=0; j<msglen; j++)
+        if(message_template[i][j]=='%')
+        if(message_template[i][j+1]=='d')      {d[d[4]]=1; if(d[4]<3) d[4]++;}
+        else if(message_template[i][j+1]=='s') {s[s[4]]=1; if(s[4]<3) s[4]++;}
+
+      message_index[i]=\
+        (d[3]<<3)|(d[2]<<2)|(d[1]<<1)|d[0]|\
+        (s[3]<<7)|(s[2]<<6)|(s[1]<<5)|(s[0]<<4);
+
+      }
+
+    }
+
   return;
   }
 
@@ -234,12 +302,21 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 		app_log_entries_total++;
 	  } else printf("!");
 	
+	// инкрементируем счетчик кольцевого буфера сообщений
+	if(app_log!=NULL)
+		app_log_current_entry=\
+			app_log_current_entry==EVENT_LOG_LENGTH-1?\
+			0:app_log_current_entry+1;
+	
 	/// выводим событие на консоль
 	
 	struct tm *tmd;
 	tmd=gmtime(&curtime);
+//  strftime(eventmsg, 16, "%b %y", &tmd);
 	printf("%2.2d.%2.2d.%4.4d %2.2d:%2.2d:%2.2d\t", tmd->tm_mday, tmd->tm_mon+1, tmd->tm_year+1900,
 																									tmd->tm_hour, tmd->tm_min, tmd->tm_sec);
+//	printf("%2.2d %s %2.2d:%2.2d:%2.2d\t", tmd->tm_mday, eventmsg,
+//																									tmd->tm_hour, tmd->tm_min, tmd->tm_sec);
 
 	switch(msgtype & EVENT_TYPE_MASK) {
 			case EVENT_TYPE_INF: printf("INF\t"); break;
@@ -249,8 +326,6 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 			}
 
 	switch(msgtype & EVENT_SRC_MASK) {
-			case GATEWAY_SYSTEM: 	printf("SYSTEM\t"); 	break;
-			case GATEWAY_SECURITY:printf("SECURITY\t"); 	break;
 			case GATEWAY_P1: 			printf("PORT1\t"); 		break;
 			case GATEWAY_P2: 			printf("PORT2\t"); 		break;
 			case GATEWAY_P3: 			printf("PORT3\t"); 		break;
@@ -259,23 +334,25 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 			case GATEWAY_P6: 			printf("PORT6\t"); 		break;
 			case GATEWAY_P7: 			printf("PORT7\t"); 		break;
 			case GATEWAY_P8: 			printf("PORT8\t"); 		break;
-			case GATEWAY_MOXAGATE: 	printf("MOXAGATE\t"); 	break;
-			case GATEWAY_LANTCP: printf("LANTCP\t"); 	break;
-			// case GATEWAY_TCPBRIDGE: printf("BRIDGE%d\t", prm2+1); 	break;
 
-			default: 								printf("NONAME\t");
+			case GATEWAY_SYSTEM:   printf("SYSTEM\t"); 	break;
+			case GATEWAY_MOXAGATE: printf("MOXAGATE\t"); 	break;
+
+			case GATEWAY_LANTCP: if((prm1>=GATEWAY_T01) && (prm1<=GATEWAY_T32))
+                             printf("TCP%0.2d\t", prm1);
+                             else printf("LANTCP\t");
+                           break;
+
+			case GATEWAY_FRWD: printf("FRWD\t"); 	break;
+			case GATEWAY_HMI: printf("HMI\t"); 	break;
+
+			default: 								printf("***\t");
 			}
 
 	eventmsg[0]=0;
 	make_msgstr(msgcode, eventmsg, prm1, prm2, prm3, prm4);
 	printf("%s\n", eventmsg);
 
-	// инкрементируем счетчик кольцевого буфера сообщений
-	if(app_log!=NULL)
-		app_log_current_entry=\
-			app_log_current_entry==EVENT_LOG_LENGTH-1?\
-			0:app_log_current_entry+1;
-	
 	return;
 	}
 
@@ -313,168 +390,27 @@ void make_msgstr(	unsigned char msgcode, char *str,
 	 
 	char aux[24];
 
-///--- COMAND LINE (КОМАНДНАЯ СТРОКА) [1..24, 24]
-///--- СООБЩЕНИЯ БЕЗ ПАРАМЕТРОВ
-  if(	msgcode==43 || msgcode==39 ||
-		  (msgcode<=36 && msgcode>=29) ||
-		  (msgcode<=27 && msgcode>=25) ||
-		  (msgcode<=14 && msgcode>=1))
+  // все сообщения без параметров
+  if(message_index[msgcode]==EVENT_TPL_DEFAULT)
 		sprintf(str, message_template[msgcode]);
 
-///--- SYSTEM (СИСТЕМНЫЕ) [25..64, 40]
-
-	if(msgcode==28) // MEMORY ALLOCATED 0%dx:%db; LEN25
-			sprintf(str, message_template[msgcode], prm1, prm2);
-
-	if(msgcode==37) // SHARED MEM: OK SIZE %db; LEN23
-			sprintf(str, message_template[msgcode], prm1);
-
-	if(msgcode==40) // SERIAL PORT INITIALIZED MODE %s; LEN40
-		switch(prm1) {
-			case GATEWAY_SIMPLE: 	sprintf(str, message_template[msgcode], "GATEWAY SIMPLE"); break;
-			case GATEWAY_ATM: 		sprintf(str, message_template[msgcode], "GATEWAY ATM"); break;
-			case GATEWAY_RTM: 		sprintf(str, message_template[msgcode], "GATEWAY RTM"); break;
-			case GATEWAY_PROXY: 	sprintf(str, message_template[msgcode], "GATEWAY PROXY"); break;
-			case BRIDGE_PROXY: 		sprintf(str, message_template[msgcode], "BRIDGE PROXY"); break;
-//			case BRIDGE_SIMPLE: 	sprintf(str, message_template[msgcode], "BRIDGE SIMPLE"); break;
-			case MODBUS_PORT_ERROR: sprintf(str, message_template[msgcode], "PORT ERROR"); break;
-			default: 							sprintf(str, message_template[msgcode], "PORT OFF");
-			}
-
-	if(msgcode==41) // THREAD INITIALIZED CODE %d
-			sprintf(str, message_template[msgcode], prm1);
-
-	if(msgcode==42) // THREAD STARTED MODE %s CLIENT %s
-		switch(prm1) {
-			case GATEWAY_SIMPLE: 																					 
-				sscanf(aux, "%d", &prm2);
-				sprintf(str, message_template[msgcode], "GATEWAY SIMPLE", aux);
-				break;
-			case GATEWAY_ATM: 		sprintf(str, message_template[msgcode], "GATEWAY ATM", "MOXA"); break;
-			case GATEWAY_RTM: 		sprintf(str, message_template[msgcode], "GATEWAY RTM", "MOXA"); break;
-			case GATEWAY_PROXY: 	sprintf(str, message_template[msgcode], "GATEWAY PROXY", "MOXA"); break;
-			case BRIDGE_PROXY: 		sprintf(str, message_template[msgcode], "BRIDGE PROXY", "RTU"); break;
-			case BRIDGE_TCP: 			sprintf(str, message_template[msgcode], "BRIDGE TCP", "MOXA"); break;
-			case MOXA_MB_DEVICE: 	sprintf(str, message_template[msgcode], "MOXA DEVICE", "MOXA"); break;
-			case MODBUS_PORT_ERROR: sprintf(str, message_template[msgcode], "PORT ERROR", "N/A"); break;
-			default: 							sprintf(str, message_template[msgcode], "PORT OFF", "N/A");
-			}
-
-	if(msgcode==44) // PROGRAM TERMINATED (WORKTIME %d)
-			sprintf(str, message_template[msgcode], prm1);
-
-///--- CONNECTION (СЕТЕВОЕ СОЕДИНЕНИЕ) [65..127, 63]
-
-	if(msgcode==65) // SOCKET INITIALIZED STAGE %d TCPSERVER %s;
-//		if(prm2==DEFAULT_CLIENT) 	sprintf(str, message_template[msgcode], prm1, "N/A");
-//		  else  									
-             sprintf(str, message_template[msgcode], prm1, "xxx.xxx.xxx.xxx");
-
-	if(msgcode==67) // CONNECTION ACCEPTED FROM %s CLIENT %d;
-		if(prm1==0) sprintf(str, message_template[msgcode], "N/A", 0);
-		  else {
-				sprintf(aux, "%d.%d.%d.%d", prm1 >> 24, (prm1 >> 16) & 0xff, (prm1 >> 8) & 0xff, prm1 & 0xff);
-				sprintf(str, message_template[msgcode], aux, prm2);
-		    }
-
-	if(	msgcode==68 || 	// CONNECTION ESTABLISHED WITH %d.%d.%d.%d;
-			msgcode==69 ||	// CONNECTION FAILED TO %d.%d.%d.%d;
-			msgcode==70) 		// CONNECTION REJECTED FROM %d.%d.%d.%d;
-		sprintf(str, message_template[msgcode], prm1 >> 24, (prm1 >> 16) & 0xff, (prm1 >> 8) & 0xff, prm1 & 0xff);
-
-	if(	msgcode==71 || 	// CONNECTION CLOSED (LINK DOWN) CLIENT %d
-			msgcode==72) 		// CONNECTION CLOSED (TIMEOUT) CLIENT %d
+  // сообщения c первым числовым параметром
+  if(message_index[msgcode]==EVENT_TPL_000D)
 		sprintf(str, message_template[msgcode], prm1);
 
-///--- QUEUE (ОЧЕРЕДЬ) [148..179, 32]
-	if(msgcode==148) // QUEUE EMPTY
-		sprintf(str, message_template[msgcode]);
+  // сообщения c двумя числовыми параметрами
+  if(message_index[msgcode]==EVENT_TPL_00DD)
+		sprintf(str, message_template[msgcode], prm1, prm2);
 
-	if(msgcode==149)  // QUEUE OVERLOADED CLIENT %d
-		sprintf(str, message_template[msgcode], prm1);
-
-///--- FORWARDING (ПЕРЕНАПРАВЛЕНИЕ) [128..147, 20]
-	if(msgcode==128) // CLIENT\tFRWD: ADDRESS [%d] NOT TRANSLATED
-		sprintf(str, message_template[msgcode], prm2);
-
-	if(msgcode==129) // CLIENT\tFRWD: BLOCK OVERLAPS [%d, %d]
-		sprintf(str, message_template[msgcode], prm2, prm3);
-
-	if(msgcode==130) // CLIENT\tFRWD: PROXY TRANSLATION [%d, %d]
-		sprintf(str, message_template[msgcode], prm2, prm3);
-
-	if(msgcode==131) // CLIENT\tFRWD: REGISTERS TRANSLATION [%d, %d]
-		sprintf(str, message_template[msgcode], prm2, prm3);
-
-///--- POLLING (ОПРОС) [180..191, 12]
-	if(msgcode==180) // CLIENT\tPOLLING: FUNCTION [%d] NOT SUPPORTED
-		sprintf(str, message_template[msgcode], prm2);
-
-	if(	(msgcode==182) ||	// CLIENT\tPOLLING: RTU  RECV - %s
-			(msgcode==183))  	// CLIENT\tPOLLING: RTU  SEND - %s
-		switch(prm1) {
-			case MB_SERIAL_WRITE_ERR:
-				sprintf(str, message_template[msgcode], "COM FAILURE");
-				break;
-			case MB_SERIAL_READ_FAILURE:
-				sprintf(str, message_template[msgcode], "COM FAILURE");
-				break;
-			case MB_SERIAL_COM_TIMEOUT:
-				sprintf(str, message_template[msgcode], "TIMEOUT");
-				break;
-			case MB_SERIAL_ADU_ERR_MIN:
-				sprintf(str, message_template[msgcode], "ADU MIN LEN");
-				break;
-			case MB_SERIAL_ADU_ERR_MAX:
-				sprintf(str, message_template[msgcode], "ADU MAX LEN");
-				break;
-			case MB_SERIAL_CRC_ERROR:
-				sprintf(str, message_template[msgcode], "WRONG CRC");
-				break;
-			case MB_SERIAL_PDU_ERR:
-				sprintf(str, message_template[msgcode], "WRONG PDU");
-				break;
-			default:
-				sprintf(str, message_template[msgcode], "UNKNOWN");
-			}
-
-	if(	(msgcode==184) ||	// CLIENT\tPOLLING: TCP  RECV - %s
-			(msgcode==185))  	// CLIENT\tPOLLING: TCP  SEND - %s
-		switch(prm1) {
-			case TCP_COM_ERR_NULL:
-				sprintf(str, message_template[msgcode], "NO INPUT DATA");
-				break;
-			case TCP_ADU_ERR_MIN:
-				sprintf(str, message_template[msgcode], "ADU MIN LEN");
-				break;
-			case TCP_ADU_ERR_MAX:
-				sprintf(str, message_template[msgcode], "ADU MAX LEN");
-				break;
-			case TCP_ADU_ERR_PROTOCOL:
-				sprintf(str, message_template[msgcode], "WRONG PROTOCOL");
-				break;
-			case TCP_ADU_ERR_LEN:
-				sprintf(str, message_template[msgcode], "WRONG ADU LEN");
-				break;
-			case TCP_ADU_ERR_UID:
-				sprintf(str, message_template[msgcode], "WRONG UID");
-				break;
-			case TCP_PDU_ERR:
-				sprintf(str, message_template[msgcode], "WRONG PDU");
-				break;
-			case TCP_COM_ERR_SEND:
-				sprintf(str, message_template[msgcode], "COM FAILURE");
-				break;
-			default:
-				sprintf(str, message_template[msgcode], "UNKNOWN");
-			}
-
-	/// TRAFFIC (ДАННЫЕ) [220..239, 20]
-	if(msgcode==220) // CLIENT\tTRAFFIC: QUEUE  IN [%d]
-		sprintf(str, message_template[msgcode], prm2);
-
-	if(msgcode==221) // CLIENT\tTRAFFIC: QUEUE OUT [%d]
-		sprintf(str, message_template[msgcode], prm2);
+  // сообщения c первым строковым параметром
+  if(message_index[msgcode]==EVENT_TPL_000S) {
+    // преобразуем строку в название интерфейса
+    strcpy(aux, "***");
+    if(prm1<=GATEWAY_P8) sprintf(aux, "PORT%d", prm1+1);
+    if((prm1>=GATEWAY_T01)&&(prm1<=GATEWAY_T32))
+      sprintf(aux, "TCP%0.2d", prm1-GATEWAY_T01+1);
+		sprintf(str, message_template[msgcode], aux);
+    }
 
 	return;
 	}

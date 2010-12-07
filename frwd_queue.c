@@ -273,6 +273,9 @@ int init_frwd_queue_h()
   for(i=0; i<MAX_QUERY_ENTRIES; i++)          init_ProxyQuery_Entry(i);
   for(i=0; i<MOXAGATE_EXCEPTIONS_NUMBER; i++) init_Exception(i);
 
+  vsmem_offset1xStatus=vsmem_offset2xStatus=vsmem_offset3xRegisters=vsmem_offset4xRegisters=0;
+  vsmem_amount1xStatus=vsmem_amount2xStatus=vsmem_amount3xRegisters=vsmem_amount4xRegisters=0;
+
   return 0;
   }
 

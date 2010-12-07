@@ -120,80 +120,22 @@ int main(int argc, char *argv[])
 /* в результате разбора параметров командной строки получаем количество параметров,
    которые нужно сохранять локально. соответственно производим выделение памяти под них */
 
-	MoxaDevice.amount1xStatus=\
-	MoxaDevice.amount2xStatus=\
-	MoxaDevice.amount3xRegisters=\
-	MoxaDevice.amount4xRegisters=0;
-
-	MoxaDevice.offset1xStatus=\
-	MoxaDevice.offset2xStatus=\
-	MoxaDevice.offset3xRegisters=\
-	MoxaDevice.offset4xRegisters=0xffff;
-
-	for(i=0; i<MAX_QUERY_ENTRIES; i++) {																	
-
-		if(	(query_table[i].offset==0)||
-				(query_table[i].length==0)) continue;
-
-		switch(query_table[i].mbf) {
-
-			case MBF_READ_COILS:
-				if(MoxaDevice.offset1xStatus > query_table[i].offset-1) MoxaDevice.offset1xStatus = query_table[i].offset-1;
-				if(MoxaDevice.amount1xStatus < query_table[i].offset-1+query_table[i].length)
-					MoxaDevice.amount1xStatus = query_table[i].offset-1+query_table[i].length;
-				break;
-
-			case MBF_READ_DECRETE_INPUTS:
-				if(MoxaDevice.offset2xStatus > query_table[i].offset-1) MoxaDevice.offset2xStatus = query_table[i].offset-1;
-				if(MoxaDevice.amount2xStatus < query_table[i].offset-1+query_table[i].length)
-					MoxaDevice.amount2xStatus = query_table[i].offset-1+query_table[i].length;
-				break;
-
-			case MBF_READ_HOLDING_REGISTERS:
-				if(MoxaDevice.offset4xRegisters > query_table[i].offset-1) MoxaDevice.offset4xRegisters = query_table[i].offset-1;
-				if(MoxaDevice.amount4xRegisters < query_table[i].offset-1+query_table[i].length)
-					MoxaDevice.amount4xRegisters = query_table[i].offset-1+query_table[i].length;
-				break;
-
-			case MBF_READ_INPUT_REGISTERS:
-				if(MoxaDevice.offset3xRegisters > query_table[i].offset-1) MoxaDevice.offset3xRegisters = query_table[i].offset-1;
-				if(MoxaDevice.amount3xRegisters < query_table[i].offset-1+query_table[i].length)
-					MoxaDevice.amount3xRegisters = query_table[i].offset-1+query_table[i].length;
-				break;
-
-			default: continue;
-			}
-		}
-
-	//printf("offset1x=%d, amount1x=%d\n", gate502.offset1xStatus, gate502.amount1xStatus);
-
-	if(MoxaDevice.offset1xStatus==0xffff)		MoxaDevice.offset1xStatus=0;
-	if(MoxaDevice.offset2xStatus==0xffff)		MoxaDevice.offset2xStatus=0;
-	if(MoxaDevice.offset3xRegisters==0xffff)	MoxaDevice.offset3xRegisters=0;
-	if(MoxaDevice.offset4xRegisters==0xffff)	MoxaDevice.offset4xRegisters=0;
-
-  ///!!! алгоритм ниже исправить: следующий оператор не должен выполняться здесь, он выполняется ранее
-  MoxaDevice.status_info++;
-
 	// блок статусной информации находится в области 4x, выделяем место для него
-	if(MoxaDevice.status_info!=0) { /// если должен быть инициализирован блок статусной информации шлюза
 		if(MoxaDevice.amount4xRegisters==0) { /// если 4х область адресного пространства не размечена
-			MoxaDevice.offset4xRegisters=MoxaDevice.status_info-1;
-			MoxaDevice.amount4xRegisters=MoxaDevice.status_info-1+GATE_STATUS_BLOCK_LENGTH;
+			MoxaDevice.offset4xRegisters=MoxaDevice.status_info;
+			MoxaDevice.amount4xRegisters=MoxaDevice.status_info+GATE_STATUS_BLOCK_LENGTH;
 			} else if(	/// если область 4х размечена уже и диапазоны регистров не перекрываются
-					(MoxaDevice.status_info-1+GATE_STATUS_BLOCK_LENGTH <= MoxaDevice.offset4xRegisters) ||
-					(MoxaDevice.status_info-1 >= MoxaDevice.amount4xRegisters)) {
+					(MoxaDevice.status_info+GATE_STATUS_BLOCK_LENGTH <= MoxaDevice.offset4xRegisters) ||
+					(MoxaDevice.status_info >= MoxaDevice.amount4xRegisters)) {
 		
-				if(MoxaDevice.status_info-1 >= MoxaDevice.amount4xRegisters)
-					MoxaDevice.amount4xRegisters = MoxaDevice.status_info-1+GATE_STATUS_BLOCK_LENGTH;
-					else MoxaDevice.offset4xRegisters = MoxaDevice.status_info-1;
+				if(MoxaDevice.status_info >= MoxaDevice.amount4xRegisters)
+					MoxaDevice.amount4xRegisters = MoxaDevice.status_info+GATE_STATUS_BLOCK_LENGTH;
+					else MoxaDevice.offset4xRegisters = MoxaDevice.status_info;
 		
 				} else	{ /// ошибка, если диапазоны регистров перекрываются
 					// STATUS INFO OVERLAPS
 					sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 39, 0, 0, 0, 0);
-					MoxaDevice.status_info=0;
 					}
-		}
 
 	MoxaDevice.amount1xStatus-=		MoxaDevice.offset1xStatus;
 	MoxaDevice.amount2xStatus-=		MoxaDevice.offset2xStatus;
@@ -254,11 +196,6 @@ int main(int argc, char *argv[])
 		MoxaDevice.wData2x=(u8 *) MoxaDevice.wData4x;
 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 28, 2, k, 0, 0);
 		}
-
-/// для удобства в дальнейшей работе переводим номера регистров и битов в смещения, когда нумерация идет с нуля
-	for(i=0; i<MAX_QUERY_ENTRIES; i++) { query_table[i].offset--; query_table[i].start--; }
-  ///!!! алгоритм выше исправить: следующий оператор не должен выполняться здесь, он выполняется ранее
-  MoxaDevice.status_info--;
 
   // мьютекс используется для синхронизации потоков при работе с памятью
 	pthread_mutex_init(&MoxaDevice.moxa_mutex, NULL);

@@ -40,6 +40,8 @@ typedef struct {
 	unsigned short offset1xStatus, offset2xStatus, offset3xRegisters, offset4xRegisters;
 	// количество элементов в каждой из таблиц MODBUS
 	unsigned short amount1xStatus, amount2xStatus, amount3xRegisters, amount4xRegisters;
+  // счетчики реально используемой памяти всеми блоками
+  unsigned short used1xStatus, used2xStatus, used3xRegisters, used4xRegisters;
 	// указатели на массивы памяти
 	unsigned char *wData1x; //массив виртуальных 1x регистров MOXA (coil status)
 	unsigned char *wData2x; //массив виртуальных 2x регистров MOXA (input status)

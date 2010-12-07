@@ -46,6 +46,25 @@
 #define TRAFFIC_QUEUE_IN	186
 #define TRAFFIC_QUEUE_OUT	187
 
+/// типы сообщений по комбинациям параметров
+#define EVENT_TPL_DEFAULT 0
+
+#define EVENT_TPL_000D 0x01
+#define EVENT_TPL_00DD 0x03
+#define EVENT_TPL_000S 0x10
+
+#define EVENT_TPL_D1_MASK 0x01
+#define EVENT_TPL_D2_MASK 0x02
+#define EVENT_TPL_D3_MASK 0x04
+#define EVENT_TPL_D4_MASK 0x08
+
+#define EVENT_TPL_S1_MASK 0x10
+#define EVENT_TPL_S2_MASK 0x20
+#define EVENT_TPL_S3_MASK 0x40
+#define EVENT_TPL_S4_MASK 0x80
+
+#define EVENT_TPL_NOPARAM 0x100
+
 ///=== MESSAGES_H data types
 
 typedef struct {				// ЗАПИСЬ ЖУРНАЛА СОБЫТИЙ ШЛЮЗА

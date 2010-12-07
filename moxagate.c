@@ -34,16 +34,21 @@ int init_moxagate_h()
   // MoxaDevice.moxa_mutex
 
 	// начало блока внутренних регистров Moxa (смещение)
-	//MoxaDevice.offset1xStatus=\
+	  MoxaDevice.offset1xStatus=\
     MoxaDevice.offset2xStatus=\
     MoxaDevice.offset3xRegisters=\
     MoxaDevice.offset4xRegisters=0;
 
 	// количество элементов в каждой из таблиц MODBUS
-	//MoxaDevice.amount1xStatus=\
+	  MoxaDevice.amount1xStatus=\
     MoxaDevice.amount2xStatus=\
     MoxaDevice.amount3xRegisters=\
     MoxaDevice.amount4xRegisters=0;
+
+	  MoxaDevice.used1xStatus=\
+	  MoxaDevice.used2xStatus=\
+	  MoxaDevice.used3xRegisters=\
+	  MoxaDevice.used4xRegisters=0;
 
 	// указатели на массивы памяти
 	// MoxaDevice.wData1x

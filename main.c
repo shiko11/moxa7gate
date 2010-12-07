@@ -117,6 +117,7 @@ int main(int argc, char *argv[])
 	
 		init_message_templates();
 		init_shm();
+		mxwdt_flarr=0;
 
 //		signal(SIGPIPE, sigpipe_handler);
 //		signal(SIGIO, sigio_handler);
@@ -347,6 +348,16 @@ int main(int argc, char *argv[])
 /// для удобства в дальнейшей работе переводим номера регистров и битов в смещения, когда нумерация идет с нуля
 	for(i=0; i<MAX_QUERY_ENTRIES; i++) { query_table[i].offset--; query_table[i].start--; }
   gate502.status_info--;
+
+/*** ИНИЦИАЛИЗАЦИЯ WATCHDOG-ТАЙМЕРА (СРЕДСТВО ЗАЩИТЫ ОТ СБОЕВ И ЗАВИСАНИЙ) ***/
+if(gate502.watchdog_timer==1) {																																 
+	mxwdt_handle=mxwdg_open(60*1000);
+	if(mxwdt_handle<0) {
+		printf("fail to open the watch dog\n");
+		exit (1);
+	  }
+	printf("succesfuly opened the watch dog\n");
+	}
 
 /*** ИНИЦИАЛИЗАЦИЯ УСТРОЙСТВ КОНТРОЛЯ И МОНИТОРИНГА: LCM, KEYPAD, BUZZER (ДИСПЛЕЙ, КЛАВИАТУРА, ЗУММЕР) ***/
 	mxkpd_handle=keypad_open();
@@ -661,6 +672,7 @@ gateway_common_processing();
   mxlcm_close(mxlcm_handle);
   keypad_close(mxkpd_handle);
   mxbuzzer_close(mxbzr_handle);
+  if(gate502.watchdog_timer==1) mxwdg_close(mxwdt_handle);
 
 	close_shm();
 	semctl(semaphore_id, MAX_MOXA_PORTS, IPC_RMID, NULL);
@@ -762,6 +774,9 @@ int gateway_common_processing()
 	  
 		// останов программы по внешней команде
 		if(gate502.halt==1) break;
+
+    ///*** Выполняем сброс Watchdog-таймера для данного потока
+	  mxwdt_flarr&=~PHID_MAIN;
 		}
 
 	return 0;

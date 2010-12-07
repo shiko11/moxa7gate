@@ -852,7 +852,9 @@ void *gateway_proxy_thread(void *arg)
 ///---------- специальный случай при подаче команд на СКС-7 Диоген, обрабатываем
 ///--- убираем третий с конца байт в полученном ответе на запрос
 if((exceptions&EXCEPTION_DIOGEN)!=0)					
-		if(serial_adu[RTUADU_FUNCTION]==0x06)
+		if( (serial_adu[RTUADU_FUNCTION]==0x06) &&
+        ((status==MB_SERIAL_CRC_ERROR) || (status==MB_SERIAL_PDU_ERR))
+      )
 		if((except_prm[0]&(1 << port_id))!=0) {
 			serial_adu[serial_adu_len-3]=serial_adu[serial_adu_len-2];
 			serial_adu[serial_adu_len-2]=serial_adu[serial_adu_len-1];
@@ -862,6 +864,7 @@ if((exceptions&EXCEPTION_DIOGEN)!=0)
 			}
 ///-----------------------------------------------------------------------------
 
+    if(status!=MB_SERIAL_ADU_ERR_MAX)
 		if(gate502.show_data_flow==1)
 			show_traffic(TRAFFIC_RTU_RECV, port_id, i, serial_adu, serial_adu_len);
 
@@ -1265,6 +1268,7 @@ void *moxa_mb_thread(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
 		status=get_query_from_queue(&gate502.queue, &client_id, &device_id, tcp_adu, &tcp_adu_len);
 		if(status!=0) continue;
 
+		// *((int *)(0))=1; // эта строка вызывает фатальную ошибку (тест watch dog таймера)
 		clear_stat(&tmpstat);
 
 	  ///---------------------
@@ -1321,6 +1325,9 @@ void *moxa_mb_thread(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
 //	gettimeofday(&tv2, &tz);
 // время не считаем, так как вся обработка происходит локально без передачи запроса далее
 //	gate502.stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
+
+  ///*** Выполняем сброс Watchdog-таймера для данного потока
+	// mxwdt_flarr&=~PHID_MOXAGATE; // невозможно отследить состояние флага ввиду блокировки на семафоре очереди
 	}
 
 	EndRun: ;

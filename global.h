@@ -23,6 +23,11 @@ SEM-ENGINEERING
 
 #define DEVICE_NAME_LENGTH	64
 
+///!!! Глобальные идентификаторы объектов (механизмов, модулей, потоков) moxa7gate
+#define PHID_MAIN			0x01
+#define PHID_MOXAGATE 0x02
+#define PHID_HMISYS   0x04
+
 /*фЙРЩ ДБООЩИ*/
 typedef unsigned char              u8;
 typedef unsigned short             u16;
@@ -274,6 +279,8 @@ input_cfg_502 gate502;
 int mxlcm_handle;
 int mxkpd_handle;
 int mxbzr_handle;
+int mxwdt_handle;
+unsigned short mxwdt_flarr; // массив флагов для отслеживания состояния потоков программы
 int shm_segment_id;
 GW_Display screen;
 unsigned int buzzer_flag; // зуммер дает 1, 2 и 3 гудка в зависимости от количества ошибок: <15, 15-30, >30

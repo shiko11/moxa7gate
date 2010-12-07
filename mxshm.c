@@ -23,6 +23,8 @@ GW_TCP_Server *t_tcpsrv; //[MAX_TCP_SERVERS];
 key_t access_key;
 struct shmid_ds shmbuffer;
 
+//unsigned dogtmp;
+
 /*//---for reference purposes only!-----------------------------------------------------
 struct shmid_ds {
 	struct	ipc_perm	shm_perm;		//operation permission struct // operation perms /
@@ -62,7 +64,7 @@ int init_shm()
 			case EEXIST: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 32, 0, 0, 0, 0); break;
 			default: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 36, 0, 0, 0, 0); break;
 			}
-
+//		dogtmp=0;
 		return shm_segment_id;
 	  }
 
@@ -321,6 +323,18 @@ int refresh_shm(void *arg)
 			gate502.wData4x[gate502.status_info+3*MAX_MOXA_PORTS+(i/16)]&=~j;
 			else
 			gate502.wData4x[gate502.status_info+3*MAX_MOXA_PORTS+(i/16)]|=j;
+    }
+
+  ///*** Выполняем сброс Watchdog-таймера для данного потока
+	mxwdt_flarr&=~PHID_HMISYS;
+
+  ///*** Выполняем сброс Watchdog-таймера
+	if(mxwdt_flarr==0) {
+		mxwdt_flarr=PHID_MAIN|PHID_HMISYS; // PHID_MOXAGATE|
+    if(gate502.watchdog_timer==1) mxwdg_refresh(mxwdt_handle);
+		//printf("watch dog %d\n", dogtmp);
+		//if(dogtmp==40) *((int *)(0))=1; // эта строка вызывает фатальную ошибку (тест watch dog таймера)
+    //dogtmp++;
     }
 
 	return 0;

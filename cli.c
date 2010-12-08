@@ -1041,8 +1041,8 @@ int check_IntegrityVSlaves()
       endreg1=vslave[j].start + vslave[j].length;
       endreg2=vslave[i].start + vslave[i].length;
 
-      first_low_significant = endreg1 < begreg2 ? 1 : 0 ;
-      first_high_significant= begreg1 > endreg2 ? 1 : 0 ;
+      first_low_significant = endreg1 <= begreg2 ? 1 : 0 ;
+      first_high_significant= begreg1 >= endreg2 ? 1 : 0 ;
       
       if( (first_low_significant !=1) &&
           (first_high_significant!=1)
@@ -1057,6 +1057,7 @@ int check_IntegrityVSlaves()
            vsmem_offset1xStatus = vslave[j].start;
 				if(vsmem_amount1xStatus < vslave[j].start+vslave[j].length)
 					 vsmem_amount1xStatus = vslave[j].start+vslave[j].length;
+				vsmem_used1xStatus += vslave[j].length;
 				break;
 
 			case INPUT_STATUS_TABLE:
@@ -1064,6 +1065,7 @@ int check_IntegrityVSlaves()
            vsmem_offset2xStatus = vslave[j].start;
 				if(vsmem_amount2xStatus < vslave[j].start+vslave[j].length)
 					 vsmem_amount2xStatus = vslave[j].start+vslave[j].length;
+				vsmem_used2xStatus += vslave[j].length;
 				break;
 
 			case HOLDING_REGISTER_TABLE:
@@ -1071,6 +1073,7 @@ int check_IntegrityVSlaves()
            vsmem_offset4xRegisters = vslave[j].start;
 				if(vsmem_amount4xRegisters < vslave[j].start+vslave[j].length)
 					 vsmem_amount4xRegisters = vslave[j].start+vslave[j].length;
+				vsmem_used4xRegisters += vslave[j].length;
 				break;
 
 			case INPUT_REGISTER_TABLE:
@@ -1078,6 +1081,7 @@ int check_IntegrityVSlaves()
            vsmem_offset3xRegisters = vslave[j].start;
 				if(vsmem_amount3xRegisters < vslave[j].start+vslave[j].length)
 					 vsmem_amount3xRegisters = vslave[j].start+vslave[j].length;
+				vsmem_used3xRegisters += vslave[j].length;
 				break;
 
 			default: continue;
@@ -1145,8 +1149,8 @@ int check_IntegrityPQueries()
       endreg1=query_table[j].offset + query_table[j].length;
       endreg2=query_table[i].offset + query_table[i].length;
 
-      first_low_significant = endreg1 < begreg2 ? 1 : 0 ;
-      first_high_significant= begreg1 > endreg2 ? 1 : 0 ;
+      first_low_significant = endreg1 <= begreg2 ? 1 : 0 ;
+      first_high_significant= begreg1 >= endreg2 ? 1 : 0 ;
       
       if( (first_low_significant !=1) &&
           (first_high_significant!=1)
@@ -1161,6 +1165,7 @@ int check_IntegrityPQueries()
            MoxaDevice.offset1xStatus = query_table[j].offset;
 				if(MoxaDevice.amount1xStatus < query_table[j].offset+query_table[j].length)
 					 MoxaDevice.amount1xStatus = query_table[j].offset+query_table[j].length;
+				MoxaDevice.used1xStatus += query_table[j].length;
 				break;
 
 			case MBF_READ_DECRETE_INPUTS:
@@ -1168,6 +1173,7 @@ int check_IntegrityPQueries()
            MoxaDevice.offset2xStatus = query_table[j].offset;
 				if(MoxaDevice.amount2xStatus < query_table[j].offset+query_table[j].length)
 					 MoxaDevice.amount2xStatus = query_table[j].offset+query_table[j].length;
+				MoxaDevice.used2xStatus += query_table[j].length;
 				break;
 
 			case MBF_READ_HOLDING_REGISTERS:
@@ -1175,6 +1181,7 @@ int check_IntegrityPQueries()
            MoxaDevice.offset4xRegisters = query_table[j].offset;
 				if(MoxaDevice.amount4xRegisters < query_table[j].offset+query_table[j].length)
 					 MoxaDevice.amount4xRegisters = query_table[j].offset+query_table[j].length;
+				MoxaDevice.used4xRegisters += query_table[j].length;
 				break;
 
 			case MBF_READ_INPUT_REGISTERS:
@@ -1182,6 +1189,7 @@ int check_IntegrityPQueries()
            MoxaDevice.offset3xRegisters = query_table[j].offset;
 				if(MoxaDevice.amount3xRegisters < query_table[j].offset+query_table[j].length)
 					 MoxaDevice.amount3xRegisters = query_table[j].offset+query_table[j].length;
+				MoxaDevice.used3xRegisters += query_table[j].length;
 				break;
 
 			default:;
@@ -1200,6 +1208,21 @@ int check_IntegrityPQueries()
 	MoxaDevice.amount2xStatus   -= MoxaDevice.offset2xStatus;
 	MoxaDevice.amount3xRegisters-= MoxaDevice.offset3xRegisters;
 	MoxaDevice.amount4xRegisters-= MoxaDevice.offset4xRegisters;
+
+  // проверяем количество выделяемой памяти, реально не используемое программой
+  // вследствие особенностей используемой конфигурации:
+
+//  if(((MoxaDevice.amount1xStatus   - MoxaDevice.used1xStatus - 1)/8+1) > MOXAGATE_MAX_MEMORY_LEAK)
+//    return COIL_STATUS_TABLE;
+
+//  if(((MoxaDevice.amount2xStatus   - MoxaDevice.used2xStatus - 1)/8+1) > MOXAGATE_MAX_MEMORY_LEAK)
+//    return INPUT_STATUS_TABLE;
+
+//  if((MoxaDevice.amount3xRegisters - MoxaDevice.used3xRegisters)*2     > MOXAGATE_MAX_MEMORY_LEAK)
+//    return INPUT_REGISTER_TABLE;
+
+//  if((MoxaDevice.amount4xRegisters - MoxaDevice.used4xRegisters)*2     > MOXAGATE_MAX_MEMORY_LEAK)
+//    return HOLDING_REGISTER_TABLE;
 
   return 0;
   }

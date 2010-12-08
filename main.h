@@ -21,7 +21,7 @@
 #include "interfaces.h"
 #include "moxagate.h"
 #include "messages.h"
-#include "hmi_keypad_lcm.h"
+#include "hmi_klb.h"
 #include "hmi_web.h"
 
 ///=== MAIN_H constants

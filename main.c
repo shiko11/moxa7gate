@@ -25,17 +25,32 @@ struct sockaddr_in	addr;
 int main(int argc, char *argv[])
 {
 
-/*** ИНИЦИАЛИЗАЦИЯ ПЕРЕМЕННЫХ ПРОГРАММЫ ***/
+/***   И Н И Ц И А Л И З А Ц И Я   ***/
+
+// требование к процессу инициализации: при возникновении фатальных ошибок должно
+// быть выведено сообщение на экран LCM, сообщение на главной странице WEB-интерфейса,
+// а так же звук зуммера (при условии успешной инициализации устройств Moxa UC-7410).
 
 	int k;
 
   init_moxagate_h();
   init_interfaces_h();
   init_frwd_queue_h();
-  init_messages_h(); // обязательно перед init_hmi_web_h()
-  init_hmi_web_h();
-  init_statistics_h();
-  init_clients();
+  init_messages_h();
+
+  // вывод возможных ошибок на экран LCM
+  k=init_hmi_keypad_lcm_h();
+  if(k!=0) exit(1);
+
+  // создание разделяемого сегмента памяти,
+  // выделение памяти под журнал сообщений
+  k=init_hmi_web_h();
+  if(k!=0) exit(1);
+
+  ///!!! точка останова. возможен контроль средствами HMI инициализации переменных
+
+  ///!!!
+  printf("stopping program...\n"); exit(1);
 
 /*** РАЗБОР ПАРАМЕТРОВ КОМАНДНОЙ СТРОКИ ***/
 	k = get_command_line(argc, argv);
@@ -62,7 +77,9 @@ int main(int argc, char *argv[])
       exit(1);
 		}
 
-/*** ПРОВЕРКА КОНФИГУРАЦИИ ШЛЮЗА В ЦЕЛОМ ***/
+  ///!!! точка останова. возможен контроль прочитанной конфигурации средствами HMI
+
+/*** ПРОВЕРКА КОНФИГУРАЦИИ ШЛЮЗА В ЦЕЛОМ, ИНИЦИАЛИЗАЦИЯ ВТОРИЧНЫХ КОНФИГУРАЦИОННЫХ ПАРАМЕТРОВ ***/
 
   k=check_GatewayTCPPorts();
   if(k!=0) {
@@ -115,131 +132,68 @@ int main(int argc, char *argv[])
 
 /*** ИНИЦИАЛИЗАЦИЯ МАССИВОВ ПАМЯТИ ПОД ТАБЛИЦЫ MODBUS ***/
 
-  int i, j;
-
-/* в результате разбора параметров командной строки получаем количество параметров,
-   которые нужно сохранять локально. соответственно производим выделение памяти под них */
-
 	// блок статусной информации находится в области 4x, выделяем место для него
-		if(MoxaDevice.amount4xRegisters==0) { /// если 4х область адресного пространства не размечена
-			MoxaDevice.offset4xRegisters=MoxaDevice.status_info;
-			MoxaDevice.amount4xRegisters=MoxaDevice.status_info+GATE_STATUS_BLOCK_LENGTH;
-			} else if(	/// если область 4х размечена уже и диапазоны регистров не перекрываются
-					(MoxaDevice.status_info+GATE_STATUS_BLOCK_LENGTH <= MoxaDevice.offset4xRegisters) ||
-					(MoxaDevice.status_info >= MoxaDevice.amount4xRegisters)) {
+  // (функция check_IntegrityVSlaves_ex() должна быть выполнена ранее)
+  if(MoxaDevice.amount4xRegisters==0) { /// если 4х область адресного пространства не размечена
+    MoxaDevice.offset4xRegisters = MoxaDevice.status_info;
+    MoxaDevice.amount4xRegisters = GATE_STATUS_BLOCK_LENGTH;
+    MoxaDevice.used4xRegisters   = GATE_STATUS_BLOCK_LENGTH;
+		} else if(	/// если область 4х размечена и диапазоны регистров не перекрываются
+					(MoxaDevice.status_info + GATE_STATUS_BLOCK_LENGTH <= MoxaDevice.offset4xRegisters) ||
+					(MoxaDevice.status_info >= MoxaDevice.offset4xRegisters + MoxaDevice.amount4xRegisters)) {
 		
-				if(MoxaDevice.status_info >= MoxaDevice.amount4xRegisters)
-					MoxaDevice.amount4xRegisters = MoxaDevice.status_info+GATE_STATUS_BLOCK_LENGTH;
-					else MoxaDevice.offset4xRegisters = MoxaDevice.status_info;
+      if(MoxaDevice.status_info >= MoxaDevice.offset4xRegisters + MoxaDevice.amount4xRegisters)
+        MoxaDevice.amount4xRegisters=\
+          MoxaDevice.status_info + GATE_STATUS_BLOCK_LENGTH - MoxaDevice.offset4xRegisters;
+        else {
+          MoxaDevice.amount4xRegisters += (MoxaDevice.offset4xRegisters - MoxaDevice.status_info);
+          MoxaDevice.offset4xRegisters = MoxaDevice.status_info;
+          }													
+
+      MoxaDevice.used4xRegisters += GATE_STATUS_BLOCK_LENGTH;
 		
-				} else	{ /// ошибка, если диапазоны регистров перекрываются
-					// STATUS INFO OVERLAPS
-					sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 39, 0, 0, 0, 0);
-					}
+      } else { /// ошибка, если диапазоны регистров перекрываются
+        // STATUS INFO OVERLAPS
+        sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 39, 0, 0, 0, 0);
+        exit(1);
+        }
 
-	MoxaDevice.amount1xStatus-=		MoxaDevice.offset1xStatus;
-	MoxaDevice.amount2xStatus-=		MoxaDevice.offset2xStatus;
-	MoxaDevice.amount3xRegisters-=	MoxaDevice.offset3xRegisters;
-	MoxaDevice.amount4xRegisters-=	MoxaDevice.offset4xRegisters;
+  // проверяем, что области памяти виртуальных устройств и собственных адресов шлюза не пересекаются
+  // (при условии, что они инициализированы)
 
-  // выделение памяти под таблицу 1x
-	if(MoxaDevice.amount1xStatus>0) {
-		k=sizeof(u8)*((MoxaDevice.amount1xStatus-1)/8+1);
-		MoxaDevice.wData1x=(u8 *) malloc(k);
-		if(MoxaDevice.wData1x==NULL) {
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 28, 1, k, 0, 0);
-			exit(1);
-			}
-		memset(MoxaDevice.wData1x,0, k);
-		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 28, 1, k, 0, 0);
-		}
+  if((MoxaDevice.amount1xStatus!=0) && (vsmem_amount1xStatus!=0))
+  if(!(
+        (vsmem_offset1xStatus + vsmem_amount1xStatus <= MoxaDevice.offset1xStatus) ||
+        (vsmem_offset1xStatus >= MoxaDevice.offset1xStatus + MoxaDevice.amount1xStatus)
+    )) return COIL_STATUS_TABLE;
 
-	// отображаем таблицу дискретных входов на таблицу holding-регистров
-  /*/ выделение памяти под таблицу 2x
-	if(gate502.amount2xStatus>0) {
-		k=sizeof(u8)*((gate502.amount2xStatus-1)/8+1);
-		gate502.wData2x=(u8 *) malloc(k);
-		if(gate502.wData2x==NULL) {
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 28, 2, k, 0, 0);
-			exit(1);
-			}
-		memset(gate502.wData2x,0, k);
-		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_SYSTEM, 28, 2, k, 0, 0);
-		}*/
+  if((MoxaDevice.amount2xStatus!=0) && (vsmem_amount2xStatus!=0))
+  if(!(
+        (vsmem_offset2xStatus + vsmem_amount2xStatus <= MoxaDevice.offset2xStatus) ||
+        (vsmem_offset2xStatus >= MoxaDevice.offset2xStatus + MoxaDevice.amount2xStatus)
+    )) return INPUT_STATUS_TABLE;
 
-  // выделение памяти под таблицу 3x
-	if(MoxaDevice.amount3xRegisters>0) {
-		k=sizeof(u16)*MoxaDevice.amount3xRegisters;
-		MoxaDevice.wData3x=(u16 *) malloc(k);
-		if(MoxaDevice.wData3x==NULL) {
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 28, 3, k, 0, 0);
-			exit(1);
-			}
-		memset(MoxaDevice.wData3x, 0, k);
-		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 28, 3, k, 0, 0);
-		}
+  if((MoxaDevice.amount3xRegisters!=0) && (vsmem_amount3xRegisters!=0))
+  if(!(
+        (vsmem_offset3xRegisters + vsmem_amount3xRegisters <= MoxaDevice.offset3xRegisters) ||
+        (vsmem_offset3xRegisters >= MoxaDevice.offset3xRegisters + MoxaDevice.amount3xRegisters)
+    )) return INPUT_REGISTER_TABLE;
 
-  // выделение памяти под таблицу 4x
-	if(MoxaDevice.amount4xRegisters>0) {
-		k=sizeof(u16)*MoxaDevice.amount4xRegisters;
-		MoxaDevice.wData4x=(u16 *) malloc(k);
-		if(MoxaDevice.wData4x==NULL) {
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 28, 4, k, 0, 0);
-			exit(1);
-			}
-		memset(MoxaDevice.wData4x, 0, k);
-		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 28, 4, k, 0, 0);
+  if((MoxaDevice.amount4xRegisters!=0) && (vsmem_amount4xRegisters!=0))
+  if(!(
+        (vsmem_offset4xRegisters + vsmem_amount4xRegisters <= MoxaDevice.offset4xRegisters) ||
+        (vsmem_offset4xRegisters >= MoxaDevice.offset4xRegisters + MoxaDevice.amount4xRegisters)
+    )) return HOLDING_REGISTER_TABLE;
 
-		// отображаем таблицу дискретных входов на таблицу holding-регистров
-		MoxaDevice.offset2xStatus=MoxaDevice.offset4xRegisters*sizeof(u16)*8;
-		MoxaDevice.amount2xStatus=MoxaDevice.amount4xRegisters*sizeof(u16)*8;
-		MoxaDevice.wData2x=(u8 *) MoxaDevice.wData4x;
-		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 28, 2, k, 0, 0);
-		}
+  // производим выделение памяти для хранения данных локально
+  int init_moxagate_memory();
 
-  // мьютекс используется для синхронизации потоков при работе с памятью
-	pthread_mutex_init(&MoxaDevice.moxa_mutex, NULL);
+  ///!!! точка останова. возможен контроль рабочих параметров шлюза перед запуском циклов сканирования интерфейсов
 
-/*** ИНИЦИАЛИЗАЦИЯ УСТРОЙСТВ КОНТРОЛЯ И МОНИТОРИНГА: LCM, KEYPAD, BUZZER (ДИСПЛЕЙ, КЛАВИАТУРА, ЗУММЕР) ***/
-	mxkpd_handle=keypad_open();
-	sysmsg_ex(EVENT_CAT_MONITOR|(mxkpd_handle<0?EVENT_TYPE_ERR:EVENT_TYPE_INF)|GATEWAY_SYSTEM,
-						26, 0, 0, 0, 0);
-
-	mxlcm_handle = mxlcm_open();
-	sysmsg_ex(EVENT_CAT_MONITOR|(mxlcm_handle<0?EVENT_TYPE_ERR:EVENT_TYPE_INF)|GATEWAY_SYSTEM,
-						27, 0, 0, 0, 0);
-  mxlcm_control(mxlcm_handle, IOCTL_LCM_AUTO_SCROLL_OFF);
-
-	mxbzr_handle = mxbuzzer_open();
-	sysmsg_ex(EVENT_CAT_MONITOR|(mxbzr_handle<0?EVENT_TYPE_ERR:EVENT_TYPE_INF)|GATEWAY_SYSTEM,
-						25, 0, 0, 0, 0);
-
-	screen.current_screen=LCM_SCREEN_MAIN;
-
-  screen.main_scr_mode=1;
-  screen.menu_scr_mode=1;
-  screen.secr_scr_mode=1;
-  screen.back_light=1;
-  screen.max_tcp_clients_per_com=8;
-  screen.watch_dog_control=0;
-  screen.buzzer_control=1;
-  screen.secr_scr_changes_was_made=0;
-
-//gettimeofday(&tv_mem, &tz);
-//	printf("tv_mem %d\n", tv_mem.tv_sec);
-
-/// запускаем поток для обработки ввода с клавиатуры и вывода на дисплей статусной информации
-	int			rc;
-	pthread_t		tstTH;
-	rc = pthread_create(
-		&tstTH,
-		NULL,
-		mx_keypad_lcm,
-		NULL);
 	//-------------------------------------------------------
-
-//  printf("stopping program...\n"); exit(1);
-
+  init_statistics_h();
+  init_clients();
+	//-------------------------------------------------------
 /* ИНИЦИАЛИЗАЦИЯ СЕМАФОРОВ, НА КОТОРЫХ РАБОТАЮТ ОЧЕРЕДИ ПОРТОВ */
 	if(init_queue() == 1) exit(1);
 
@@ -247,6 +201,7 @@ int main(int argc, char *argv[])
  if(init_main_socket() !=0 ) exit(1);
 
 /* ЗАПУСК ПОТОКОВЫХ ФУНКЦИЙ, ИНИЦИАЛИЗАЦИЯ ПОСЛЕДОВАТЕЛЬНЫХ ПОРТОВ */
+  int i, j;
 
 	int arg, P;
 
@@ -412,6 +367,7 @@ int main(int argc, char *argv[])
 
 /// ЗАПУСК ПОТОКА ДЛЯ ОБРАБОТКИ ЗАПРОСОВ НЕПОСРЕДСТВЕННО К MOXA
 
+  int rc;
 	pthread_t		moxaTH;
 	rc = pthread_create(
 		&moxaTH,
@@ -464,9 +420,7 @@ gateway_common_processing();
 
   close_clients(); // условно деструктор модуля CLIETNS_H
 
-  mxlcm_close(mxlcm_handle);
-  keypad_close(mxkpd_handle);
-  mxbuzzer_close(mxbzr_handle);
+  clear_hmi_keypad_lcm_h(); // услвно деструктор модуля HMI_KEYPAD_LCM_H
 
 	close_shm();
 	semctl(semaphore_id, MAX_MOXA_PORTS, IPC_RMID, NULL);

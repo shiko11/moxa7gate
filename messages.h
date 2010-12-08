@@ -33,7 +33,7 @@
 #define EVENT_TYPE_INF        0x10
 #define EVENT_TYPE_WRN        0x20
 #define EVENT_TYPE_ERR        0x30
-#define EVENT_TYPE_RESERV     0x00
+#define EVENT_TYPE_FTL        0x00
 #define EVENT_TYPE_MASK       0x30
 
 #define EVENT_SRC_MASK        0x0F

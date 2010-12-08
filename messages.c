@@ -15,6 +15,8 @@
 #include "interfaces.h"
 #include "moxagate.h"
 #include "cli.h"
+#include "hmi_klb.h"
+#include "hmi_web.h"
 
 ///=== MESSAGES_H private variables
 
@@ -46,45 +48,92 @@ void init_message_templates()
 	memset(message_template, 0, sizeof(message_template));
 	memset(message_index   , 0, sizeof(message_index   ));
 
-/*
+
 /// чисто дурацкая проверка для тестовой компиляции на отсуствие косяков при присвоении значений константам,
 /// для генерации кода ниже рекомендуется обработать код этой функции при помощи регулярных выражений,
 /// что обеспечит отсуствие ошибок ручного ввода.
 /// значения, выданные кодом ниже, должны быть: 1. уникальными; 2. меньше константы EVENT_TEMPLATE_AMOUNT
-printf("COMMAND_LINE_OK	%d", COMMAND_LINE_OK);
-printf("COMMAND_LINE_ERROR	%d", COMMAND_LINE_ERROR);
-printf("COMMAND_LINE_INFO	%d", COMMAND_LINE_INFO);
-printf("COMMAND_LINE_ARGC	%d", COMMAND_LINE_ARGC);
-printf("COMMAND_LINE_UNDEFINED	%d", COMMAND_LINE_UNDEFINED);
-
-printf("SECURITY_CONF_STRUCT	%d", SECURITY_CONF_STRUCT);
-printf("SECURITY_CONF_DUPLICATE	%d", SECURITY_CONF_DUPLICATE);
-printf("SECURITY_CONF_SPELLING	%d", SECURITY_CONF_SPELLING);
-
-printf("IFACE_CONF_RTUDUPLICATE	%d", IFACE_CONF_RTUDUPLICATE);
-printf("IFACE_CONF_RTUSTRUCT	%d", IFACE_CONF_RTUSTRUCT);
-printf("IFACE_CONF_GWMODE	%d", IFACE_CONF_GWMODE);
-
-printf("IFACE_CONF_TCPDUPLICATE	%d", IFACE_CONF_TCPDUPLICATE);
-printf("IFACE_CONF_TCPSTRUCT	%d", IFACE_CONF_TCPSTRUCT);
-
-printf("ATM_CONF_SPELLING	%d", ATM_CONF_SPELLING);
-printf("ATM_CONF_STRUCT	%d", ATM_CONF_STRUCT);
-
-printf("VSLAVE_CONF_OVERFLOW	%d", VSLAVE_CONF_OVERFLOW);
-printf("VSLAVE_CONF_STRUCT	%d", VSLAVE_CONF_STRUCT);
-printf("VSLAVE_CONF_IFACE	%d", VSLAVE_CONF_IFACE);
-
-printf("PQUERY_CONF_OVERFLOW	%d", PQUERY_CONF_OVERFLOW);
-printf("PQUERY_CONF_STRUCT	%d", PQUERY_CONF_STRUCT);
-printf("PQUERY_CONF_IFACE	%d", PQUERY_CONF_IFACE);
-
-printf("EXPT_CONF_OVERFLOW	%d", EXPT_CONF_OVERFLOW);
-printf("EXPT_CONF_STRUCT	%d", EXPT_CONF_STRUCT);
-printf("EXPT_CONF_STAGE	%d", EXPT_CONF_STAGE);
+/// /^.*?\[(.+)\].*$/mi printf("\1\\t%d\\n", \1);
+printf("COMMAND_LINE_OK\t%d\n", COMMAND_LINE_OK);
+printf("COMMAND_LINE_ERROR\t%d\n", COMMAND_LINE_ERROR);
+printf("COMMAND_LINE_INFO\t%d\n", COMMAND_LINE_INFO);
+printf("COMMAND_LINE_ARGC\t%d\n", COMMAND_LINE_ARGC);
+printf("COMMAND_LINE_UNDEFINED\t%d\n", COMMAND_LINE_UNDEFINED);
+printf("SECURITY_CONF_STRUCT\t%d\n", SECURITY_CONF_STRUCT);
+printf("SECURITY_CONF_DUPLICATE\t%d\n", SECURITY_CONF_DUPLICATE);
+printf("SECURITY_CONF_SPELLING\t%d\n", SECURITY_CONF_SPELLING);
+printf("IFACE_CONF_RTUDUPLICATE\t%d\n", IFACE_CONF_RTUDUPLICATE);
+printf("IFACE_CONF_RTUSTRUCT\t%d\n", IFACE_CONF_RTUSTRUCT);
+printf("IFACE_CONF_GWMODE\t%d\n", IFACE_CONF_GWMODE);
+printf("IFACE_CONF_TCPDUPLICATE\t%d\n", IFACE_CONF_TCPDUPLICATE);
+printf("IFACE_CONF_TCPSTRUCT\t%d\n", IFACE_CONF_TCPSTRUCT);
+printf("ATM_CONF_SPELLING\t%d\n", ATM_CONF_SPELLING);
+printf("ATM_CONF_STRUCT\t%d\n", ATM_CONF_STRUCT);
+printf("VSLAVE_CONF_OVERFLOW\t%d\n", VSLAVE_CONF_OVERFLOW);
+printf("VSLAVE_CONF_STRUCT\t%d\n", VSLAVE_CONF_STRUCT);
+printf("VSLAVE_CONF_IFACE\t%d\n", VSLAVE_CONF_IFACE);
+printf("PQUERY_CONF_OVERFLOW\t%d\n", PQUERY_CONF_OVERFLOW);
+printf("PQUERY_CONF_STRUCT\t%d\n", PQUERY_CONF_STRUCT);
+printf("PQUERY_CONF_IFACE\t%d\n", PQUERY_CONF_IFACE);
+printf("EXPT_CONF_OVERFLOW\t%d\n", EXPT_CONF_OVERFLOW);
+printf("EXPT_CONF_STRUCT\t%d\n", EXPT_CONF_STRUCT);
+printf("EXPT_CONF_STAGE\t%d\n", EXPT_CONF_STAGE);
+printf("SECURITY_TCPPORT\t%d\n", SECURITY_TCPPORT);
+printf("MOXAGATE_MBADDR\t%d\n", MOXAGATE_MBADDR);
+printf("MOXAGATE_STATINFO\t%d\n", MOXAGATE_STATINFO);
+printf("IFACE_MBMODE\t%d\n", IFACE_MBMODE);
+printf("IFACE_RTUPHYSPROT\t%d\n", IFACE_RTUPHYSPROT);
+printf("IFACE_RTUSPEED\t%d\n", IFACE_RTUSPEED);
+printf("IFACE_RTUPARITY\t%d\n", IFACE_RTUPARITY);
+printf("IFACE_RTUTIMEOUT\t%d\n", IFACE_RTUTIMEOUT);
+printf("IFACE_RTUTCPPORT\t%d\n", IFACE_RTUTCPPORT);
+printf("IFACE_TCPIP1\t%d\n", IFACE_TCPIP1);
+printf("IFACE_TCPPORT1\t%d\n", IFACE_TCPPORT1);
+printf("IFACE_TCPUNITID\t%d\n", IFACE_TCPUNITID);
+printf("IFACE_TCPOFFSET\t%d\n", IFACE_TCPOFFSET);
+printf("IFACE_TCPMBADDR\t%d\n", IFACE_TCPMBADDR);
+printf("IFACE_TCPIP2\t%d\n", IFACE_TCPIP2);
+printf("IFACE_TCPPORT2\t%d\n", IFACE_TCPPORT2);
+printf("IFACE_TCPIPEQUAL\t%d\n", IFACE_TCPIPEQUAL);
+printf("HMI_KLB_INIT_KEYPAD\t%d\n", HMI_KLB_INIT_KEYPAD);
+printf("HMI_KLB_INIT_LCM\t%d\n", HMI_KLB_INIT_LCM);
+printf("HMI_KLB_INIT_BUZZER\t%d\n", HMI_KLB_INIT_BUZZER);
+printf("HMI_KLB_INIT_THREAD\t%d\n", HMI_KLB_INIT_THREAD);
+printf("HMI_WEB_ENOENT\t%d\n", HMI_WEB_ENOENT);
+printf("HMI_WEB_EACCES\t%d\n", HMI_WEB_EACCES);
+printf("HMI_WEB_EINVAL\t%d\n", HMI_WEB_EINVAL);
+printf("HMI_WEB_ENOMEM\t%d\n", HMI_WEB_ENOMEM);
+printf("HMI_WEB_EEXIST\t%d\n", HMI_WEB_EEXIST);
+printf("HMI_WEB_UNKNOWN\t%d\n", HMI_WEB_UNKNOWN);
+printf("HMI_WEB_OK\t%d\n", HMI_WEB_OK);
+printf("HMI_WEB_CLOSED\t%d\n", HMI_WEB_CLOSED);
+printf("ATM_IFACE\t%d\n", ATM_IFACE);
+printf("ATM_MBADDR\t%d\n", ATM_MBADDR);
+printf("VSLAVE_IFACE\t%d\n", VSLAVE_IFACE);
+printf("VSLAVE_MBADDR\t%d\n", VSLAVE_MBADDR);
+printf("VSLAVE_MBTABL\t%d\n", VSLAVE_MBTABL);
+printf("VSLAVE_BEGDIAP\t%d\n", VSLAVE_BEGDIAP);
+printf("VSLAVE_ENDDIAP\t%d\n", VSLAVE_ENDDIAP);
+printf("VSLAVE_LENDIAP\t%d\n", VSLAVE_LENDIAP);
+printf("PQUERY_IFACE\t%d\n", PQUERY_IFACE);
+printf("PQUERY_MBADDR\t%d\n", PQUERY_MBADDR);
+printf("PQUERY_MBTABL\t%d\n", PQUERY_MBTABL);
+printf("PQUERY_ACCESS\t%d\n", PQUERY_ACCESS);
+printf("PQUERY_ENDREGREAD\t%d\n", PQUERY_ENDREGREAD);
+printf("PQUERY_LENPACKET\t%d\n", PQUERY_LENPACKET);
+printf("PQUERY_ENDREGWRITE\t%d\n", PQUERY_ENDREGWRITE);
+printf("PQUERY_DELAYMIN\t%d\n", PQUERY_DELAYMIN);
+printf("PQUERY_DELAYMAX\t%d\n", PQUERY_DELAYMAX);
+printf("PQUERY_ERRCNTR\t%d\n", PQUERY_ERRCNTR);
+printf("EXPT_STAGE\t%d\n", EXPT_STAGE);
+printf("EXPT_ACTION\t%d\n", EXPT_ACTION);
+printf("EXPT_PRM1\t%d\n", EXPT_PRM1);
+printf("EXPT_PRM2\t%d\n", EXPT_PRM2);
+printf("EXPT_PRM3\t%d\n", EXPT_PRM3);
+printf("EXPT_PRM4\t%d\n", EXPT_PRM4);
 
 exit(1);
-*/
+
 
 /// COMAND LINE (КОМАНДНАЯ СТРОКА) [XX..XX, XX]
 
@@ -149,24 +198,27 @@ strcpy(message_template[IFACE_TCPPORT2   ], "CONFIGURATION IFACETCP TCP PORT 2")
 strcpy(message_template[IFACE_TCPIPEQUAL ], "CONFIGURATION IFACETCP IP EQUALS");
 
 
-/// SYSTEM (СИСТЕМНЫЕ) [25..64, 40]
-strcpy(message_template[ 25], "BUZZER INITIALIZED");
-strcpy(message_template[ 26], "KEYPAD INITIALIZED");
-strcpy(message_template[ 27], "LCM INITIALIZED");
-strcpy(message_template[ 28], "MEMORY ALLOCATED 0%dx:%db");
+/// HMI (Человеко-машинный интерфейс) [XX..XX, XX]
+strcpy(message_template[HMI_KLB_INIT_KEYPAD], "KEYPAD INITIALIZATION");
+strcpy(message_template[HMI_KLB_INIT_LCM   ], "LCM INITIALIZATION");
+strcpy(message_template[HMI_KLB_INIT_BUZZER], "BUZZER INITIALIZATION");
+strcpy(message_template[HMI_KLB_INIT_THREAD], "HMI THREAD INITIALIZATION");
+
+strcpy(message_template[HMI_WEB_ENOENT ], "SHARED MEM: ENOENT");
+strcpy(message_template[HMI_WEB_EACCES ], "SHARED MEM: EACCES");
+strcpy(message_template[HMI_WEB_EINVAL ], "SHARED MEM: EINVAL");
+strcpy(message_template[HMI_WEB_ENOMEM ], "SHARED MEM: ENOMEM");
+strcpy(message_template[HMI_WEB_EEXIST ], "SHARED MEM: EEXIST");
+strcpy(message_template[HMI_WEB_UNKNOWN], "SHARED MEM: UNKNOWN");
+strcpy(message_template[HMI_WEB_OK     ], "SHARED MEM: OK SIZE %db");
+strcpy(message_template[HMI_WEB_CLOSED ], "SHARED MEM: CLOSED");
+
+/*
 strcpy(message_template[ 29], "SEMAPHORE SET EXISTS");
-strcpy(message_template[ 30], "SHARED MEM: CLOSED");
-strcpy(message_template[ 31], "SHARED MEM: EACCES");
-strcpy(message_template[ 32], "SHARED MEM: EEXIST");
-strcpy(message_template[ 33], "SHARED MEM: EINVAL");
-strcpy(message_template[ 34], "SHARED MEM: ENOENT");
-strcpy(message_template[ 35], "SHARED MEM: ENOMEM");
-strcpy(message_template[ 36], "SHARED MEM: UNKNOWN");
-strcpy(message_template[ 37], "SHARED MEM: OK SIZE %db");
+strcpy(message_template[ 28], "MEMORY ALLOCATED 0%dx:%db");
 strcpy(message_template[ 38], ""); // РЕЗЕРВ
 strcpy(message_template[ 39], "STATUS INFO OVERLAPS");
 
-/*
 strcpy(message_template[ 40], "SERIAL PORT INITIALIZED MODE %s");
 strcpy(message_template[ 41], "THREAD INITIALIZED CODE %d");
 strcpy(message_template[ 42], "THREAD STARTED MODE %s CLIENT %s");

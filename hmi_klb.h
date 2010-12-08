@@ -60,6 +60,12 @@
 #define	LCM_BUZZER_CONTROL_PERIOD 15
 #define	LCM_BUZZER_CONTROL_ERRORS 1
 
+// коды возврата ошибок
+#define HMI_KLB_INIT_KEYPAD 1
+#define HMI_KLB_INIT_LCM    2
+#define HMI_KLB_INIT_BUZZER 3
+#define HMI_KLB_INIT_THREAD 4
+
 ///=== HMI_KEYPAD_LCM_H data types
 
 typedef struct { // net initsializatsii polej structury
@@ -90,6 +96,9 @@ int mxkpd_handle;
 int mxbzr_handle;
 
 ///=== HMI_KEYPAD_LCM_H public functions
+
+int init_hmi_keypad_lcm_h();  // условно конструктор
+int clear_hmi_keypad_lcm_h(); // условно деструктор
 
 ///--- main thread function
 void *mx_keypad_lcm(void *arg);

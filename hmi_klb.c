@@ -11,17 +11,100 @@
 
 #include <pthread.h>
 
-#include "hmi_keypad_lcm.h"
+#include "hmi_klb.h"
 #include "hmi_web.h"
 #include "interfaces.h"
 #include "moxagate.h"
+#include "messages.h"
+
+///=== HMI_KEYPAD_LCM_H private variables
+
+int rc;
+pthread_t tstTH;
+
+///---------------------------------------------------------------
+int init_hmi_keypad_lcm_h()
+  {
+
+  mxlcm_handle=-1;
+  mxkpd_handle=-1;
+  mxbzr_handle=-1;
+
+	mxkpd_handle=keypad_open();
+  if(mxkpd_handle<0) {
+	  sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_FTL|GATEWAY_HMI, HMI_KLB_INIT_KEYPAD, 0, 0, 0, 0);
+    return HMI_KLB_INIT_KEYPAD;
+    }
+
+	mxlcm_handle = mxlcm_open();
+  if(mxlcm_handle<0) {
+	  sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_FTL|GATEWAY_HMI, HMI_KLB_INIT_LCM, 0, 0, 0, 0);
+    return HMI_KLB_INIT_LCM;
+    }
+  mxlcm_control(mxlcm_handle, IOCTL_LCM_AUTO_SCROLL_OFF);
+
+	mxbzr_handle = mxbuzzer_open();
+  if(mxbzr_handle<0) {
+	  sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_FTL|GATEWAY_HMI, HMI_KLB_INIT_BUZZER, 0, 0, 0, 0);
+    return HMI_KLB_INIT_BUZZER;
+    }
+
+	screen.current_screen=LCM_SCREEN_MAIN;
+
+  screen.main_scr_mode=1;
+  screen.menu_scr_mode=1;
+  screen.secr_scr_mode=1;
+
+  screen.back_light=1;
+  screen.max_tcp_clients_per_com=8;
+  screen.watch_dog_control=0;
+  screen.buzzer_control=1;
+  screen.secr_scr_changes_was_made=0;
+
+  // запускаем поток для обработки нажатий клавиш
+  // и вывода на дисплей информации для мониторинга
+
+	rc = pthread_create(
+		&tstTH,
+		NULL,
+		mx_keypad_lcm,
+		NULL);
+
+  if(rc!=0) {
+	  sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_FTL|GATEWAY_HMI, HMI_KLB_INIT_THREAD, 0, 0, 0, 0);
+    return HMI_KLB_INIT_THREAD;
+    }
+
+  return 0;
+  }
+
+int clear_hmi_keypad_lcm_h()
+  {
+
+  ///!!! для эффективного управления потоками программы нужно изучить модель для них в Linux
+
+  mxlcm_close(mxlcm_handle);
+  keypad_close(mxkpd_handle);
+  mxbuzzer_close(mxbzr_handle);
+
+  mxlcm_handle=-1;
+  mxkpd_handle=-1;
+  mxbzr_handle=-1;
+
+  return 0;
+  }
 ///---------------------------------------------------------------
 void *mx_keypad_lcm(void *arg)
   {
   int i;
   
   while(1) {
-	  i=keypad_get_pressed_key(mxkpd_handle); // commonly -1
+
+    if( mxlcm_handle==-1 ||
+        mxkpd_handle==-1 ||
+        mxbzr_handle==-1
+      ) i=-1;
+      else i=keypad_get_pressed_key(mxkpd_handle); // usually -1
 	  
     if(i>=0) { // if key was pressed
 	  if(	screen.current_screen==LCM_SCREEN_MAIN				||
@@ -64,6 +147,11 @@ void *mx_keypad_lcm(void *arg)
 		refresh_shm(&IfaceRTU);
 	  usleep(LCM_SCREEN_UPDATE_RATE);
 
+    if(!(
+        mxlcm_handle==-1 ||
+        mxkpd_handle==-1 ||
+        mxbzr_handle==-1
+      ))
 	  if(	screen.current_screen==LCM_SCREEN_MAIN				||
 	  		screen.current_screen==LCM_SCREEN_MAIN2				||
 	  		screen.current_screen==LCM_SCREEN_SYSINFO			||

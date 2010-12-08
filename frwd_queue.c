@@ -265,8 +265,10 @@ int init_frwd_queue_h()
   {
   unsigned int i;			
 
-	// memset(vslave,0,sizeof(vslave));
-	// memset(query_table,0,sizeof(query_table));
+	memset(AddressMap,  0, sizeof(AddressMap));
+	memset(vslave,      0, sizeof(vslave));
+	memset(query_table, 0, sizeof(query_table));
+	memset(Exception,   0, sizeof(Exception));
 
   for(i=0; i<=MODBUS_ADDRESS_MAX; i++)        init_AddressMap_Entry(i);
   for(i=0; i<MAX_VIRTUAL_SLAVES; i++)         init_Vslave_Entry(i);
@@ -275,6 +277,7 @@ int init_frwd_queue_h()
 
   vsmem_offset1xStatus=vsmem_offset2xStatus=vsmem_offset3xRegisters=vsmem_offset4xRegisters=0;
   vsmem_amount1xStatus=vsmem_amount2xStatus=vsmem_amount3xRegisters=vsmem_amount4xRegisters=0;
+  vsmem_used1xStatus=  vsmem_used2xStatus=  vsmem_used3xRegisters=  vsmem_used4xRegisters  =0;
 
   return 0;
   }

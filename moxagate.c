@@ -16,7 +16,7 @@
 #include "modbus.h"
 #include "messages.h"
 
-///-----------------------------------------------------------------------------------------------------------------
+///----------------------------------------------------------------------------
 int init_moxagate_h()
   {
 
@@ -33,28 +33,28 @@ int init_moxagate_h()
 
   // MoxaDevice.moxa_mutex
 
-	// начало блока внутренних регистров Moxa (смещение)
-	  MoxaDevice.offset1xStatus=\
-    MoxaDevice.offset2xStatus=\
-    MoxaDevice.offset3xRegisters=\
-    MoxaDevice.offset4xRegisters=0;
+  // начало блока внутренних регистров Moxa (смещение)
+  MoxaDevice.offset1xStatus=\
+  MoxaDevice.offset2xStatus=\
+  MoxaDevice.offset3xRegisters=\
+  MoxaDevice.offset4xRegisters=0;
 
-	// количество элементов в каждой из таблиц MODBUS
-	  MoxaDevice.amount1xStatus=\
-    MoxaDevice.amount2xStatus=\
-    MoxaDevice.amount3xRegisters=\
-    MoxaDevice.amount4xRegisters=0;
+  // количество элементов в каждой из таблиц MODBUS
+  MoxaDevice.amount1xStatus=\
+  MoxaDevice.amount2xStatus=\
+  MoxaDevice.amount3xRegisters=\
+  MoxaDevice.amount4xRegisters=0;
 
-	  MoxaDevice.used1xStatus=\
-	  MoxaDevice.used2xStatus=\
-	  MoxaDevice.used3xRegisters=\
-	  MoxaDevice.used4xRegisters=0;
+  MoxaDevice.used1xStatus=\
+  MoxaDevice.used2xStatus=\
+  MoxaDevice.used3xRegisters=\
+  MoxaDevice.used4xRegisters=0;
 
-	// указатели на массивы памяти
-	// MoxaDevice.wData1x
-	// MoxaDevice.wData2x
-	// MoxaDevice.wData3x
-	// MoxaDevice.wData4x
+  // указатели на массивы памяти
+  MoxaDevice.wData1x=(u8 *) NULL;
+  MoxaDevice.wData2x=(u8 *) NULL;
+  MoxaDevice.wData3x=(u16 *) NULL;
+  MoxaDevice.wData4x=(u16 *) NULL;
 
 /*  MoxaDevice.queue.port_id=MOXA_MB_DEVICE;
   //queue.queue_adu[MAX_GATEWAY_QUEUE_LENGTH][MB_TCP_MAX_ADU_LENGTH];
@@ -71,6 +71,73 @@ int init_moxagate_h()
   return 0;
   }
 
+///----------------------------------------------------------------------------
+int init_moxagate_memory()
+  {
+  unsigned int k;																	
+
+  // выделение памяти под таблицу 1x
+	if(MoxaDevice.amount1xStatus>0) {
+		k=sizeof(u8)*((MoxaDevice.amount1xStatus-1)/8+1);
+		MoxaDevice.wData1x=(u8 *) malloc(k);
+		if(MoxaDevice.wData1x==NULL) {
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 28, 1, k, 0, 0);
+			return 1;
+			}
+		memset(MoxaDevice.wData1x,0, k);
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 28, 1, k, 0, 0);
+		}
+
+	// отображаем таблицу дискретных входов на таблицу holding-регистров
+  /*/ выделение памяти под таблицу 2x
+	if(gate502.amount2xStatus>0) {
+		k=sizeof(u8)*((gate502.amount2xStatus-1)/8+1);
+		gate502.wData2x=(u8 *) malloc(k);
+		if(gate502.wData2x==NULL) {
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|EVENT_SRC_SYSTEM, 28, 2, k, 0, 0);
+			return 1;
+			}
+		memset(gate502.wData2x,0, k);
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_SYSTEM, 28, 2, k, 0, 0);
+		}*/
+
+  // выделение памяти под таблицу 3x
+	if(MoxaDevice.amount3xRegisters>0) {
+		k=sizeof(u16)*MoxaDevice.amount3xRegisters;
+		MoxaDevice.wData3x=(u16 *) malloc(k);
+		if(MoxaDevice.wData3x==NULL) {
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 28, 3, k, 0, 0);
+			return 1;
+			}
+		memset(MoxaDevice.wData3x, 0, k);
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 28, 3, k, 0, 0);
+		}
+
+  // выделение памяти под таблицу 4x
+	if(MoxaDevice.amount4xRegisters>0) {
+		k=sizeof(u16)*MoxaDevice.amount4xRegisters;
+		MoxaDevice.wData4x=(u16 *) malloc(k);
+		if(MoxaDevice.wData4x==NULL) {
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 28, 4, k, 0, 0);
+			return 1;
+			}
+		memset(MoxaDevice.wData4x, 0, k);
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 28, 4, k, 0, 0);
+
+		// отображаем таблицу дискретных входов на таблицу holding-регистров
+		MoxaDevice.offset2xStatus=MoxaDevice.offset4xRegisters*sizeof(u16)*8;
+		MoxaDevice.amount2xStatus=MoxaDevice.amount4xRegisters*sizeof(u16)*8;
+		MoxaDevice.wData2x=(u8 *) MoxaDevice.wData4x;
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 28, 2, k, 0, 0);
+		}
+
+  // мьютекс используется для синхронизации потоков при работе с памятью
+	pthread_mutex_init(&MoxaDevice.moxa_mutex, NULL);
+
+  return 0;
+  }
+
+///----------------------------------------------------------------------------
 void *moxa_device(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
   {
 	u8			tcp_adu[MB_TCP_MAX_ADU_LENGTH];// TCP ADU

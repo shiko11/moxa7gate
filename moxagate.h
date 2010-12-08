@@ -20,6 +20,8 @@
 #define	BASIC_STAT_GATEWAY_INFO 24
 #define	GATE_STATUS_BLOCK_LENGTH BASIC_STAT_GATEWAY_INFO+MAX_QUERY_ENTRIES/16
 
+#define MOXAGATE_MAX_MEMORY_LEAK 1024
+
 ///=== MOXAGATE_H data types
 
 typedef struct {
@@ -57,6 +59,7 @@ typedef struct {
 ///=== MOXAGATE_H public functions
 
 int init_moxagate_h();
+int init_moxagate_memory();
 
 void *moxa_device(void *arg); /// Потоковая функция обработки запросов к MOXA
 

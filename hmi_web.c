@@ -17,7 +17,7 @@
 #include "messages.h"
 #include "interfaces.h"
 #include "moxagate.h"
-#include "hmi_keypad_lcm.h"
+#include "hmi_klb.h"
 
 ///=== HMI_WEB_H private variables
 
@@ -72,15 +72,19 @@ int init_hmi_web_h()
 	if(shm_segment_id==-1) {
 
 		switch(errno) {
-			case ENOENT: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 34, 0, 0, 0, 0); break;
-			case EACCES: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 31, 0, 0, 0, 0); break;
-			case EINVAL: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 33, 0, 0, 0, 0); break;
-			case ENOMEM: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 35, 0, 0, 0, 0); break;
-			case EEXIST: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 32, 0, 0, 0, 0); break;
-			default: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 36, 0, 0, 0, 0); break;
+			case ENOENT: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_FTL|GATEWAY_HMI, HMI_WEB_ENOENT, 0, 0, 0, 0);
+                                                                    return HMI_WEB_ENOENT;
+			case EACCES: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_FTL|GATEWAY_HMI, HMI_WEB_EACCES, 0, 0, 0, 0);
+                                                                    return HMI_WEB_EACCES;
+			case EINVAL: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_FTL|GATEWAY_HMI, HMI_WEB_EINVAL, 0, 0, 0, 0);
+                                                                    return HMI_WEB_EINVAL;
+			case ENOMEM: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_FTL|GATEWAY_HMI, HMI_WEB_ENOMEM, 0, 0, 0, 0);
+                                                                    return HMI_WEB_ENOMEM;
+			case EEXIST: sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_FTL|GATEWAY_HMI, HMI_WEB_EEXIST, 0, 0, 0, 0);
+                                                                    return HMI_WEB_EEXIST;
+			default:     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_FTL|GATEWAY_HMI, HMI_WEB_UNKNOWN,0, 0, 0, 0);
+                                                                    return HMI_WEB_UNKNOWN;
 			}
-
-		return shm_segment_id;
 	  }
 
   ///--- permission mode-------
@@ -107,7 +111,7 @@ int init_hmi_web_h()
 ///  printf("%d %d %d\n", shm_data, shared_memory, app_log);
 ///  printf("%p %p %p\n", shm_data, shared_memory, app_log);
 	// SHARED MEM: OK
-	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, 37, shmbuffer.shm_segsz, 0, 0, 0);
+	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_HMI, HMI_WEB_OK, shmbuffer.shm_segsz, 0, 0, 0);
 
   return 0;
   }
@@ -354,8 +358,8 @@ int close_shm()
 	{
 	shmdt(pointer);
 	shmctl(shm_segment_id, IPC_RMID, 0);
-	// SHARED MEM: CLOSED
-	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 30, 0, 0, 0, 0);
+
+	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_HMI, HMI_WEB_CLOSED, 0, 0, 0, 0);
 	return 0;
 	}
 ///--------------------------------------------------------------------------

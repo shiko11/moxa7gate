@@ -14,6 +14,16 @@
 
 #define GATE_WEB_INTERFACE_TIMEOUT 2
 
+// коды возврата ошибок
+#define HMI_WEB_ENOENT  1
+#define HMI_WEB_EACCES  2
+#define HMI_WEB_EINVAL  3
+#define HMI_WEB_ENOMEM  4
+#define HMI_WEB_EEXIST  5
+#define HMI_WEB_UNKNOWN 6
+#define HMI_WEB_OK      7
+#define HMI_WEB_CLOSED  8
+
 ///=== HMI_WEB_H public variables
 
   int shm_segment_id;

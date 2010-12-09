@@ -8,8 +8,8 @@
 # LABEL: A4
 #
 # THIS CONFIGURATION FILE GENERATED AUTOMATICALLY
-# AT 01.12.2010 14:37:04
-# VERSION 1.40
+# AT 09.12.2010 14:57:05
+# VERSION 1.43
 #
 # Device Model: MOXA UC-7410
 # Network Name: moxa_bips689_90a4
@@ -24,8 +24,8 @@
 --NetworkName "moxa_bips689_90a4" \
 --LAN1Address "10.0.6.37" \
 --LAN2Address "192.168.4.127" \
---VersionNumber "1.40" \
---VersionTime "01.12.2010 14:37:04" \
+--VersionNumber "1.43" \
+--VersionTime "09.12.2010 14:57:05" \
 --Model "MOXA UC-7410" \
 --tcp_port 502 \
 --status_info 1 \
@@ -38,6 +38,7 @@ PORT1 RS485_2W 9600 NONE 1000 TCP_SERVER 1502 --desc "Программа ModSim на локаль
 PORT2 RS485_2W 9600 NONE 1000 RTU_MASTER --desc "Тестовый шлейф из восьми пожарных датчиков" \
 PORT8 RS485_2W 9600 NONE 1000 RTU_SLAVE --desc "Устройство modbus-мастер на стороне RTU" \
 TCP01 10.0.1.252:502 1 0 10.0.2.252:502 --desc "MODSIM на локальном ПК" \
+TCP32 10.0.5.3:502   2 0    0.0.0.0:502 --desc "Сервер МПСА" \
 AT1 2560 4098 257 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 \
 AT2 0 0 259 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 \
 AT3 0 0 261 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 \

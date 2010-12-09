@@ -21,8 +21,11 @@
 ///=== MESSAGES_H private variables
 
 char eventmsg[EVENT_MESSAGE_LENGTH];
-//char message_template[GATEWAY_IFACE+1][EVENT_TEMPLATE_AMOUNT][EVENT_MESSAGE_LENGTH];
+
+// массив шаблонов сообщений, жестко св€зан с кодами возврата критичных функций в ѕќ:
 char message_template[EVENT_TEMPLATE_AMOUNT][EVENT_MESSAGE_LENGTH];
+
+// массив типов шаблонов по комбинаци€м параметров, генерируетс€ автоматически путем анализа заданных шаблонов
 unsigned int message_index[EVENT_TEMPLATE_AMOUNT];
 
 ///=== MESSAGES_H private functions
@@ -33,9 +36,10 @@ void init_message_templates();
 int init_messages_h()
   {
 
-  app_log_current_entry=app_log_entries_total=0;
-  app_log=NULL;
-  msg_filter=0xFFffFFff;
+  EventLog.app_log_current_entry=0;
+  EventLog.app_log_entries_total=0;
+  EventLog.app_log=NULL;
+  EventLog.msg_filter=0xffffffff;
 
   init_message_templates();
 
@@ -48,92 +52,22 @@ void init_message_templates()
 	memset(message_template, 0, sizeof(message_template));
 	memset(message_index   , 0, sizeof(message_index   ));
 
-
-/// чисто дурацка€ проверка дл€ тестовой компил€ции на отсуствие кос€ков при присвоении значений константам,
-/// дл€ генерации кода ниже рекомендуетс€ обработать код этой функции при помощи регул€рных выражений,
+/// проверка дл€ тестовой компил€ции на отсуствие кос€ков при присвоении значений константам,
+/// дл€ генерации тестового кода нужно обработать код этой функции при помощи регул€рных выражений,
 /// что обеспечит отсуствие ошибок ручного ввода.
-/// значени€, выданные кодом ниже, должны быть: 1. уникальными; 2. меньше константы EVENT_TEMPLATE_AMOUNT
-/// /^.*?\[(.+)\].*$/mi printf("\1\\t%d\\n", \1);
-printf("COMMAND_LINE_OK\t%d\n", COMMAND_LINE_OK);
-printf("COMMAND_LINE_ERROR\t%d\n", COMMAND_LINE_ERROR);
-printf("COMMAND_LINE_INFO\t%d\n", COMMAND_LINE_INFO);
-printf("COMMAND_LINE_ARGC\t%d\n", COMMAND_LINE_ARGC);
-printf("COMMAND_LINE_UNDEFINED\t%d\n", COMMAND_LINE_UNDEFINED);
-printf("SECURITY_CONF_STRUCT\t%d\n", SECURITY_CONF_STRUCT);
-printf("SECURITY_CONF_DUPLICATE\t%d\n", SECURITY_CONF_DUPLICATE);
-printf("SECURITY_CONF_SPELLING\t%d\n", SECURITY_CONF_SPELLING);
-printf("IFACE_CONF_RTUDUPLICATE\t%d\n", IFACE_CONF_RTUDUPLICATE);
-printf("IFACE_CONF_RTUSTRUCT\t%d\n", IFACE_CONF_RTUSTRUCT);
-printf("IFACE_CONF_GWMODE\t%d\n", IFACE_CONF_GWMODE);
-printf("IFACE_CONF_TCPDUPLICATE\t%d\n", IFACE_CONF_TCPDUPLICATE);
-printf("IFACE_CONF_TCPSTRUCT\t%d\n", IFACE_CONF_TCPSTRUCT);
-printf("ATM_CONF_SPELLING\t%d\n", ATM_CONF_SPELLING);
-printf("ATM_CONF_STRUCT\t%d\n", ATM_CONF_STRUCT);
-printf("VSLAVE_CONF_OVERFLOW\t%d\n", VSLAVE_CONF_OVERFLOW);
-printf("VSLAVE_CONF_STRUCT\t%d\n", VSLAVE_CONF_STRUCT);
-printf("VSLAVE_CONF_IFACE\t%d\n", VSLAVE_CONF_IFACE);
-printf("PQUERY_CONF_OVERFLOW\t%d\n", PQUERY_CONF_OVERFLOW);
-printf("PQUERY_CONF_STRUCT\t%d\n", PQUERY_CONF_STRUCT);
-printf("PQUERY_CONF_IFACE\t%d\n", PQUERY_CONF_IFACE);
-printf("EXPT_CONF_OVERFLOW\t%d\n", EXPT_CONF_OVERFLOW);
-printf("EXPT_CONF_STRUCT\t%d\n", EXPT_CONF_STRUCT);
-printf("EXPT_CONF_STAGE\t%d\n", EXPT_CONF_STAGE);
-printf("SECURITY_TCPPORT\t%d\n", SECURITY_TCPPORT);
-printf("MOXAGATE_MBADDR\t%d\n", MOXAGATE_MBADDR);
-printf("MOXAGATE_STATINFO\t%d\n", MOXAGATE_STATINFO);
-printf("IFACE_MBMODE\t%d\n", IFACE_MBMODE);
-printf("IFACE_RTUPHYSPROT\t%d\n", IFACE_RTUPHYSPROT);
-printf("IFACE_RTUSPEED\t%d\n", IFACE_RTUSPEED);
-printf("IFACE_RTUPARITY\t%d\n", IFACE_RTUPARITY);
-printf("IFACE_RTUTIMEOUT\t%d\n", IFACE_RTUTIMEOUT);
-printf("IFACE_RTUTCPPORT\t%d\n", IFACE_RTUTCPPORT);
-printf("IFACE_TCPIP1\t%d\n", IFACE_TCPIP1);
-printf("IFACE_TCPPORT1\t%d\n", IFACE_TCPPORT1);
-printf("IFACE_TCPUNITID\t%d\n", IFACE_TCPUNITID);
-printf("IFACE_TCPOFFSET\t%d\n", IFACE_TCPOFFSET);
-printf("IFACE_TCPMBADDR\t%d\n", IFACE_TCPMBADDR);
-printf("IFACE_TCPIP2\t%d\n", IFACE_TCPIP2);
-printf("IFACE_TCPPORT2\t%d\n", IFACE_TCPPORT2);
-printf("IFACE_TCPIPEQUAL\t%d\n", IFACE_TCPIPEQUAL);
-printf("HMI_KLB_INIT_KEYPAD\t%d\n", HMI_KLB_INIT_KEYPAD);
-printf("HMI_KLB_INIT_LCM\t%d\n", HMI_KLB_INIT_LCM);
-printf("HMI_KLB_INIT_BUZZER\t%d\n", HMI_KLB_INIT_BUZZER);
-printf("HMI_KLB_INIT_THREAD\t%d\n", HMI_KLB_INIT_THREAD);
-printf("HMI_WEB_ENOENT\t%d\n", HMI_WEB_ENOENT);
-printf("HMI_WEB_EACCES\t%d\n", HMI_WEB_EACCES);
-printf("HMI_WEB_EINVAL\t%d\n", HMI_WEB_EINVAL);
-printf("HMI_WEB_ENOMEM\t%d\n", HMI_WEB_ENOMEM);
-printf("HMI_WEB_EEXIST\t%d\n", HMI_WEB_EEXIST);
-printf("HMI_WEB_UNKNOWN\t%d\n", HMI_WEB_UNKNOWN);
-printf("HMI_WEB_OK\t%d\n", HMI_WEB_OK);
-printf("HMI_WEB_CLOSED\t%d\n", HMI_WEB_CLOSED);
-printf("ATM_IFACE\t%d\n", ATM_IFACE);
-printf("ATM_MBADDR\t%d\n", ATM_MBADDR);
-printf("VSLAVE_IFACE\t%d\n", VSLAVE_IFACE);
-printf("VSLAVE_MBADDR\t%d\n", VSLAVE_MBADDR);
-printf("VSLAVE_MBTABL\t%d\n", VSLAVE_MBTABL);
-printf("VSLAVE_BEGDIAP\t%d\n", VSLAVE_BEGDIAP);
-printf("VSLAVE_ENDDIAP\t%d\n", VSLAVE_ENDDIAP);
-printf("VSLAVE_LENDIAP\t%d\n", VSLAVE_LENDIAP);
-printf("PQUERY_IFACE\t%d\n", PQUERY_IFACE);
-printf("PQUERY_MBADDR\t%d\n", PQUERY_MBADDR);
-printf("PQUERY_MBTABL\t%d\n", PQUERY_MBTABL);
-printf("PQUERY_ACCESS\t%d\n", PQUERY_ACCESS);
-printf("PQUERY_ENDREGREAD\t%d\n", PQUERY_ENDREGREAD);
-printf("PQUERY_LENPACKET\t%d\n", PQUERY_LENPACKET);
-printf("PQUERY_ENDREGWRITE\t%d\n", PQUERY_ENDREGWRITE);
-printf("PQUERY_DELAYMIN\t%d\n", PQUERY_DELAYMIN);
-printf("PQUERY_DELAYMAX\t%d\n", PQUERY_DELAYMAX);
-printf("PQUERY_ERRCNTR\t%d\n", PQUERY_ERRCNTR);
-printf("EXPT_STAGE\t%d\n", EXPT_STAGE);
-printf("EXPT_ACTION\t%d\n", EXPT_ACTION);
-printf("EXPT_PRM1\t%d\n", EXPT_PRM1);
-printf("EXPT_PRM2\t%d\n", EXPT_PRM2);
-printf("EXPT_PRM3\t%d\n", EXPT_PRM3);
-printf("EXPT_PRM4\t%d\n", EXPT_PRM4);
+/// значени€, выданные тестовым кодом, должны быть: 1. уникальными; 2. меньше константы EVENT_TEMPLATE_AMOUNT
+/// значени€, выданные тестовым кодом, лучше получить путем включени€ записи сеанса в лог-файл telnet-клиента
+/// последовательность регул€рных выражений, необходима€ дл€ генерации тестового кода:
+/// \n\n = \n
+/// /^(.*message_template.*)$/mi = #\1
+/// /^[^#].*$/mi = ""
+/// \n\n = \n
+/// printf("EVENT_TEMPLATE_AMOUNT\\t%d\\n", EVENT_TEMPLATE_AMOUNT);
+/// /^.*?\[(.+)\].*$/mi = printf("\1\\t%d\\t%d\\n", \1, EVENT_TEMPLATE_AMOUNT-\1);
 
-exit(1);
+///...
 
+///exit(1);
 
 /// COMAND LINE ( ќћјЌƒЌјя —“–ќ ј) [XX..XX, XX]
 
@@ -210,7 +144,7 @@ strcpy(message_template[HMI_WEB_EINVAL ], "SHARED MEM: EINVAL");
 strcpy(message_template[HMI_WEB_ENOMEM ], "SHARED MEM: ENOMEM");
 strcpy(message_template[HMI_WEB_EEXIST ], "SHARED MEM: EEXIST");
 strcpy(message_template[HMI_WEB_UNKNOWN], "SHARED MEM: UNKNOWN");
-strcpy(message_template[HMI_WEB_OK     ], "SHARED MEM: OK SIZE %db");
+strcpy(message_template[HMI_WEB_OK     ], "SHARED MEM: OK SIZE %d bytes");
 strcpy(message_template[HMI_WEB_CLOSED ], "SHARED MEM: CLOSED");
 
 /*
@@ -329,51 +263,43 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 	time_t	curtime;
 	//int i;
 	
-	/// фильтруем сообщени€
-
-//	if((
-//		gate502.msg_filter & 
-//		(0x01 << ((msgtype & EVENT_SRC_MASK)-1))
-//		)==0) return;
-
 	if(Security.show_sys_messages==0 && (msgtype & EVENT_CAT_MASK)==EVENT_CAT_DEBUG) return;
 	//if(Security.show_data_flow==0    && (msgtype & EVENT_CAT_MASK)==EVENT_CAT_TRAFFIC) return;
 	
 	/// создаем запись в журнале
 	time(&curtime);
-	if(app_log!=NULL) {
-		app_log[app_log_current_entry].time=curtime;
-		app_log[app_log_current_entry].msgtype=msgtype;
-		app_log[app_log_current_entry].msgcode=msgcode;
+	if(EventLog.app_log!=NULL) {
+		EventLog.app_log[EventLog.app_log_current_entry].time=curtime;
+		EventLog.app_log[EventLog.app_log_current_entry].msgtype=msgtype;
+		EventLog.app_log[EventLog.app_log_current_entry].msgcode=msgcode;
 		
-		app_log[app_log_current_entry].prm[0]=prm1;
-		app_log[app_log_current_entry].prm[1]=prm2;
-		app_log[app_log_current_entry].prm[2]=prm3;
-		app_log[app_log_current_entry].prm[3]=prm4;
+		EventLog.app_log[EventLog.app_log_current_entry].prm[0]=prm1;
+		EventLog.app_log[EventLog.app_log_current_entry].prm[1]=prm2;
+		EventLog.app_log[EventLog.app_log_current_entry].prm[2]=prm3;
+		EventLog.app_log[EventLog.app_log_current_entry].prm[3]=prm4;
 		
-		app_log_entries_total++;
+		EventLog.app_log_entries_total++;
 	  } else printf("!");
 	
 	// инкрементируем счетчик кольцевого буфера сообщений
-	if(app_log!=NULL)
-		app_log_current_entry=\
-			app_log_current_entry==EVENT_LOG_LENGTH-1?\
-			0:app_log_current_entry+1;
+	if(EventLog.app_log!=NULL)
+		EventLog.app_log_current_entry=\
+			EventLog.app_log_current_entry==EVENT_LOG_LENGTH-1?\
+			0:EventLog.app_log_current_entry+1;
 	
 	/// выводим событие на консоль
 	
 	struct tm *tmd;
 	tmd=gmtime(&curtime);
-//  strftime(eventmsg, 16, "%b %y", &tmd);
-	printf("%2.2d.%2.2d.%4.4d %2.2d:%2.2d:%2.2d\t", tmd->tm_mday, tmd->tm_mon+1, tmd->tm_year+1900,
-																									tmd->tm_hour, tmd->tm_min, tmd->tm_sec);
-//	printf("%2.2d %s %2.2d:%2.2d:%2.2d\t", tmd->tm_mday, eventmsg,
-//																									tmd->tm_hour, tmd->tm_min, tmd->tm_sec);
+  strftime(eventmsg, 16, "%b%y", tmd);
+	printf("%2.2d%s %2.2d:%2.2d:%2.2d ", tmd->tm_mday, eventmsg,
+                                         tmd->tm_hour, tmd->tm_min, tmd->tm_sec);
 
 	switch(msgtype & EVENT_TYPE_MASK) {
-			case EVENT_TYPE_INF: printf("INF\t"); break;
-			case EVENT_TYPE_WRN: printf("WRN\t"); break;
-			case EVENT_TYPE_ERR: printf("ERR\t"); break;
+			case EVENT_TYPE_INF: printf("INF "); break;
+			case EVENT_TYPE_WRN: printf("WRN "); break;
+			case EVENT_TYPE_ERR: printf("ERR "); break;
+			case EVENT_TYPE_FTL: printf("FTL "); break;
 			default: printf("***\t");
 			}
 
@@ -391,7 +317,7 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 			case GATEWAY_MOXAGATE: printf("MOXAGATE\t"); 	break;
 
 			case GATEWAY_LANTCP: if((prm1>=GATEWAY_T01) && (prm1<=GATEWAY_T32))
-                             printf("TCP%0.2d\t", prm1);
+                             printf("TCP%0.2d\t", prm1-GATEWAY_T01+1);
                              else printf("LANTCP\t");
                            break;
 

@@ -49,9 +49,6 @@ int main(int argc, char *argv[])
 
   ///!!! точка останова. возможен контроль средствами HMI инициализации переменных
 
-  ///!!!
-  printf("stopping program...\n"); exit(1);
-
 /*** РАЗБОР ПАРАМЕТРОВ КОМАНДНОЙ СТРОКИ ***/
 	k = get_command_line(argc, argv);
 	switch(k & 0xff) {
@@ -62,28 +59,39 @@ int main(int argc, char *argv[])
 
 		case COMMAND_LINE_ARGC:
 			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k & 0xff, 0, 0, 0, 0);
-			exit(1);
+			break;
 
 		case COMMAND_LINE_ERROR:
 			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k & 0xff, k >> 8, 0, 0, 0);
-			exit(1);
+			break;
 
 		case COMMAND_LINE_INFO: 
 			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, k & 0xff, 0, 0, 0, 0);
-      exit(1);
+			break;
 
 		default:;		  // CMD LINE: UNCERTAIN RESULT
 			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, COMMAND_LINE_UNDEFINED, 0, 0, 0, 0);
-      exit(1);
 		}
 
+  if(k!=COMMAND_LINE_OK) {
+    close_shm();
+		exit(1);
+    }
+
+  /// До этого момента все сообщения в программе должны иметь тип EVENT_CAT_MONITOR,
+  /// т.к. конфигурация системы сообщений по умолчанию отсеивает все прочие сообщения
+
   ///!!! точка останова. возможен контроль прочитанной конфигурации средствами HMI
+  do {usleep(1000000);} while (Security.halt!=1);
+  close_shm();
+  printf("stopping program...\n"); exit(1);
 
 /*** ПРОВЕРКА КОНФИГУРАЦИИ ШЛЮЗА В ЦЕЛОМ, ИНИЦИАЛИЗАЦИЯ ВТОРИЧНЫХ КОНФИГУРАЦИОННЫХ ПАРАМЕТРОВ ***/
 
   k=check_GatewayTCPPorts();
   if(k!=0) {
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_TCPPORT_CONFLICT, k >> 8, k & 0xff, 0, 0);
+    close_shm();
     exit(1);
     }
 
@@ -97,36 +105,42 @@ int main(int argc, char *argv[])
     AddressMap[MoxaDevice.modbus_address].iface=GATEWAY_MOXAGATE;
     } else {
       sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_ADDRMAP, k & 0xff, k >> 8, 0, 0);
+      close_shm();
       exit(1);
       }
 
   k=check_GatewayIfaces_ex();
   if(k!=0) {
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_FORWARDING, k & 0xff, 0, 0, 0);
+    close_shm();
     exit(1);
     }
 
   k=check_GatewayConf();
   if(k!=0) {
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_GATEWAY, 0, 0, 0, 0);
+    close_shm();
     exit(1);
     }
 
   k=check_IntegrityAddressMap();
   if(k!=0) {
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_ADDRMAP_INTEGRITY, k, 0, 0, 0);
+    close_shm();
     exit(1);
     }
 
   k=check_IntegrityVSlaves();
   if(k!=0) {
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_VSLAVES_INTEGRITY, k, 0, 0, 0);
+    close_shm();
     exit(1);
     }
 
   k=check_IntegrityPQueries();
   if(k!=0) {
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_PQUERIES_INTEGRITY, k, 0, 0, 0);
+    close_shm();
     exit(1);
     }
 
@@ -155,39 +169,48 @@ int main(int argc, char *argv[])
       } else { /// ошибка, если диапазоны регистров перекрываются
         // STATUS INFO OVERLAPS
         sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 39, 0, 0, 0, 0);
+        close_shm();
         exit(1);
         }
 
   // проверяем, что области памяти виртуальных устройств и собственных адресов шлюза не пересекаются
   // (при условии, что они инициализированы)
 
+  k=0;
+
   if((MoxaDevice.amount1xStatus!=0) && (vsmem_amount1xStatus!=0))
   if(!(
         (vsmem_offset1xStatus + vsmem_amount1xStatus <= MoxaDevice.offset1xStatus) ||
         (vsmem_offset1xStatus >= MoxaDevice.offset1xStatus + MoxaDevice.amount1xStatus)
-    )) return COIL_STATUS_TABLE;
+    )) k=COIL_STATUS_TABLE;
 
   if((MoxaDevice.amount2xStatus!=0) && (vsmem_amount2xStatus!=0))
   if(!(
         (vsmem_offset2xStatus + vsmem_amount2xStatus <= MoxaDevice.offset2xStatus) ||
         (vsmem_offset2xStatus >= MoxaDevice.offset2xStatus + MoxaDevice.amount2xStatus)
-    )) return INPUT_STATUS_TABLE;
+    )) k=INPUT_STATUS_TABLE;
 
   if((MoxaDevice.amount3xRegisters!=0) && (vsmem_amount3xRegisters!=0))
   if(!(
         (vsmem_offset3xRegisters + vsmem_amount3xRegisters <= MoxaDevice.offset3xRegisters) ||
         (vsmem_offset3xRegisters >= MoxaDevice.offset3xRegisters + MoxaDevice.amount3xRegisters)
-    )) return INPUT_REGISTER_TABLE;
+    )) k=INPUT_REGISTER_TABLE;
 
   if((MoxaDevice.amount4xRegisters!=0) && (vsmem_amount4xRegisters!=0))
   if(!(
         (vsmem_offset4xRegisters + vsmem_amount4xRegisters <= MoxaDevice.offset4xRegisters) ||
         (vsmem_offset4xRegisters >= MoxaDevice.offset4xRegisters + MoxaDevice.amount4xRegisters)
-    )) return HOLDING_REGISTER_TABLE;
+    )) k=HOLDING_REGISTER_TABLE;
+
+
+  if(k!=0) {
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_PQUERIES_INTEGRITY, k, 0, 0, 0);
+    close_shm();
+    exit(1);
+    }
 
   // производим выделение памяти для хранения данных локально
-  int init_moxagate_memory();
-
+  init_moxagate_memory();
   ///!!! точка останова. возможен контроль рабочих параметров шлюза перед запуском циклов сканирования интерфейсов
 
 	//-------------------------------------------------------

@@ -61,10 +61,10 @@
 #define	LCM_BUZZER_CONTROL_ERRORS 1
 
 // коды возврата ошибок
-#define HMI_KLB_INIT_KEYPAD 1
-#define HMI_KLB_INIT_LCM    2
-#define HMI_KLB_INIT_BUZZER 3
-#define HMI_KLB_INIT_THREAD 4
+#define HMI_KLB_INIT_KEYPAD 62
+#define HMI_KLB_INIT_LCM    63
+#define HMI_KLB_INIT_BUZZER 61
+#define HMI_KLB_INIT_THREAD 64
 
 ///=== HMI_KEYPAD_LCM_H data types
 

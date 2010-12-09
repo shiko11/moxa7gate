@@ -32,7 +32,7 @@ int init_interfaces_h()
       i=j;
       iface=&IfaceRTU[i];
     } else {
-      i=j & GATEWAY_IFACE;
+      i=j - GATEWAY_T01;
       iface=&IfaceTCP[i];
     }
 
@@ -180,10 +180,10 @@ int check_Iface(GW_Iface *iface)
 		// Offset
     // iface->ethernet.offset
 
-		// Modbus Address for ATM
-    if(  (iface->ethernet.mb_slave < MODBUS_ADDRESS_MIN) ||
-         (iface->ethernet.mb_slave > MODBUS_ADDRESS_MAX)
-      ) return IFACE_TCPMBADDR;
+		// Modbus Address for ATM is not used here
+    //if(  (iface->ethernet.mb_slave < MODBUS_ADDRESS_MIN) ||
+    //     (iface->ethernet.mb_slave > MODBUS_ADDRESS_MAX)
+    //  ) return IFACE_TCPMBADDR;
 
 		// LAN2Address, TCP
     // допускаем ноль для резервного адреса:

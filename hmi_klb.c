@@ -144,7 +144,7 @@ void *mx_keypad_lcm(void *arg)
 	  		) process_key_security(i);
     }
 
-		refresh_shm(&IfaceRTU);
+		// refresh_shm(&IfaceRTU); // необходимо заменить явный перенос значений вызовами специальных фнукций
 	  usleep(LCM_SCREEN_UPDATE_RATE);
 
     if(!(

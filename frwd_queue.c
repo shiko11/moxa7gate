@@ -42,9 +42,11 @@ int init_AddressMap_Entry(int index)
 int check_AddressMap_Entry(int index)
   {
 
-  if( ((AddressMap[index].iface > GATEWAY_P8) && (AddressMap[index].iface < GATEWAY_T01)) ||
-      (AddressMap[index].iface > GATEWAY_T32) ||
-      (AddressMap[index].iface != GATEWAY_MOXAGATE)
+  if( ( (AddressMap[index].iface > GATEWAY_P8) &&
+        (AddressMap[index].iface < GATEWAY_T01) &&
+        (AddressMap[index].iface != GATEWAY_MOXAGATE)
+      ) ||
+      (AddressMap[index].iface > GATEWAY_T32)
     ) return ATM_IFACE;
 
   // игнорируем адрес MODBUS, если указан не RTU-интерфейс:

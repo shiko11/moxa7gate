@@ -29,7 +29,7 @@
 #define TCP_PORT_MAX 0xFFFF
 
 /// коды ошибок верификации конфигурации
-#define SECURITY_TCPPORT 7
+#define SECURITY_TCPPORT 75
 #define MOXAGATE_MBADDR 8
 #define MOXAGATE_STATINFO 9
 

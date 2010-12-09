@@ -53,14 +53,14 @@
 #define ATM_IFACE 30
 #define ATM_MBADDR 31
 
-#define VSLAVE_IFACE 34
+#define VSLAVE_IFACE 76
 #define VSLAVE_MBADDR 35
 #define VSLAVE_MBTABL 36
 #define VSLAVE_BEGDIAP 37
 #define VSLAVE_ENDDIAP 38
 #define VSLAVE_LENDIAP 39
 
-#define PQUERY_IFACE 42
+#define PQUERY_IFACE 74
 #define PQUERY_MBADDR 43
 #define PQUERY_MBTABL 44
 #define PQUERY_ACCESS 45
@@ -71,7 +71,7 @@
 #define PQUERY_DELAYMAX 50
 #define PQUERY_ERRCNTR 51
 
-#define EXPT_STAGE 54
+#define EXPT_STAGE 60
 #define EXPT_ACTION 55
 #define EXPT_PRM1 56
 #define EXPT_PRM2 57
@@ -102,7 +102,8 @@ typedef struct {
 typedef struct {			// блок регистров внутреннего адресного пространства шлюза
 	unsigned char iface;			// последовательный порт шлюза для перенаправления запроса
 	unsigned device;		// адрес устройства в сети modbus для перенаправления запроса
-  unsigned char modbus_table; // одна из 4-х стандартных таблиц протокола MODBUS (см. файл modbus_rtu.h)
+  ///??? тип unsigned char вызывает здесь run-time level ошибки, поэтому используем unsigned
+  unsigned modbus_table; // одна из 4-х стандартных таблиц протокола MODBUS (см. файл modbus_rtu.h)
   unsigned short offset;  // смещение в адресном пространстве устройства modbus (чтобы читать регистры не с нуля)
 
 	unsigned short start;			// начальный регистр диапазона адресного пространства шлюза

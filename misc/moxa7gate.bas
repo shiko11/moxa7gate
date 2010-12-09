@@ -284,7 +284,7 @@ res = (ws.Cells(i, LANTCPIPColumn).Value <> "")
         If ws.Cells(i, LANTCPTCP2Column).Value <> "" Then
           str = str + CStr(ws.Cells(i, LANTCPTCP2Column).Value) + " "
         Else
-          str = str + "502"
+          str = str + "502 "
         End If
         
         If ws.Cells(i, LANTCPCommentColumn).Value <> "" Then

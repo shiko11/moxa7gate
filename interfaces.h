@@ -120,7 +120,7 @@
 #define IFACETCP_MASK 0x30
 
 /// коды ошибок верификации конфигурации
-#define IFACE_MBMODE 12
+#define IFACE_MBMODE 73
 
 #define IFACE_RTUPHYSPROT 13
 #define IFACE_RTUSPEED 14
@@ -198,9 +198,11 @@ typedef struct {
 typedef struct {
 	unsigned int ip;        // сетевой адрес
 	unsigned int port;      // номер TCP-порта
-	unsigned char unit_id;  // адрес на который отвечает целевое устройство
+  ///??? тип unsigned char вызывает здесь ошибки процесса выполнения (runtime):
+  ///??? используем просто unsigned
+	unsigned unit_id;  // адрес на который отвечает целевое устройство
 	unsigned short offset;  /// стартовый регистр внутри целевого устройства
-	unsigned char mb_slave; // адрес modbus-устройства для перенаправления запросов (ATM) (вычисляемый)
+	unsigned mb_slave; // адрес modbus-устройства для перенаправления запросов (ATM) (вычисляемый)
 	unsigned int ip2;       // резервный сетевой адрес
 	unsigned int port2;     // резервный номер TCP-порта
 	} GW_TCPIface;

@@ -62,7 +62,7 @@ int init_hmi_web_h()
 	unsigned mem_size_ttl =
 		sizeof(GW_MoxaDevice)+
 		sizeof(GW_Iface)*MAX_MOXA_PORTS+
-		sizeof(GW_EventLog)*EVENT_LOG_LENGTH+
+		sizeof(GW_Event)*EVENT_LOG_LENGTH+
 		sizeof(RT_Table_Entry)*MAX_VIRTUAL_SLAVES+
 		sizeof(Query_Table_Entry)*MAX_QUERY_ENTRIES+
 		sizeof(GW_Security);
@@ -98,7 +98,7 @@ int init_hmi_web_h()
 
 	gate=(GW_MoxaDevice *) pointer;
 	shared_memory=(GW_Iface *)(pointer+sizeof(GW_MoxaDevice));
-	app_log=(GW_EventLog *)(pointer+sizeof(GW_MoxaDevice)+sizeof(GW_Iface)*MAX_MOXA_PORTS);
+	EventLog.app_log=(GW_Event *)(pointer+sizeof(GW_MoxaDevice)+sizeof(GW_Iface)*MAX_MOXA_PORTS);
 
 	t_rtm=(RT_Table_Entry *)(pointer+sizeof(GW_MoxaDevice)+sizeof(GW_Iface)*MAX_MOXA_PORTS+
 													 sizeof(GW_EventLog)*EVENT_LOG_LENGTH);
@@ -241,8 +241,8 @@ int refresh_shm(void *arg)
 		copy_stat(&shared_memory[i].stat, &IfaceRTU[i].stat);
 	  }
 		 
-	app_log_current_entry=app_log_current_entry;
-	app_log_entries_total=app_log_entries_total;
+	EventLog.app_log_current_entry=EventLog.app_log_current_entry;
+	EventLog.app_log_entries_total=EventLog.app_log_entries_total;
 
 	strcpy(t_security->Object, Security.Object);
 	strcpy(t_security->Location, Security.Location);
@@ -356,7 +356,7 @@ int refresh_shm(void *arg)
 ///--------------------------------------------------------------------------
 int close_shm()
 	{
-	shmdt(pointer);
+	//shmdt(pointer); // Вызывает ошибку "Segmentation fault"
 	shmctl(shm_segment_id, IPC_RMID, 0);
 
 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_HMI, HMI_WEB_CLOSED, 0, 0, 0, 0);

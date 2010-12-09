@@ -91,7 +91,7 @@ int get_command_line(int argc, char *argv[])
     i++;
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k & 0xff, k >> 8, 0, 0, 0);
     } else {
-      for(j=GATEWAY_P1; j<GATEWAY_P8; j++) {
+      for(j=GATEWAY_P1; j<=GATEWAY_P8; j++) {
         if(IfaceRTU[j].modbus_mode==IFACE_OFF) continue;
         k=check_Iface(&IfaceRTU[j]);
         if(k!=COMMAND_LINE_OK) {
@@ -108,12 +108,12 @@ int get_command_line(int argc, char *argv[])
     i++;
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k & 0xff, k >> 8, 0, 0, 0);
     } else {
-      for(j=GATEWAY_T01; j<GATEWAY_T32; j++) {
+      for(j=0; j<MAX_TCP_SERVERS; j++) {
         if(IfaceTCP[j].modbus_mode==IFACE_OFF) continue;
         k=check_Iface(&IfaceTCP[j]);
         if(k!=COMMAND_LINE_OK) {
           i++;
-          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, k, j, 0, 0, 0);
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, k, j + GATEWAY_T01, 0, 0, 0);
           break; // останавливаемся после первой ошибки
           } else strcpy(IfaceTCP[j].bridge_status, "INI");
         }
@@ -147,7 +147,7 @@ int get_command_line(int argc, char *argv[])
         k=check_Vslave_Entry(j);
         if(k!=COMMAND_LINE_OK) {
           i++;
-          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_FRWD, k, j, 0, 0, 0);
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_FRWD, k, j+1, 0, 0, 0);
           break; // останавливаемся после первой ошибки
           }
         }
@@ -164,7 +164,7 @@ int get_command_line(int argc, char *argv[])
         k=check_ProxyQuery_Entry(j);
         if(k!=COMMAND_LINE_OK) {
           i++;
-          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_FRWD, k, j, 0, 0, 0);
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_FRWD, k, j+1, 0, 0, 0);
           break; // останавливаемся после первой ошибки
           }
         }
@@ -181,7 +181,7 @@ int get_command_line(int argc, char *argv[])
         k=check_Exception(j);
         if(k!=COMMAND_LINE_OK) {
           i++;
-          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_FRWD, k, j, 0, 0, 0);
+          sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_FRWD, k, j+1, 0, 0, 0);
           break; // останавливаемся после первой ошибки
           }
         }
@@ -210,7 +210,8 @@ int parse_Security(int 	argc, char	*argv[])
 	memset(id_key_valset, 0, sizeof(id_key_valset));
 
 	for(i=0; i<argc; i++)
-		if(strncmp(argv[i], "--", 2)==0) {
+		if(strncmp(argv[i], "--", 2)==0)
+		if(strncmp(argv[i], "--desc", 6)!=0) {
 			if(key_cnt==MAX_COMMON_KEYS) return SECURITY_CONF_STRUCT; // считаем ошибка в структуре параметров
 			id_key_argc[key_cnt++] = i;
 		  }
@@ -405,7 +406,7 @@ int parse_IfacesRTU(int 	argc, char	*argv[])
 
 		// timeout
 		arg=argv[id_p_argc[i]+4];
-		sscanf(arg, "%d", &IfaceRTU[p_num].serial.timeout);
+		IfaceRTU[p_num].serial.timeout = atoi(arg);
 		IfaceRTU[p_num].serial.timeout*=1000;
 
 		// GATE MODE
@@ -429,7 +430,7 @@ int parse_IfacesRTU(int 	argc, char	*argv[])
 		if(IfaceRTU[p_num].modbus_mode==IFACE_TCPSERVER)
 		  if(argc > id_p_argc[i]+6+shift_counter) {
 			  arg=argv[id_p_argc[i]+6+shift_counter];
-			  sscanf(arg, "%d", &k);
+			  k = atoi(arg);
         if(k!=0) IfaceRTU[p_num].Security.tcp_port=k;
 			  shift_counter++;
 			  }
@@ -492,7 +493,7 @@ int parse_IfacesTCP(int 	argc, char	*argv[])
     t_num--;
 
     // считаем ошибка в структуре параметров
-    if(argc - id_t_argc[i] < LANTCP_PARAMETERS) return (t_num << 8) | IFACE_CONF_TCPSTRUCT;
+    if(argc - id_t_argc[i] < LANTCP_PARAMETERS) return ((t_num + GATEWAY_T01) << 8) | IFACE_CONF_TCPSTRUCT;
 
 		// LAN1Address, TCP
 		arg=argv[id_t_argc[i]+1];
@@ -500,18 +501,18 @@ int parse_IfacesTCP(int 	argc, char	*argv[])
 
 		// Unit ID
 		arg=argv[id_t_argc[i]+2];
-		sscanf(arg, "%d", &IfaceTCP[t_num].ethernet.unit_id);
+    IfaceTCP[t_num].ethernet.unit_id = atoi(arg);
 
 		// Offset
 		arg=argv[id_t_argc[i]+3];
-		sscanf(arg, "%d", &IfaceTCP[t_num].ethernet.offset);
+    IfaceTCP[t_num].ethernet.offset = atoi(arg);
 
 		// LAN2Address, TCP
 		arg=argv[id_t_argc[i]+4];
 		get_ip_from_string(arg, &IfaceTCP[t_num].ethernet.ip2, &IfaceTCP[t_num].ethernet.port2);
 
 		if(IfaceTCP[t_num].modbus_mode!=IFACE_OFF) 
-      return (t_num << 8) | IFACE_CONF_TCPDUPLICATE; // считаем есть дубликаты
+      return ((t_num + GATEWAY_T01) << 8) | IFACE_CONF_TCPDUPLICATE; // считаем есть дубликаты
 		IfaceTCP[t_num].modbus_mode=IFACE_TCPMASTER;
 
 		shift_counter=0;
@@ -563,11 +564,11 @@ int parse_AddressMap(int 	argc, char	*argv[])
       arg=argv[id_at+j];
       val=atoi(arg);															 
       if(val==0) continue; // значение для пустых элементов таблицы
-      AddressMap[ADDRESSMAP_PARAMETERS * k].iface=val >> 8;
+      AddressMap[ADDRESSMAP_PARAMETERS * k+j].iface=val >> 8;
       // нет ключевого поля в этой таблице:
       // на уровне анализа командной строки проверяем допустимый тип интерфейса:
       //if(AddressMap[ADDRESSMAP_PARAMETERS * k].iface > GATEWAY_P8) return ATM_CONF_IFACE;
-      AddressMap[ADDRESSMAP_PARAMETERS * k].address=val & 0xff;
+      AddressMap[ADDRESSMAP_PARAMETERS * k+j].address=val & 0xff;
       }
 
     argc_counter+=ADDRESSMAP_PARAMETERS+1;
@@ -606,7 +607,7 @@ int parse_Vslaves(int 	argc, char	*argv[])
       else return VSLAVE_CONF_IFACE; // считаем ошибка в названии интерфейса
 	
     arg=argv[id_rt+2];
-    sscanf(arg, "%d", &vslave[rt_current].device);
+    vslave[rt_current].device = atoi(arg);
 
     arg=argv[id_rt+3];
     k=strlen(arg);
@@ -618,14 +619,14 @@ int parse_Vslaves(int 	argc, char	*argv[])
     // else return CL_ERR_VSLAVES_CFG;
 
     arg=argv[id_rt+4];
-    sscanf(arg, "%d", &vslave[rt_current].offset);
+    vslave[rt_current].offset = atoi(arg);
 	
     arg=argv[id_rt+5];
-    sscanf(arg, "%d", &vslave[rt_current].start);
+    vslave[rt_current].start = atoi(arg);
     vslave[rt_current].start--;
 	
     arg=argv[id_rt+6];
-    sscanf(arg, "%d", &vslave[rt_current].length);
+    vslave[rt_current].length = atoi(arg);
 
     shift_counter=0;
 	
@@ -682,7 +683,7 @@ int parse_ProxyQueries(int 	argc, char	*argv[])
 	
     // адрес устройства
     arg=argv[id_qt+2];
-    sscanf(arg, "%d", &query_table[qt_current].device);
+    query_table[qt_current].device = atoi(arg);
 	
     // таблица MODBUS
     arg=argv[id_qt+3];
@@ -704,22 +705,22 @@ int parse_ProxyQueries(int 	argc, char	*argv[])
     // else return CL_ERR_QT_CFG;
 
     arg=argv[id_qt+5];
-    sscanf(arg, "%d", &query_table[qt_current].start);
+    query_table[qt_current].start = atoi(arg);
     query_table[qt_current].start--;
 	
     arg=argv[id_qt+6];
-    sscanf(arg, "%d", &query_table[qt_current].length);
+    query_table[qt_current].length = atoi(arg);
 	
     /// стартовый регистр области записи (номер регистра)
     arg=argv[id_qt+7];
-    sscanf(arg, "%d", &query_table[qt_current].offset);
+    query_table[qt_current].offset = atoi(arg);
     query_table[qt_current].offset--;
 	
     arg=argv[id_qt+8];
-    sscanf(arg, "%d", &query_table[qt_current].delay);
+    query_table[qt_current].delay = atoi(arg);
 	
     arg=argv[id_qt+9];
-    sscanf(arg, "%d", &query_table[qt_current].critical);
+    query_table[qt_current].critical = atoi(arg);
 
     shift_counter=0;
 	
@@ -784,16 +785,16 @@ int parse_Exceptions(int 	argc, char	*argv[])
       // else return CL_ERR_VSLAVES_CFG;
 
 			arg=argv[id_expt+3];
-			sscanf(arg, "%d", &Exception[expt_current].prm1);
+			Exception[expt_current].prm1 = atoi(arg);
 	
 			arg=argv[id_expt+4];
-			sscanf(arg, "%d", &Exception[expt_current].prm2);
+			Exception[expt_current].prm2 = atoi(arg);
 	
 			arg=argv[id_expt+5];
-			sscanf(arg, "%d", &Exception[expt_current].prm3);
+			Exception[expt_current].prm3 = atoi(arg);
 	
 			arg=argv[id_expt+6];
-			sscanf(arg, "%d", &Exception[expt_current].prm4);
+			Exception[expt_current].prm4 = atoi(arg);
 																										 
       shift_counter=0;
 

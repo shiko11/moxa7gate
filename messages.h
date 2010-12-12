@@ -17,7 +17,7 @@
 ///=== MESSAGES_H constants
 
 #define EVENT_LOG_LENGTH 100        // длина журнала сообщений
-#define EVENT_MESSAGE_LENGTH 65     // в связи с размерами экрана LCM выбираем такое значение
+#define EVENT_MESSAGE_LENGTH 63     // в связи с размерами экрана LCM выбираем такое значение
 #define EVENT_TEMPLATE_AMOUNT 0x100 // количество сообщений в массиве шаблонов
 
 /// Типы событий, возникающих в процессе работы:
@@ -87,6 +87,11 @@ typedef struct { // ЖУРНАЛ СОБЫТИЙ ШЛЮЗА
 
   // количество битов по количеству источников сообщений
 	unsigned int msg_filter;
+
+  // счетчики сообщений каждого типа
+  unsigned int inf_msgs_amount;
+  unsigned int wrn_msgs_amount;
+  unsigned int err_msgs_amount;
 	} GW_EventLog;
 
 ///=== MESSAGES_H public variables

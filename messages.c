@@ -314,7 +314,7 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 			case GATEWAY_P8: 			printf("PORT8\t"); 		break;
 
 			case GATEWAY_SYSTEM:   printf("SYSTEM\t"); 	break;
-			case GATEWAY_MOXAGATE: printf("MOXAGATE\t"); 	break;
+			case GATEWAY_MOXAGATE: printf("MOXAGTW\t"); 	break;
 
 			case GATEWAY_LANTCP: if((prm1>=GATEWAY_T01) && (prm1<=GATEWAY_T32))
                              printf("TCP%0.2d\t", prm1-GATEWAY_T01+1);

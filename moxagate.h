@@ -12,7 +12,7 @@
 ///*** леуюмхгл бмсрпеммеи оюлърх
 ///*** ярпсйрспш дюммшу дкъ пеюкхгюжхх тсмйжхи HMI-бгюхлндеиярбхъ
 
-#include "frwd_queue.h"
+#include "forwarding.h"
 #include "clients.h"
 
 ///=== MOXAGATE_H constants

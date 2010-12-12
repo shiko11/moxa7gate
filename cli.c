@@ -98,7 +98,7 @@ int get_command_line(int argc, char *argv[])
           i++;
           sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|j, k, 0, 0, 0, 0);
           break; // останавливаемся после первой ошибки
-          } else strcpy(IfaceRTU[j].bridge_status, "INI");
+          } else strcpy(IfaceRTU[j].bridge_status, "IDL");
         }
       }
 
@@ -115,7 +115,7 @@ int get_command_line(int argc, char *argv[])
           i++;
           sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, k, j + GATEWAY_T01, 0, 0, 0);
           break; // останавливаемся после первой ошибки
-          } else strcpy(IfaceTCP[j].bridge_status, "INI");
+          } else strcpy(IfaceTCP[j].bridge_status, "IDL");
         }
       }
 
@@ -765,6 +765,7 @@ int parse_Exceptions(int 	argc, char	*argv[])
 	
       if(argc - id_expt < EXCEPTION_PARAMETERS) return EXPT_CONF_STRUCT;
 
+      // стадия прохождения запроса
 			arg=argv[id_expt+1];
 			k=strlen(arg);
 			for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
@@ -776,7 +777,7 @@ int parse_Exceptions(int 	argc, char	*argv[])
       else if(strcmp(arg, "RESPONSE_SEND")==0)      Exception[expt_current].stage=EXPT_STAGE_RESPONSE_SEND;
       else return EXPT_CONF_STAGE;
 
-
+		  // действие над запросом
 			arg=argv[id_expt+2];
 			k=strlen(arg);
 			for(j=0; j<k; j++) arg[j]=toupper(arg[j]);

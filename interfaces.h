@@ -14,7 +14,7 @@
 #ifndef INTERFACES_H
 #define INTERFACES_H
 
-#include "frwd_queue.h"
+#include "forwarding.h"
 #include "clients.h"
 
 ///=== INTERFACES_H constants

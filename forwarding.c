@@ -9,7 +9,7 @@
 
 ///=== FRWD_QUEUE_H IMPLEMENTATION
 
-#include "frwd_queue.h"
+#include "forwarding.h"
 #include "interfaces.h"
 #include "moxagate.h"
 #include "messages.h"

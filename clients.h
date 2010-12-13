@@ -17,6 +17,9 @@
 
 ///=== CLIENTS_H constants
 
+///!!! эта константа принадлежит модулю интерфейсов
+#define MAX_TCP_SERVERS 32
+
 #define MAX_TCP_CLIENTS_PER_PORT 4
 #define MOXAGATE_CLIENTS_NUMBER 32
 
@@ -74,6 +77,9 @@ typedef struct {
   unsigned int accepted_connections_number;
   unsigned int current_connections_number;
   unsigned int rejected_connections_number;
+
+  // массив индексов сконфигурированных TCP-интерфейсов
+  unsigned char TCPIndex[MAX_TCP_SERVERS+1];
 
 	} GW_Security;
 

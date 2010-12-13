@@ -20,7 +20,6 @@
 ///=== INTERFACES_H constants
 
 #define   MAX_MOXA_PORTS 8
-#define MAX_TCP_SERVERS 32
 
 /*//!!! Глобальные идентификаторы объектов moxa7gate:
 

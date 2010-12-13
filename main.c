@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
   init_messages_h();
 
   // вывод возможных ошибок на экран LCM
-  k=init_hmi_keypad_lcm_h();
+  k=init_hmi_klb_h();
   if(k!=0) exit(1);
 
   // создание разделяемого сегмента памяти,

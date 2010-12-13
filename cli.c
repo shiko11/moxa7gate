@@ -874,7 +874,7 @@ int check_GatewayAddressMap()
 ///----------------------------------------------------------------------------
 int check_GatewayIfaces_ex()
   {
-  int i, j, k, if_type[4], res, index;
+  int i, j, k, if_type[4], res, index, itcp=0;
   GW_Iface *iface;
 												 
   if_type[0]=IFACE_TCPSERVER;
@@ -920,7 +920,7 @@ int check_GatewayIfaces_ex()
         iface->PQueryIndex[MAX_QUERY_ENTRIES]=index;
 
         if(res==0) return 0x100 | j;
-    
+        Security.TCPIndex[itcp++]=j-GATEWAY_T01;
         break;
 
       // для этого типа интерфейса должен существовать хотя бы один корректно сконфигурированный
@@ -950,6 +950,8 @@ int check_GatewayIfaces_ex()
       }
 
     }
+
+  Security.TCPIndex[MAX_TCP_SERVERS]=itcp;
 
   return 0;
   }

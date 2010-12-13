@@ -35,7 +35,10 @@
 #define KEY_F4 3
 #define KEY_F5 4
 
+#define	LCM_SCREEN_DEFAULT 1
+
 // действия, доступные из меню
+#define	LCM_MENU_NOACTION  0
 #define	LCM_MENU_SHOWHELP  1
 #define	LCM_MENU_MOVE_UP   2
 #define	LCM_MENU_SELECT    3
@@ -111,12 +114,14 @@ typedef struct { // net initsializatsii polej structury
 	unsigned int prev_screen;
 
   unsigned int main_scr_rtu;      // LCM_MAIN_IFRTU1, LCM_MAIN_IFRTU2
-  unsigned int main_scr_tcp;      // LCM_MAIN_IFTCP
-  unsigned int main_scr_tcppage;  // LCM_MAIN_IFTCP
+  unsigned int main_tcp_start;    // LCM_MAIN_IFTCP
+  unsigned int main_tcp_current;  // LCM_MAIN_IFTCP
   unsigned int main_scr_eventlog; // LCM_MAIN_EVENTLOG
+  unsigned int main_scr_sett;     // LCM_MAIN_SETTINGS
+
   unsigned int main_menu_start;   // LCM_MAIN_MENU
   unsigned int main_menu_current; // LCM_MAIN_MENU
-  unsigned int main_scr_sett;     // LCM_MAIN_SETTINGS
+  unsigned int main_menu_action;  // LCM_MAIN_MENU
 
   //unsigned int menu_scr_mode;
   //unsigned int secr_scr_mode;
@@ -141,8 +146,8 @@ int mxbzr_handle;
 
 ///=== HMI_KEYPAD_LCM_H public functions
 
-int init_hmi_keypad_lcm_h();  // условно конструктор
-int clear_hmi_keypad_lcm_h(); // условно деструктор
+int init_hmi_klb_h();  // условно конструктор
+int clear_hmi_klb_h(); // условно деструктор
 
 ///--- main thread function
 void *mx_keypad_lcm(void *arg);
@@ -156,9 +161,10 @@ void show_main_eventlog();
 void show_system_info();
 void show_main_settings();
 
-void show_menu_help();
+void show_main_help();
 void show_main_menu();
 void show_about_screen();
+void show_stub_screen();
 
 void show_inet_settings();
 void show_uart_settings(int uart);
@@ -168,16 +174,15 @@ void show_main_help_screen();
 void show_security_help_screen();
 void show_confirmation_reset_all();
 void show_confirmation_reboot();
-void show_stub_screen();
 void show_menu_screen();
 void show_confirmation_secr_changes();
 
 ///--- keypad processing functions
 void show_screen(int display);
-void process_key_main(int key);
 
+void process_key_main(int key);
 void process_key_menu(int key);
-void process_key_security(int key);
+void process_key_settings(int key);
 
 ///--- control functions
 int ctrl_reset_all_counters();

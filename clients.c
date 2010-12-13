@@ -76,6 +76,10 @@ int init_clients()
   Security.current_connections_number=0;
   Security.rejected_connections_number=0;
 
+  for(j=0; j<MAX_TCP_SERVERS; j++)
+    Security.TCPIndex[j]=GATEWAY_NONE;
+  Security.TCPIndex[MAX_TCP_SERVERS]=0;
+
   // private variables
 	ssd=-1;
   current_client=0;

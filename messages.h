@@ -16,6 +16,8 @@
 
 ///=== MESSAGES_H constants
 
+// конфигурационные константы времени компиляции
+
 #define EVENT_LOG_LENGTH 100        // длина журнала сообщений
 #define EVENT_MESSAGE_LENGTH 63     // в связи с размерами экрана LCM выбираем такое значение
 #define EVENT_TEMPLATE_AMOUNT 0x100 // количество сообщений в массиве шаблонов

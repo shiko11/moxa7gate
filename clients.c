@@ -68,7 +68,10 @@ int init_clients()
   Security.watchdog_timer   =0;
   Security.use_buzzer       =0;
 
+  ///!!!
+	Security.timestamp=0;  // время последнего обновления данных для web-интерфейса
  	Security.halt=0;
+  Security.back_light=1;
 
 	Security.tcp_port=502;
 

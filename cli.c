@@ -143,7 +143,7 @@ int get_command_line(int argc, char *argv[])
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
     } else {
       for(j=0; j<MAX_VIRTUAL_SLAVES; j++) {
-        if(vslave[j].iface==GATEWAY_NONE) continue;
+        if(VSlave[j].iface==GATEWAY_NONE) continue;
         k=check_Vslave_Entry(j);
         if(k!=COMMAND_LINE_OK) {
           i++;
@@ -160,7 +160,7 @@ int get_command_line(int argc, char *argv[])
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, k, 0, 0, 0, 0);
     } else {
       for(j=0; j<MAX_QUERY_ENTRIES; j++) {
-        if(query_table[j].iface==GATEWAY_NONE) continue;
+        if(PQuery[j].iface==GATEWAY_NONE) continue;
         k=check_ProxyQuery_Entry(j);
         if(k!=COMMAND_LINE_OK) {
           i++;
@@ -601,32 +601,32 @@ int parse_Vslaves(int 	argc, char	*argv[])
     if(  ((arg[0]=='P') && (arg[1]>48) && (arg[1]<57)) ||
          ((arg[0]=='T') && (arg[1]>47) && (arg[1]<52) && (arg[2]>47) && (arg[2]<58))
       )
-      vslave[rt_current].iface=\
+      VSlave[rt_current].iface=\
       arg[0]=='P'?arg[1]-48-1:\
       10*(arg[1]-48)+(arg[2]-48)-1+GATEWAY_T01;
       else return VSLAVE_CONF_IFACE; // считаем ошибка в названии интерфейса
 	
     arg=argv[id_rt+2];
-    vslave[rt_current].device = atoi(arg);
+    VSlave[rt_current].device = atoi(arg);
 
     arg=argv[id_rt+3];
     k=strlen(arg);
     for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
-         if(strcmp(arg, "COIL_STATUS")==0)      vslave[rt_current].modbus_table=COIL_STATUS_TABLE;
-    else if(strcmp(arg, "INPUT_STATUS")==0)     vslave[rt_current].modbus_table=INPUT_STATUS_TABLE;
-    else if(strcmp(arg, "HOLDING_REGISTER")==0) vslave[rt_current].modbus_table=HOLDING_REGISTER_TABLE;
-    else if(strcmp(arg, "INPUT_REGISTER")==0)   vslave[rt_current].modbus_table=INPUT_REGISTER_TABLE;
+         if(strcmp(arg, "COIL_STATUS")==0)      VSlave[rt_current].modbus_table=COIL_STATUS_TABLE;
+    else if(strcmp(arg, "INPUT_STATUS")==0)     VSlave[rt_current].modbus_table=INPUT_STATUS_TABLE;
+    else if(strcmp(arg, "HOLDING_REGISTER")==0) VSlave[rt_current].modbus_table=HOLDING_REGISTER_TABLE;
+    else if(strcmp(arg, "INPUT_REGISTER")==0)   VSlave[rt_current].modbus_table=INPUT_REGISTER_TABLE;
     // else return CL_ERR_VSLAVES_CFG;
 
     arg=argv[id_rt+4];
-    vslave[rt_current].offset = atoi(arg);
+    VSlave[rt_current].offset = atoi(arg);
 	
     arg=argv[id_rt+5];
-    vslave[rt_current].start = atoi(arg);
-    vslave[rt_current].start--;
+    VSlave[rt_current].start = atoi(arg);
+    VSlave[rt_current].start--;
 	
     arg=argv[id_rt+6];
-    vslave[rt_current].length = atoi(arg);
+    VSlave[rt_current].length = atoi(arg);
 
     shift_counter=0;
 	
@@ -638,7 +638,7 @@ int parse_Vslaves(int 	argc, char	*argv[])
         arg=argv[id_rt+7+1];
         if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
           arg[DEVICE_NAME_LENGTH-1]=0;
-        strcpy(vslave[rt_current].device_name, arg);
+        strcpy(VSlave[rt_current].device_name, arg);
         shift_counter++;
         }
       }
@@ -676,51 +676,51 @@ int parse_ProxyQueries(int 	argc, char	*argv[])
     if(  ((arg[0]=='P') && (arg[1]>48) && (arg[1]<57)) ||
          ((arg[0]=='T') && (arg[1]>47) && (arg[1]<52) && (arg[2]>47) && (arg[2]<58))
       )
-      query_table[qt_current].iface=\
+      PQuery[qt_current].iface=\
       arg[0]=='P'?arg[1]-48-1:\
       10*(arg[1]-48)+(arg[2]-48)-1+GATEWAY_T01;
       else return PQUERY_CONF_IFACE; // считаем ошибка в названии интерфейса
 	
     // адрес устройства
     arg=argv[id_qt+2];
-    query_table[qt_current].device = atoi(arg);
+    PQuery[qt_current].device = atoi(arg);
 	
     // таблица MODBUS
     arg=argv[id_qt+3];
     k=strlen(arg);
     for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
-         if(strcmp(arg, "COIL_STATUS")==0)      query_table[qt_current].mbf=MBF_READ_COILS; 
-    else if(strcmp(arg, "INPUT_STATUS")==0)     query_table[qt_current].mbf=MBF_READ_DECRETE_INPUTS;
-    else if(strcmp(arg, "HOLDING_REGISTER")==0) query_table[qt_current].mbf=MBF_READ_HOLDING_REGISTERS;
-    else if(strcmp(arg, "INPUT_REGISTER")==0)   query_table[qt_current].mbf=MBF_READ_INPUT_REGISTERS;
+         if(strcmp(arg, "COIL_STATUS")==0)      PQuery[qt_current].mbf=MBF_READ_COILS; 
+    else if(strcmp(arg, "INPUT_STATUS")==0)     PQuery[qt_current].mbf=MBF_READ_DECRETE_INPUTS;
+    else if(strcmp(arg, "HOLDING_REGISTER")==0) PQuery[qt_current].mbf=MBF_READ_HOLDING_REGISTERS;
+    else if(strcmp(arg, "INPUT_REGISTER")==0)   PQuery[qt_current].mbf=MBF_READ_INPUT_REGISTERS;
     // else return CL_ERR_QT_CFG;
 
     // режим доступа
     arg=argv[id_qt+4];
     k=strlen(arg);
     for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
-         if(strcmp(arg, "RW")==0)  query_table[qt_current].access=QT_ACCESS_READWRITE;
-    else if(strcmp(arg, "R")==0)   query_table[qt_current].access=QT_ACCESS_READONLY;
-    else if(strcmp(arg, "OFF")==0) query_table[qt_current].access=QT_ACCESS_DISABLED;
+         if(strcmp(arg, "RW")==0)  PQuery[qt_current].access=QT_ACCESS_READWRITE;
+    else if(strcmp(arg, "R")==0)   PQuery[qt_current].access=QT_ACCESS_READONLY;
+    else if(strcmp(arg, "OFF")==0) PQuery[qt_current].access=QT_ACCESS_DISABLED;
     // else return CL_ERR_QT_CFG;
 
     arg=argv[id_qt+5];
-    query_table[qt_current].start = atoi(arg);
-    query_table[qt_current].start--;
+    PQuery[qt_current].start = atoi(arg);
+    PQuery[qt_current].start--;
 	
     arg=argv[id_qt+6];
-    query_table[qt_current].length = atoi(arg);
+    PQuery[qt_current].length = atoi(arg);
 	
     /// стартовый регистр области записи (номер регистра)
     arg=argv[id_qt+7];
-    query_table[qt_current].offset = atoi(arg);
-    query_table[qt_current].offset--;
+    PQuery[qt_current].offset = atoi(arg);
+    PQuery[qt_current].offset--;
 	
     arg=argv[id_qt+8];
-    query_table[qt_current].delay = atoi(arg);
+    PQuery[qt_current].delay = atoi(arg);
 	
     arg=argv[id_qt+9];
-    query_table[qt_current].critical = atoi(arg);
+    PQuery[qt_current].critical = atoi(arg);
 
     shift_counter=0;
 	
@@ -732,7 +732,7 @@ int parse_ProxyQueries(int 	argc, char	*argv[])
         arg=argv[id_qt+10+1];
         if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
           arg[DEVICE_NAME_LENGTH-1]=0;
-        strcpy(query_table[qt_current].device_name, arg);
+        strcpy(PQuery[qt_current].device_name, arg);
         shift_counter++;
         }
       }
@@ -782,7 +782,7 @@ int parse_Exceptions(int 	argc, char	*argv[])
 			k=strlen(arg);
 			for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
 			     if(strcmp(arg, "SKS07_DIOGEN")==0)      Exception[expt_current].action=EXPT_ACT_SKS07_DIOGEN;
-      // else if(strcmp(arg, "INPUT_STATUS")==0)     vslave[i].modbus_table=INPUT_STATUS_TABLE;
+      // else if(strcmp(arg, "INPUT_STATUS")==0)     VSlave[i].modbus_table=INPUT_STATUS_TABLE;
       // else return CL_ERR_VSLAVES_CFG;
 
 			arg=argv[id_expt+3];
@@ -909,11 +909,11 @@ int check_GatewayIfaces_ex()
             }
 
         for(k=0; k<MAX_VIRTUAL_SLAVES; k++)
-          if(vslave[k].iface==j) res++;
+          if(VSlave[k].iface==j) res++;
 
         index=0;
         for(k=0; k<MAX_QUERY_ENTRIES; k++)
-          if(query_table[k].iface==j) {
+          if(PQuery[k].iface==j) {
           res++;
           iface->PQueryIndex[index++]=k;
           }
@@ -1011,11 +1011,11 @@ int check_IntegrityVSlaves()
   // проверяем, что поле iface ссылается на соответсвующим образом настроенные интерфейсы
   for(j=0; j<MAX_VIRTUAL_SLAVES; j++) {
 
-    if(vslave[j].iface==GATEWAY_NONE) continue;
+    if(VSlave[j].iface==GATEWAY_NONE) continue;
 
-    if((vslave[j].iface&IFACETCP_MASK)!=0)
-      iface=&IfaceTCP[vslave[j].iface & GATEWAY_IFACE];
-      else iface=&IfaceRTU[vslave[j].iface];
+    if((VSlave[j].iface&IFACETCP_MASK)!=0)
+      iface=&IfaceTCP[VSlave[j].iface & GATEWAY_IFACE];
+      else iface=&IfaceRTU[VSlave[j].iface];
 
     if(!(
        (iface->modbus_mode==IFACE_TCPMASTER) ||
@@ -1033,17 +1033,17 @@ int check_IntegrityVSlaves()
 
   for(j=0; j<MAX_VIRTUAL_SLAVES; j++) {
 
-    if(vslave[j].modbus_table==MB_TABLE_NONE) continue;
+    if(VSlave[j].modbus_table==MB_TABLE_NONE) continue;
 
     // очередное виртуальное устройство сравниваем со всеми, кроме самого себя, на
     // предмет пересечений занимаемого диапазона регистров
     for(i==0; i<MAX_VIRTUAL_SLAVES; i++) {
-      if((i==j) || (vslave[i].modbus_table==MB_TABLE_NONE)) continue;
+      if((i==j) || (VSlave[i].modbus_table==MB_TABLE_NONE)) continue;
 
-      begreg1=vslave[j].start;
-      begreg2=vslave[i].start;
-      endreg1=vslave[j].start + vslave[j].length;
-      endreg2=vslave[i].start + vslave[i].length;
+      begreg1=VSlave[j].start;
+      begreg2=VSlave[i].start;
+      endreg1=VSlave[j].start + VSlave[j].length;
+      endreg2=VSlave[i].start + VSlave[i].length;
 
       first_low_significant = endreg1 <= begreg2 ? 1 : 0 ;
       first_high_significant= begreg1 >= endreg2 ? 1 : 0 ;
@@ -1054,38 +1054,38 @@ int check_IntegrityVSlaves()
       }
 
     // очередное виртуальное устройство учитываем в области памяти виртуальных устройств
-		switch(vslave[j].modbus_table) {
+		switch(VSlave[j].modbus_table) {
 
 			case COIL_STATUS_TABLE:
-				if(vsmem_offset1xStatus > vslave[j].start) 
-           vsmem_offset1xStatus = vslave[j].start;
-				if(vsmem_amount1xStatus < vslave[j].start+vslave[j].length)
-					 vsmem_amount1xStatus = vslave[j].start+vslave[j].length;
-				vsmem_used1xStatus += vslave[j].length;
+				if(vsmem_offset1xStatus > VSlave[j].start) 
+           vsmem_offset1xStatus = VSlave[j].start;
+				if(vsmem_amount1xStatus < VSlave[j].start+VSlave[j].length)
+					 vsmem_amount1xStatus = VSlave[j].start+VSlave[j].length;
+				vsmem_used1xStatus += VSlave[j].length;
 				break;
 
 			case INPUT_STATUS_TABLE:
-				if(vsmem_offset2xStatus > vslave[j].start)
-           vsmem_offset2xStatus = vslave[j].start;
-				if(vsmem_amount2xStatus < vslave[j].start+vslave[j].length)
-					 vsmem_amount2xStatus = vslave[j].start+vslave[j].length;
-				vsmem_used2xStatus += vslave[j].length;
+				if(vsmem_offset2xStatus > VSlave[j].start)
+           vsmem_offset2xStatus = VSlave[j].start;
+				if(vsmem_amount2xStatus < VSlave[j].start+VSlave[j].length)
+					 vsmem_amount2xStatus = VSlave[j].start+VSlave[j].length;
+				vsmem_used2xStatus += VSlave[j].length;
 				break;
 
 			case HOLDING_REGISTER_TABLE:
-				if(vsmem_offset4xRegisters > vslave[j].start)
-           vsmem_offset4xRegisters = vslave[j].start;
-				if(vsmem_amount4xRegisters < vslave[j].start+vslave[j].length)
-					 vsmem_amount4xRegisters = vslave[j].start+vslave[j].length;
-				vsmem_used4xRegisters += vslave[j].length;
+				if(vsmem_offset4xRegisters > VSlave[j].start)
+           vsmem_offset4xRegisters = VSlave[j].start;
+				if(vsmem_amount4xRegisters < VSlave[j].start+VSlave[j].length)
+					 vsmem_amount4xRegisters = VSlave[j].start+VSlave[j].length;
+				vsmem_used4xRegisters += VSlave[j].length;
 				break;
 
 			case INPUT_REGISTER_TABLE:
-				if(vsmem_offset3xRegisters > vslave[j].start)
-           vsmem_offset3xRegisters = vslave[j].start;
-				if(vsmem_amount3xRegisters < vslave[j].start+vslave[j].length)
-					 vsmem_amount3xRegisters = vslave[j].start+vslave[j].length;
-				vsmem_used3xRegisters += vslave[j].length;
+				if(vsmem_offset3xRegisters > VSlave[j].start)
+           vsmem_offset3xRegisters = VSlave[j].start;
+				if(vsmem_amount3xRegisters < VSlave[j].start+VSlave[j].length)
+					 vsmem_amount3xRegisters = VSlave[j].start+VSlave[j].length;
+				vsmem_used3xRegisters += VSlave[j].length;
 				break;
 
 			default: continue;
@@ -1116,11 +1116,11 @@ int check_IntegrityPQueries()
 
   for(j=0; j<MAX_QUERY_ENTRIES; j++) {
 
-    if(query_table[j].iface==GATEWAY_NONE) continue;
+    if(PQuery[j].iface==GATEWAY_NONE) continue;
 
-    if((query_table[j].iface&IFACETCP_MASK)!=0)
-      iface=&IfaceTCP[query_table[j].iface & GATEWAY_IFACE];
-      else iface=&IfaceRTU[query_table[j].iface];
+    if((PQuery[j].iface&IFACETCP_MASK)!=0)
+      iface=&IfaceTCP[PQuery[j].iface & GATEWAY_IFACE];
+      else iface=&IfaceRTU[PQuery[j].iface];
 
     if(!(
        (iface->modbus_mode==IFACE_TCPMASTER) ||
@@ -1141,17 +1141,17 @@ int check_IntegrityPQueries()
 
   for(j=0; j<MAX_QUERY_ENTRIES; j++) {
 
-    if(query_table[j].mbf=MB_FUNC_NONE) continue;
+    if(PQuery[j].mbf=MB_FUNC_NONE) continue;
 
     // очередной блок данных опроса сравниваем со всеми, кроме самого себя, на
     // предмет пересечений занимаемого диапазона регистров в собственной памяти шлюза
     for(i==0; i<MAX_QUERY_ENTRIES; i++) {
-      if((i==j) || (query_table[i].mbf=MB_FUNC_NONE)) continue;
+      if((i==j) || (PQuery[i].mbf=MB_FUNC_NONE)) continue;
 
-      begreg1=query_table[j].offset;
-      begreg2=query_table[i].offset;
-      endreg1=query_table[j].offset + query_table[j].length;
-      endreg2=query_table[i].offset + query_table[i].length;
+      begreg1=PQuery[j].offset;
+      begreg2=PQuery[i].offset;
+      endreg1=PQuery[j].offset + PQuery[j].length;
+      endreg2=PQuery[i].offset + PQuery[i].length;
 
       first_low_significant = endreg1 <= begreg2 ? 1 : 0 ;
       first_high_significant= begreg1 >= endreg2 ? 1 : 0 ;
@@ -1162,38 +1162,38 @@ int check_IntegrityPQueries()
       }
 
     // очередной блок данных из таблицы опроса учитываем при определении области памяти шлюза
-		switch(query_table[j].mbf) {
+		switch(PQuery[j].mbf) {
 
 			case MBF_READ_COILS:
-				if(MoxaDevice.offset1xStatus > query_table[j].offset) 
-           MoxaDevice.offset1xStatus = query_table[j].offset;
-				if(MoxaDevice.amount1xStatus < query_table[j].offset+query_table[j].length)
-					 MoxaDevice.amount1xStatus = query_table[j].offset+query_table[j].length;
-				MoxaDevice.used1xStatus += query_table[j].length;
+				if(MoxaDevice.offset1xStatus > PQuery[j].offset) 
+           MoxaDevice.offset1xStatus = PQuery[j].offset;
+				if(MoxaDevice.amount1xStatus < PQuery[j].offset+PQuery[j].length)
+					 MoxaDevice.amount1xStatus = PQuery[j].offset+PQuery[j].length;
+				MoxaDevice.used1xStatus += PQuery[j].length;
 				break;
 
 			case MBF_READ_DECRETE_INPUTS:
-				if(MoxaDevice.offset2xStatus > query_table[j].offset)
-           MoxaDevice.offset2xStatus = query_table[j].offset;
-				if(MoxaDevice.amount2xStatus < query_table[j].offset+query_table[j].length)
-					 MoxaDevice.amount2xStatus = query_table[j].offset+query_table[j].length;
-				MoxaDevice.used2xStatus += query_table[j].length;
+				if(MoxaDevice.offset2xStatus > PQuery[j].offset)
+           MoxaDevice.offset2xStatus = PQuery[j].offset;
+				if(MoxaDevice.amount2xStatus < PQuery[j].offset+PQuery[j].length)
+					 MoxaDevice.amount2xStatus = PQuery[j].offset+PQuery[j].length;
+				MoxaDevice.used2xStatus += PQuery[j].length;
 				break;
 
 			case MBF_READ_HOLDING_REGISTERS:
-				if(MoxaDevice.offset4xRegisters > query_table[j].offset)
-           MoxaDevice.offset4xRegisters = query_table[j].offset;
-				if(MoxaDevice.amount4xRegisters < query_table[j].offset+query_table[j].length)
-					 MoxaDevice.amount4xRegisters = query_table[j].offset+query_table[j].length;
-				MoxaDevice.used4xRegisters += query_table[j].length;
+				if(MoxaDevice.offset4xRegisters > PQuery[j].offset)
+           MoxaDevice.offset4xRegisters = PQuery[j].offset;
+				if(MoxaDevice.amount4xRegisters < PQuery[j].offset+PQuery[j].length)
+					 MoxaDevice.amount4xRegisters = PQuery[j].offset+PQuery[j].length;
+				MoxaDevice.used4xRegisters += PQuery[j].length;
 				break;
 
 			case MBF_READ_INPUT_REGISTERS:
-				if(MoxaDevice.offset3xRegisters > query_table[j].offset)
-           MoxaDevice.offset3xRegisters = query_table[j].offset;
-				if(MoxaDevice.amount3xRegisters < query_table[j].offset+query_table[j].length)
-					 MoxaDevice.amount3xRegisters = query_table[j].offset+query_table[j].length;
-				MoxaDevice.used3xRegisters += query_table[j].length;
+				if(MoxaDevice.offset3xRegisters > PQuery[j].offset)
+           MoxaDevice.offset3xRegisters = PQuery[j].offset;
+				if(MoxaDevice.amount3xRegisters < PQuery[j].offset+PQuery[j].length)
+					 MoxaDevice.amount3xRegisters = PQuery[j].offset+PQuery[j].length;
+				MoxaDevice.used3xRegisters += PQuery[j].length;
 				break;
 
 			default:;

@@ -291,7 +291,8 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 	
 	struct tm *tmd;
 	tmd=gmtime(&curtime);
-  strftime(eventmsg, 16, " %b %y", tmd);
+  //strftime(eventmsg, 16, " %b %y", tmd);
+  strftime(eventmsg, 16, " %b", tmd);
 	printf("%2.2d%s %2.2d:%2.2d:%2.2d ", tmd->tm_mday, eventmsg,
                                          tmd->tm_hour, tmd->tm_min, tmd->tm_sec);
 

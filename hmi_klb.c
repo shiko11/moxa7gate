@@ -23,6 +23,9 @@ int rc;
 pthread_t tstTH;
 unsigned int i, j, k, menu_prev;
 
+//unsigned int buzzer_flag; // зуммер дает 1, 2 и 3 гудка в зависимости от количества ошибок: <15, 15-30, >30
+//struct timeval tv;
+
 ///=== HMI_KLB_H private functions
 
 ///---------------------------------------------------------------
@@ -64,7 +67,7 @@ int init_hmi_klb_h()
   screen.main_menu_start=0;   // LCM_MAIN_MENU
   screen.main_menu_current=0; // LCM_MAIN_MENU
 
-  screen.back_light=1;
+  //screen.back_light=1;
   //screen.max_tcp_clients_per_com=8;
   screen.watch_dog_control=0;
   screen.buzzer_control=1;
@@ -155,7 +158,9 @@ void *mx_keypad_lcm(void *arg)
 	  		screen.current_screen <= LCM_NOT_IMPLEMENTED
 	  		) show_screen(screen.current_screen);
 
-    // refresh_shm(&IfaceRTU); // необходимо заменить явный перенос значений вызовами специальных фнукций
+    // обновляем динамические данные для web-интерфейса
+    refresh_shm();
+
     usleep(LCM_SCREEN_UPDATE_RATE);
 
 	  }
@@ -249,11 +254,13 @@ void process_key_main(int key)
       if(screen.current_screen==LCM_MAIN_SETTINGS  ) {
         screen.prev_screen=screen.current_screen;
         screen.current_screen=LCM_NOT_IMPLEMENTED;
+        break;
         }
 
       if(((screen.current_screen==LCM_MAIN_IFRTU1) || (screen.prev_screen==LCM_MAIN_IFRTU2))) {
         screen.prev_screen = screen.current_screen;
         screen.current_screen = LCM_SETT_PORT1+screen.main_scr_rtu;
+        break;
         }
 
   		break;
@@ -334,6 +341,15 @@ void process_key_menu(int key)
         ) {
         //screen.prev_screen = screen.current_screen;
         screen.current_screen = LCM_SETT_PORT1+screen.main_scr_rtu;
+        break;
+        }
+
+      if((screen.prev_screen==LCM_MAIN_MOXAGATE) &&
+         (screen.main_menu_current==5)
+        ) {
+//        screen.current_screen=screen.prev_screen;
+//        screen.prev_screen=LCM_MAIN_MENU;
+        Security.halt=1;
         break;
         }
 

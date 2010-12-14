@@ -23,22 +23,28 @@
 
 char *pointer;
 
-GW_Iface *shared_memory;
-GW_MoxaDevice *gate;
+// статические данные
+GW_AddressMap_Entry *addrmap;
+RT_Table_Entry *vslave;
+Query_Table_Entry *pquery;
+GW_Exception *exception;
 
-RT_Table_Entry *t_rtm; //[MAX_VIRTUAL_SLAVES];
-Query_Table_Entry *t_proxy; //[MAX_QUERY_ENTRIES];
-GW_Security *t_security;
+// динамически обновляемые данные
+GW_Security *security;
+GW_MoxaDevice *gate;
+GW_Iface *iface_rtu;
+GW_Iface *iface_tcp;
+GW_Client *client;
+GW_EventLog *event_log;
 
 key_t access_key;
 struct shmid_ds shmbuffer;
-
-//unsigned int buzzer_flag; // зуммер дает 1, 2 и 3 гудка в зависимости от количества ошибок: <15, 15-30, >30
-//struct timeval tv;
+unsigned int i, j, k;
 
 ///=== HMI_WEB_H private functions
 
-int refresh_shm(void *arg);
+int refresh_shm(); // обновление динамических данных, таких как статистика и другие счетчики
+int update_shm();  // обновление статических данных, таких как параметры конфигурации
 
 /*//---for reference purposes only!-----------------------------------------------------
 struct shmid_ds {
@@ -58,14 +64,19 @@ int init_hmi_web_h()
 	struct shmid_ds shmbuffer;
 
 	access_key=ftok("/tmp/app", 'a');
-
-	unsigned mem_size_ttl =
-		sizeof(GW_MoxaDevice)+
-		sizeof(GW_Iface)*MAX_MOXA_PORTS+
-		sizeof(GW_Event)*EVENT_LOG_LENGTH+
+												
+	unsigned int mem_size_ttl =
+		sizeof(GW_AddressMap_Entry)*(MODBUS_ADDRESS_MAX+1)+
 		sizeof(RT_Table_Entry)*MAX_VIRTUAL_SLAVES+
 		sizeof(Query_Table_Entry)*MAX_QUERY_ENTRIES+
-		sizeof(GW_Security);
+		sizeof(GW_Exception)*MOXAGATE_EXCEPTIONS_NUMBER+
+		sizeof(GW_Security)+
+		sizeof(GW_MoxaDevice)+
+		sizeof(GW_Iface)*MAX_MOXA_PORTS+
+		sizeof(GW_Iface)*MAX_TCP_SERVERS+
+		sizeof(GW_Client)*MOXAGATE_CLIENTS_NUMBER+
+		sizeof(GW_EventLog)+
+		sizeof(GW_Event)*EVENT_LOG_LENGTH;
 
   shm_segment_id=shmget(access_key, mem_size_ttl, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
 
@@ -96,20 +107,59 @@ int init_hmi_web_h()
 
 	pointer=shmat(shm_segment_id, 0, 0);
 
-	gate=(GW_MoxaDevice *) pointer;
-	shared_memory=(GW_Iface *)(pointer+sizeof(GW_MoxaDevice));
-	EventLog.app_log=(GW_Event *)(pointer+sizeof(GW_MoxaDevice)+sizeof(GW_Iface)*MAX_MOXA_PORTS);
+  // назначаем указателям полученную память
 
-	t_rtm=(RT_Table_Entry *)(pointer+sizeof(GW_MoxaDevice)+sizeof(GW_Iface)*MAX_MOXA_PORTS+
-													 sizeof(GW_EventLog)*EVENT_LOG_LENGTH);
-	t_proxy=(Query_Table_Entry *)(pointer+sizeof(GW_MoxaDevice)+sizeof(GW_Iface)*MAX_MOXA_PORTS+
-													 sizeof(GW_EventLog)*EVENT_LOG_LENGTH+sizeof(RT_Table_Entry)*MAX_VIRTUAL_SLAVES);
-	t_security=(GW_Security *)(pointer+sizeof(GW_MoxaDevice)+sizeof(GW_Iface)*MAX_MOXA_PORTS+
-														sizeof(GW_EventLog)*EVENT_LOG_LENGTH+sizeof(RT_Table_Entry)*MAX_VIRTUAL_SLAVES+
-														sizeof(Query_Table_Entry)*MAX_QUERY_ENTRIES);
+  k=0;
+
+	addrmap=(GW_AddressMap_Entry *) (pointer+k);
+
+  k+= sizeof(GW_AddressMap_Entry)*(MODBUS_ADDRESS_MAX+1);
+
+	vslave=(RT_Table_Entry *) (pointer+k);
+
+  k+= sizeof(RT_Table_Entry)*MAX_VIRTUAL_SLAVES;
+
+	pquery=(Query_Table_Entry *) (pointer+k);
+
+  k+= sizeof(Query_Table_Entry)*MAX_QUERY_ENTRIES;
+
+	exception=(GW_Exception *) (pointer+k);
+
+  k+= sizeof(GW_Exception)*MOXAGATE_EXCEPTIONS_NUMBER;
+
+	security=(GW_Security *) (pointer+k);
+
+  k+= sizeof(GW_Security);
+
+	gate=(GW_MoxaDevice *) (pointer+k);
+
+  k+= sizeof(GW_MoxaDevice);
+
+	iface_rtu=(GW_Iface *) (pointer+k);
+
+  k+= sizeof(GW_Iface)*MAX_MOXA_PORTS;
+
+	iface_tcp=(GW_Iface *) (pointer+k);
+
+  k+= sizeof(GW_Iface)*MAX_TCP_SERVERS;
+
+	client=(GW_Client *) (pointer+k);
+
+  k+= sizeof(GW_Client)*MOXAGATE_CLIENTS_NUMBER;
+
+	event_log=(GW_EventLog *) (pointer+k);
+
+  k+= sizeof(GW_EventLog);
+
+  EventLog.app_log=
+  event_log->app_log=
+    (GW_Event *) (pointer+k);
 
 ///  printf("%d %d %d\n", shm_data, shared_memory, app_log);
 ///  printf("%p %p %p\n", shm_data, shared_memory, app_log);
+
+  shm_segment_ok=1;
+
 	// SHARED MEM: OK
 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_HMI, HMI_WEB_OK, shmbuffer.shm_segsz, 0, 0, 0);
 
@@ -117,245 +167,168 @@ int init_hmi_web_h()
   }
 
 ///--------------------------------------------------------------------------
-int refresh_shm(void *arg)
+// обновление динамических данных, таких как статистика и другие счетчики
+int refresh_shm()
 	{
-  GW_Iface *IfaceRTU=(GW_Iface *) arg;
-  
-  int i, j, k;
-  int stat1, stat2;
+  if(shm_segment_ok!=1) return 1;
 
-  for(i=0; i<MAX_MOXA_PORTS; i++) {
-
-//		IfaceRTU[i].stat.request_time_average=0;
-//    for(j=0; j<MAX_TCP_CLIENTS_PER_PORT; j++)
-//  	  if(IfaceRTU[i].clients[j].stat.request_time_average!=0)
-//  	    if(IfaceRTU[i].stat.request_time_average<IfaceRTU[i].clients[j].stat.request_time_average)
-//  	      IfaceRTU[i].stat.request_time_average=IfaceRTU[i].clients[j].stat.request_time_average;
-  	      
-  	if(IfaceRTU[i].modbus_mode!=MODBUS_PORT_ERROR && IfaceRTU[i].modbus_mode!=MODBUS_PORT_OFF) {
-	    sprintf(IfaceRTU[i].bridge_status, "***");
-			switch(IfaceRTU[i].modbus_mode) {
-
-				case GATEWAY_SIMPLE:
-					k=IfaceRTU[i].Security.current_connections_number;
-			    sprintf(IfaceRTU[i].bridge_status, "%2.2dG", k);
-					break;
-
-				case GATEWAY_ATM:
-					k=IfaceRTU[i].queue.queue_len*100/MAX_GATEWAY_QUEUE_LENGTH;
-					if(k<100) sprintf(IfaceRTU[i].bridge_status, "%2.2dA", k);
-						else sprintf(IfaceRTU[i].bridge_status, "OVR"); /// отладочный код
-					break;
-
-				case GATEWAY_RTM:
-					k=IfaceRTU[i].queue.queue_len*100/MAX_GATEWAY_QUEUE_LENGTH;
-					if(k<100) sprintf(IfaceRTU[i].bridge_status, "%2.2dR", k);
-						else sprintf(IfaceRTU[i].bridge_status, "OVR"); /// отладочный код
-					break;
-
-				case GATEWAY_PROXY:
-					/// количество успешно выполняемых запросов из таблицы QUERY_TABLE для этого порта (00-99%)
-				  stat1=stat2=0;
-				  for(j=0; j<MAX_QUERY_ENTRIES; j++)
-						if(	(query_table[j].iface==i) 		&&
-								(query_table[j].length!=0) 	&&
-								(query_table[j].mbf!=0)			&&
-								(query_table[j].device!=0)	) {
-
-							stat1++;
-							if(query_table[j].status_bit==1) stat2++;
-							}
-					k=(stat1==stat2)?99:((stat2*100)/stat1);
-//					printf("stat1=%d; stat2=%d;\n", stat1, stat2);
-			    sprintf(IfaceRTU[i].bridge_status, "%2.2dP", k);
-					break;
-
-				case BRIDGE_PROXY:
-					//k=IfaceRTU[i].current_connections_number;
-			    // sprintf(IfaceRTU[i].bridge_status, "BPR");
-					break;
-
-/*				case BRIDGE_SIMPLE:
-					k=IfaceRTU[i].current_connections_number;
-					j=IfaceRTU[i].accepted_connections_number;
-			    sprintf(IfaceRTU[i].bridge_status, "%1.1d%1.1dB", k, j);
-					break;*/
-				default:;
-				}
-			}
-
+  for(i==0; i<MAX_QUERY_ENTRIES; i++) {
+    pquery[i].err_counter= PQuery[i].err_counter;
+    pquery[i].status_bit=  PQuery[i].status_bit;
     }
 
-/* ЗВУК ЗУММЕРА ПРИ ОШИБКАХ ОБМЕНА
-	gettimeofday(&tv, &tz);
-	int sec=(tv.tv_sec-tv_mem.tv_sec)+(tv.tv_usec-tv_mem.tv_usec)/1000000;
-	if(sec>=LCM_BUZZER_CONTROL_PERIOD) {
-//		printf("buzzer:%d; sec:%d; difference:%d", screen.buzzer_control, sec, IfaceRTU[i].stat.errors-p_errors[i]);
-		tv_mem.tv_sec=tv.tv_sec;
-		tv_mem.tv_usec=tv.tv_usec;
-		for(i=0; i<MAX_MOXA_PORTS; i++) {
-		  if(IfaceRTU[i].stat.errors-p_errors[i] >= LCM_BUZZER_CONTROL_ERRORS)
-//		    if(screen.buzzer_control==1) mxbuzzer_beep(mxbzr_handle, 400);
-		  p_errors[i]=IfaceRTU[i].stat.errors;
-		  }
-	  } */
-  
-	//shmctl(shm_segment_id, IPC_STAT, &shmbuffer);
-	//unsigned segment_size=shmbuffer.shm_segsz;
-	//printf("segment size: %d, IfaceRTU size: %d\n", segment_size, sizeof(input_cfg)*MAX_MOXA_PORTS);
-	if(shm_segment_id==-1) return 1;
+  security->show_data_flow=    Security.show_data_flow;
+  security->show_sys_messages= Security.show_sys_messages;
+  security->watchdog_timer=    Security.watchdog_timer;
+  security->use_buzzer=        Security.use_buzzer;
+  security->halt=              Security.halt;
+  security->accepted_connections_number= Security.accepted_connections_number;
+  security->current_connections_number=  Security.current_connections_number;
+  security->rejected_connections_number= Security.rejected_connections_number;
 
-  ///--------------------------------------------------
-  for(i=0; i<MAX_MOXA_PORTS; i++) {
-	  shared_memory[i].Security.tcp_port=IfaceRTU[i].Security.tcp_port;
-	  shared_memory[i].modbus_mode=IfaceRTU[i].modbus_mode;
-	  strcpy(shared_memory[i].bridge_status, IfaceRTU[i].bridge_status);
+  //gate->queue= MoxaDevice.queue;
+  //gate->stat=  MoxaDevice.stat;
+  gate->start_time=     MoxaDevice.start_time;
+  gate->modbus_address= MoxaDevice.modbus_address;
+  gate->status_info=    MoxaDevice.status_info;
+  gate->map2Xto4X=      MoxaDevice.map2Xto4X;
+  gate->offset1xStatus=    MoxaDevice.offset1xStatus;
+  gate->offset2xStatus=    MoxaDevice.offset2xStatus;
+  gate->offset3xRegisters= MoxaDevice.offset3xRegisters;
+  gate->offset4xRegisters= MoxaDevice.offset4xRegisters;
+  gate->amount1xStatus=    MoxaDevice.amount1xStatus;
+  gate->amount2xStatus=    MoxaDevice.amount2xStatus;
+  gate->amount3xRegisters= MoxaDevice.amount3xRegisters;
+  gate->amount4xRegisters= MoxaDevice.amount4xRegisters;
+  gate->used1xStatus=      MoxaDevice.used1xStatus;
+  gate->used2xStatus=      MoxaDevice.used2xStatus;
+  gate->used3xRegisters=   MoxaDevice.used3xRegisters;
+  gate->used4xRegisters=   MoxaDevice.used4xRegisters;
 
-	  shared_memory[i].Security.accepted_connections_number=IfaceRTU[i].Security.accepted_connections_number;
-	  shared_memory[i].Security.current_connections_number=IfaceRTU[i].Security.current_connections_number;
-	  shared_memory[i].Security.rejected_connections_number=IfaceRTU[i].Security.rejected_connections_number;
-
-		shared_memory[i].Security.start_time=IfaceRTU[i].Security.start_time;
-
-	  strcpy(shared_memory[i].serial.p_name, IfaceRTU[i].serial.p_name);
-	  strcpy(shared_memory[i].serial.p_mode, IfaceRTU[i].serial.p_mode);
-	  strcpy(shared_memory[i].serial.speed, IfaceRTU[i].serial.speed);
-	  strcpy(shared_memory[i].serial.parity, IfaceRTU[i].serial.parity);
-	  shared_memory[i].serial.timeout=IfaceRTU[i].serial.timeout;
-
-	  strcpy(shared_memory[i].description, IfaceRTU[i].description);
-
-/*
-	    for(j=0; j<MAX_TCP_CLIENTS_PER_PORT; j++) {
-			  shared_memory[i].clients[j].connection_time=IfaceRTU[i].clients[j].connection_time;
-			  shared_memory[i].clients[j].ip=IfaceRTU[i].clients[j].ip;
-			  shared_memory[i].clients[j].port=IfaceRTU[i].clients[j].port;
-			  shared_memory[i].clients[j].rc=IfaceRTU[i].clients[j].rc;
-			  shared_memory[i].clients[j].status=IfaceRTU[i].clients[j].status;
-			  shared_memory[i].clients[j].mb_slave=IfaceRTU[i].clients[j].mb_slave;
-			  shared_memory[i].clients[j].address_shift=IfaceRTU[i].clients[j].address_shift;
-			
-				copy_stat(&shared_memory[i].clients[j].stat, &IfaceRTU[i].clients[j].stat);
-		    }
-	*/
-		copy_stat(&shared_memory[i].stat, &IfaceRTU[i].stat);
-	  }
-		 
-	EventLog.app_log_current_entry=EventLog.app_log_current_entry;
-	EventLog.app_log_entries_total=EventLog.app_log_entries_total;
-
-	strcpy(t_security->Object, Security.Object);
-	strcpy(t_security->Location, Security.Location);
-	strcpy(t_security->VersionNumber, Security.VersionNumber);
-	strcpy(t_security->NetworkName, Security.NetworkName);
-	t_security->LAN1Address=Security.LAN1Address;
-	t_security->LAN2Address=Security.LAN2Address;
-	t_security->start_time=Security.start_time;
-
-	t_security->start_time=Security.start_time;
-	t_security->tcp_port=Security.tcp_port;
-
-	gate->modbus_address=MoxaDevice.modbus_address;
-	gate->status_info=MoxaDevice.status_info;
-
-	t_security->show_data_flow=Security.show_data_flow;
-	t_security->show_sys_messages=Security.show_sys_messages;
-	t_security->watchdog_timer=Security.watchdog_timer;
-//	gate->use_buzzer=gate502.use_buzzer;
-//	gate->back_light=gate502.back_light;
-
-	gate->offset1xStatus=MoxaDevice.offset1xStatus;
-	gate->offset2xStatus=MoxaDevice.offset2xStatus;
-	gate->offset3xRegisters=MoxaDevice.offset3xRegisters;
-	gate->offset4xRegisters=MoxaDevice.offset4xRegisters;
-	gate->amount1xStatus=MoxaDevice.amount1xStatus;
-	gate->amount2xStatus=MoxaDevice.amount2xStatus;
-	gate->amount3xRegisters=MoxaDevice.amount3xRegisters;
-	gate->amount4xRegisters=MoxaDevice.amount4xRegisters;
-  ///--------------------------------------------------
-	time(&timestamp);
-  ///--------------------------------------------------
-
-	if(t_security->halt==1) {
-		Security.halt=1;
-		show_confirmation_reboot();
-		mxlcm_write(mxlcm_handle, 0, 2, "                ", MAX_LCM_COLS); // 16 characters
-		mxlcm_write(mxlcm_handle, 0, 3, "                ", MAX_LCM_COLS); // 16 characters
-		mxlcm_write(mxlcm_handle, 0, 4, " program stopped", MAX_LCM_COLS); // 16 characters
-		mxlcm_write(mxlcm_handle, 0, 5, "by web-interface", MAX_LCM_COLS); // 16 characters
-		mxlcm_write(mxlcm_handle, 0, 6, "                ", MAX_LCM_COLS); // 16 characters
-		}
-
-// проверка состояния флага "screen.back_light" в потоке HMI_KEYPAD_LCM_H и управление подсветкой
-//	if(gate->back_light!=gate502.back_light) {
-//		gate502.back_light = screen.back_light = gate->back_light;
-//	  if(screen.back_light) {	mxlcm_control(mxlcm_handle, IOCTL_LCM_BACK_LIGHT_ON);
-//	    } else { 							mxlcm_control(mxlcm_handle, IOCTL_LCM_BACK_LIGHT_OFF);}
-//		}
-
-	if(t_security->use_buzzer!=Security.use_buzzer) {
-//		gate502.use_buzzer = screen.buzzer_control = gate->use_buzzer;
-		Security.use_buzzer = t_security->use_buzzer;
-		mxbuzzer_beep(mxbzr_handle, 400);
-		}
-
-  ///--------------------------------------------------
-
-	for(i=0; i<MAX_VIRTUAL_SLAVES; i++) {
-		t_rtm[i].start=vslave[i].start;
-		t_rtm[i].length=vslave[i].length;
-		t_rtm[i].iface=vslave[i].iface;
-		t_rtm[i].device=vslave[i].device;
-		t_rtm[i].modbus_table=vslave[i].modbus_table;
-		t_rtm[i].offset=vslave[i].offset;
-		strcpy(t_rtm[i].device_name, vslave[i].device_name);
-	  }
-	
-	for(i=0; i<MAX_QUERY_ENTRIES; i++) {
-		t_proxy[i].start=query_table[i].start;
-		t_proxy[i].length=query_table[i].length;
-		t_proxy[i].offset=query_table[i].offset;
-		t_proxy[i].iface=query_table[i].iface;
-		t_proxy[i].device=query_table[i].device;
-		t_proxy[i].mbf=query_table[i].mbf;
-		t_proxy[i].delay=query_table[i].delay;
-		t_proxy[i].critical=query_table[i].critical;
-		t_proxy[i].err_counter=query_table[i].err_counter;
-		t_proxy[i].status_bit=query_table[i].status_bit;
-		strcpy(t_proxy[i].device_name, query_table[i].device_name);
-	  }
-	
-//	for(i=0; i<MAX_TCP_SERVERS; i++) {
-//		t_tcpsrv[i].mb_slave=tcp_servers[i].mb_slave;
-//		t_tcpsrv[i].ip=tcp_servers[i].ip;
-//		t_tcpsrv[i].port=tcp_servers[i].port;
-//		t_tcpsrv[i].offset=tcp_servers[i].offset;
-//		t_tcpsrv[i].p_num=tcp_servers[i].p_num;
-//		strcpy(t_tcpsrv[i].device_name, tcp_servers[i].device_name);
-//	  }
-
-  ///*** Заполняем массив диагностической информации, если он был инициализирован
-
-  for(i=0; i<MAX_MOXA_PORTS; i++) {
-    MoxaDevice.wData4x[MoxaDevice.status_info+3*i+0]=IfaceRTU[i].stat.accepted;
-    MoxaDevice.wData4x[MoxaDevice.status_info+3*i+1]=IfaceRTU[i].stat.sended;
-    MoxaDevice.wData4x[MoxaDevice.status_info+3*i+2]=IfaceRTU[i].stat.request_time;
-	  }
-
-  for(i=0; i<MAX_QUERY_ENTRIES; i++) {
-		j = 0x01 << (i % 16);
-    if(query_table[i].status_bit==0)
-			MoxaDevice.wData4x[MoxaDevice.status_info+3*MAX_MOXA_PORTS+(i/16)]&=~j;
-			else
-			MoxaDevice.wData4x[MoxaDevice.status_info+3*MAX_MOXA_PORTS+(i/16)]|=j;
+  for(i==0; i<MAX_MOXA_PORTS; i++) {
+    //iface_rtu[i].Security= IfaceRTU[i].Security;
+    //iface_rtu[i].queue=    IfaceRTU[i].queue;
+    //iface_rtu[i].stat=     IfaceRTU[i].stat;
+    //iface_rtu[i].bridge_status[4]= IfaceRTU[i].bridge_status[4];
     }
 
-	return 0;
-	}
+  for(i==0; i<MAX_TCP_SERVERS; i++) {
+    //iface_tcp[i].Security= IfaceTCP[i].Security;
+    //iface_tcp[i].queue=    IfaceTCP[i].queue;
+    //iface_tcp[i].stat=     IfaceTCP[i].stat;
+    //iface_tcp[i].bridge_status[4]=IfaceTCP[i].bridge_status[4];
+    }
+
+  for(i==0; i<MOXAGATE_CLIENTS_NUMBER; i++) {
+    client[i].status=Client[i].status;
+    client[i].iface=Client[i].iface;
+    ///!!!client[i].device_name[DEVICE_NAME_LENGTH]=Client[i].device_name[DEVICE_NAME_LENGTH];
+    client[i].ip=Client[i].ip;
+    client[i].port=Client[i].port;
+    client[i].connection_time=Client[i].connection_time;
+    client[i].disconnection_time=Client[i].disconnection_time;
+    client[i].last_activity_time=Client[i].last_activity_time;
+    //client[i].stat=Client[i].stat;
+    }
+
+  event_log->app_log_current_entry=EventLog.app_log_current_entry;
+  event_log->app_log_entries_total=EventLog.app_log_entries_total;
+  event_log->msg_filter=      EventLog.msg_filter;
+  event_log->inf_msgs_amount= EventLog.inf_msgs_amount;
+  event_log->wrn_msgs_amount= EventLog.wrn_msgs_amount;
+  event_log->err_msgs_amount= EventLog.err_msgs_amount;
+
+  // обновляем метку времени
+  time(&Security.timestamp);
+  security->timestamp=Security.timestamp;
+
+  return 0;
+  }
+
+///--------------------------------------------------------------------------
+// обновление статических данных, таких как параметры конфигурации
+int update_shm()
+  {
+  if(shm_segment_ok!=1) return 1;
+
+  for(i==0; i<MODBUS_ADDRESS_MAX+1; i++) {
+    addrmap[i].iface=   AddressMap[i].iface;
+    addrmap[i].address= AddressMap[i].address;
+    }
+
+  for(i==0; i<MAX_VIRTUAL_SLAVES; i++) {
+    vslave[i].iface=        VSlave[i].iface;
+    vslave[i].device=       VSlave[i].device;
+    vslave[i].modbus_table= VSlave[i].modbus_table;
+    vslave[i].offset=       VSlave[i].offset;
+    vslave[i].start=        VSlave[i].start;
+    vslave[i].length=       VSlave[i].length;
+    //vslave[i].device_name[DEVICE_NAME_LENGTH]=VSlave[i].device_name[DEVICE_NAME_LENGTH];
+    }
+
+  for(i==0; i<MAX_QUERY_ENTRIES; i++) {
+    pquery[i].iface=    PQuery[i].iface;
+    pquery[i].device=   PQuery[i].device;
+    pquery[i].mbf=      PQuery[i].mbf;
+    pquery[i].access=   PQuery[i].access;
+    pquery[i].start=    PQuery[i].start;
+    pquery[i].length=   PQuery[i].length;
+    pquery[i].offset=   PQuery[i].offset;
+    pquery[i].critical= PQuery[i].critical;
+    //pquery[i].device_name[DEVICE_NAME_LENGTH]=PQuery[i].device_name[DEVICE_NAME_LENGTH];
+    }
+
+  for(i==0; i<MOXAGATE_EXCEPTIONS_NUMBER; i++) {
+    exception[i].stage=  Exception[i].stage;
+    exception[i].action= Exception[i].action;
+    exception[i].prm1=   Exception[i].prm1;
+    exception[i].prm2=   Exception[i].prm2;
+    exception[i].prm3=   Exception[i].prm3;
+    exception[i].prm4=   Exception[i].prm4;
+    //exception[i].comment[DEVICE_NAME_LENGTH]=Exception[i].comment[DEVICE_NAME_LENGTH];
+    }
+
+  security->tcp_port=Security.tcp_port;
+  security->start_time=Security.start_time;
+  //security->Object[DEVICE_NAME_LENGTH]=Security.Object[DEVICE_NAME_LENGTH];
+  //security->Location[DEVICE_NAME_LENGTH]=Security.Location[DEVICE_NAME_LENGTH];
+  //security->Label[DEVICE_NAME_LENGTH]=Security.Label[DEVICE_NAME_LENGTH];
+  //security->NetworkName[DEVICE_NAME_LENGTH]=Security.NetworkName[DEVICE_NAME_LENGTH];
+  //security->LAN1Address=Security.LAN1Address;
+  //security->LAN2Address=Security.LAN2Address;
+  //security->VersionNumber[DEVICE_NAME_LENGTH]=Security.VersionNumber[DEVICE_NAME_LENGTH];
+  //security->VersionTime[DEVICE_NAME_LENGTH]=Security.VersionTime[DEVICE_NAME_LENGTH];
+  //security->Model[DEVICE_NAME_LENGTH]=Security.Model[DEVICE_NAME_LENGTH];
+  //security->TCPIndex[MAX_TCP_SERVERS+1]=Security.TCPIndex[MAX_TCP_SERVERS+1];
+
+  for(i==0; i<MAX_MOXA_PORTS; i++) {
+    iface_rtu[i].modbus_mode=      IfaceRTU[i].modbus_mode;
+    //iface_rtu[i].description[DEVICE_NAME_LENGTH]=IfaceRTU[i].description[DEVICE_NAME_LENGTH];
+    //iface_rtu[i].serial=   IfaceRTU[i].serial;
+    ///!!!iface_rtu[i].ethernet= IfaceRTU[i].ethernet;
+    //iface_rtu[i].PQueryIndex[MAX_QUERY_ENTRIES+1]=IfaceRTU[i].PQueryIndex[MAX_QUERY_ENTRIES+1];
+    }
+
+  for(i==0; i<MAX_TCP_SERVERS; i++) {
+    iface_tcp[i].modbus_mode=IfaceTCP[i].modbus_mode;
+    //iface_tcp[i].description[DEVICE_NAME_LENGTH]=IfaceTCP[i].description[DEVICE_NAME_LENGTH];
+    ///!!!iface_tcp[i].serial=IfaceTCP[i].serial;
+    //iface_tcp[i].ethernet=IfaceTCP[i].ethernet;
+    //iface_tcp[i].PQueryIndex[MAX_QUERY_ENTRIES+1]=IfaceTCP[i].PQueryIndex[MAX_QUERY_ENTRIES+1];
+    }
+
+  // обновляем метку времени
+  time(&Security.timestamp);
+  security->timestamp=Security.timestamp;
+
+  return 0;
+  }
 
 ///--------------------------------------------------------------------------
 int close_shm()
 	{
+  if(shm_segment_ok!=1) return 1;
+
 	//shmdt(pointer); // Вызывает ошибку "Segmentation fault"
 	shmctl(shm_segment_id, IPC_RMID, 0);
 

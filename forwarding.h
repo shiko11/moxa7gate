@@ -16,6 +16,8 @@
 
 ///=== FRWD_QUEUE_H constants
 
+// конфигурационные константы времени компил€ции
+
 #define   MAX_GATEWAY_QUEUE_LENGTH 16
 
 #define MOXA_DIAPASON_UNDEFINED		0
@@ -154,9 +156,9 @@ typedef struct {
 int semaphore_id;
 
 GW_AddressMap_Entry AddressMap[MODBUS_ADDRESS_MAX+1]; // нумераци€ с единицы
-RT_Table_Entry vslave[MAX_VIRTUAL_SLAVES];
-Query_Table_Entry query_table[MAX_QUERY_ENTRIES];
-GW_Exception Exception[MOXAGATE_EXCEPTIONS_NUMBER];
+RT_Table_Entry      VSlave[MAX_VIRTUAL_SLAVES];
+Query_Table_Entry   PQuery[MAX_QUERY_ENTRIES];
+GW_Exception        Exception[MOXAGATE_EXCEPTIONS_NUMBER];
 
 unsigned short vsmem_offset1xStatus, vsmem_offset2xStatus, vsmem_offset3xRegisters, vsmem_offset4xRegisters;
 unsigned short vsmem_amount1xStatus, vsmem_amount2xStatus, vsmem_amount3xRegisters, vsmem_amount4xRegisters;

@@ -125,7 +125,7 @@ typedef struct { // net initsializatsii polej structury
 
   //unsigned int menu_scr_mode;
   //unsigned int secr_scr_mode;
-  unsigned int back_light;
+  //unsigned int back_light;
   
   //unsigned int secr_scr_changes_was_made;
 

@@ -41,23 +41,31 @@ extern char **environ;
 
 int shm_segment_id;
 
-input_cfg *shared_memory;
-input_cfg_502 *gate;
-GW_EventLog *app_log;
+char *pointer;
 
-RT_Table_Entry *t_rtm; //[MAX_VIRTUAL_SLAVES];
-Query_Table_Entry *t_proxy; //[MAX_QUERY_ENTRIES];
-GW_TCP_Server *t_tcpsrv; //[MAX_TCP_SERVERS];
+// статические данные
+GW_AddressMap_Entry *addrmap;
+RT_Table_Entry *vslave;
+Query_Table_Entry *pquery;
+GW_Exception *exception;
+
+// динамически обновляемые данные
+GW_Security *security;
+GW_MoxaDevice *gate;
+GW_Iface *iface_rtu;
+GW_Iface *iface_tcp;
+GW_Client *client;
+GW_EventLog *event_log;
 
 key_t access_key;
 time_t moment;
 
-void main_table(input_cfg *shared_memory);
+void main_table();
 void port_info(int port);
 void settings();
-void show_events(GW_EventLog *app_log, input_cfg_502 *gate);
+void show_events();
 void show_vslaves(char port);
-void show_tcp_servers(char port);
+//void show_tcp_servers(char port);
 void show_proxy_queries(char port);
 
 void printMOXA_UC7410(time_t moment);
@@ -74,13 +82,18 @@ int main(int argc, char *argv[])
 
 	access_key=ftok("/tmp/app", 'a');
 
-	unsigned mem_size_ttl =
-		sizeof(input_cfg_502)+
-		sizeof(input_cfg)*MAX_MOXA_PORTS+
-		sizeof(GW_EventLog)*EVENT_LOG_LENGTH+
+	unsigned int mem_size_ttl =
+		sizeof(GW_AddressMap_Entry)*(MODBUS_ADDRESS_MAX+1)+
 		sizeof(RT_Table_Entry)*MAX_VIRTUAL_SLAVES+
 		sizeof(Query_Table_Entry)*MAX_QUERY_ENTRIES+
-		sizeof(GW_TCP_Server)*MAX_TCP_SERVERS;
+		sizeof(GW_Exception)*MOXAGATE_EXCEPTIONS_NUMBER+
+		sizeof(GW_Security)+
+		sizeof(GW_MoxaDevice)+
+		sizeof(GW_Iface)*MAX_MOXA_PORTS+
+		sizeof(GW_Iface)*MAX_TCP_SERVERS+
+		sizeof(GW_Client)*MOXAGATE_CLIENTS_NUMBER+
+		sizeof(GW_EventLog)+
+		sizeof(GW_Event)*EVENT_LOG_LENGTH;
 
 	shm_segment_id=shmget(access_key, mem_size_ttl, S_IRUSR | S_IWUSR);
 
@@ -104,29 +117,58 @@ Modbus-шлюз не отвечает на этом компьютере MOXA. Код ошибки: %s\
 		return 0;
 	  }
 
-	char *pointer=shmat(shm_segment_id, 0, 0);
-	gate=(input_cfg_502 *) pointer;
-	shared_memory=(input_cfg *)(pointer+sizeof(input_cfg_502));
-	app_log=(GW_EventLog *)(pointer+sizeof(input_cfg_502)+sizeof(input_cfg)*MAX_MOXA_PORTS);
+  unsigned int k;
 
-	t_rtm=(RT_Table_Entry *)(pointer+sizeof(input_cfg_502)+sizeof(input_cfg)*MAX_MOXA_PORTS+
-													 sizeof(GW_EventLog)*EVENT_LOG_LENGTH);
-	t_proxy=(Query_Table_Entry *)(pointer+sizeof(input_cfg_502)+sizeof(input_cfg)*MAX_MOXA_PORTS+
-													 sizeof(GW_EventLog)*EVENT_LOG_LENGTH+sizeof(RT_Table_Entry)*MAX_VIRTUAL_SLAVES);
-	t_tcpsrv=(GW_TCP_Server *)(pointer+sizeof(input_cfg_502)+sizeof(input_cfg)*MAX_MOXA_PORTS+
-														sizeof(GW_EventLog)*EVENT_LOG_LENGTH+sizeof(RT_Table_Entry)*MAX_VIRTUAL_SLAVES+
-														sizeof(Query_Table_Entry)*MAX_QUERY_ENTRIES);
+	pointer = shmat(shm_segment_id, 0, 0);
+
+  k=0;
+
+	addrmap=(GW_AddressMap_Entry *) (pointer+k);
+
+  k+= sizeof(GW_AddressMap_Entry)*(MODBUS_ADDRESS_MAX+1);
+
+	vslave=(RT_Table_Entry *) (pointer+k);
+
+  k+= sizeof(RT_Table_Entry)*MAX_VIRTUAL_SLAVES;
+
+	pquery=(Query_Table_Entry *) (pointer+k);
+
+  k+= sizeof(Query_Table_Entry)*MAX_QUERY_ENTRIES;
+
+	exception=(GW_Exception *) (pointer+k);
+
+  k+= sizeof(GW_Exception)*MOXAGATE_EXCEPTIONS_NUMBER;
+
+	security=(GW_Security *) (pointer+k);
+
+  k+= sizeof(GW_Security);
+
+	gate=(GW_MoxaDevice *) (pointer+k);
+
+  k+= sizeof(GW_MoxaDevice);
+
+	iface_rtu=(GW_Iface *) (pointer+k);
+
+  k+= sizeof(GW_Iface)*MAX_MOXA_PORTS;
+
+	iface_tcp=(GW_Iface *) (pointer+k);
+
+  k+= sizeof(GW_Iface)*MAX_TCP_SERVERS;
+
+	client=(GW_Client *) (pointer+k);
+
+  k+= sizeof(GW_Client)*MOXAGATE_CLIENTS_NUMBER;
+
+	event_log=(GW_EventLog *) (pointer+k);
+
+  k+= sizeof(GW_EventLog);
+
+  //EventLog.app_log=
+  event_log->app_log=
+    (GW_Event *) (pointer+k);
+
 	time(&moment);
-	diff=difftime(moment, gate->timestamp);
-	if(diff>GATE_WEB_INTERFACE_TIMEOUT) {
-		printf("\
-Content-Type: text/html\r\n\r\n\
-<div class=\"err_block\">\
-Modbus-шлюз не отвечает %d секунд(ы).\
-</div>\
-\n", diff);
-		return 0;
-	  }
+	diff=difftime(moment, security->timestamp);
 
 ///----------------------------------------------------------------------------------------
 	int t, i;
@@ -136,37 +178,36 @@ Modbus-шлюз не отвечает %d секунд(ы).\
 	while(*p != NULL) {if(strncmp(*p, "REQUEST_METHOD", 14)==0) break; p++;}
 	if(	(*p!=NULL) && (strncmp(&(*p)[15], "POST", 4)==0) ) return process_input_data();
 
-//	char sel1[16], sel2[16], sel3[16], sel4[16];
-//  sel1[0]=sel2[0]=sel3[0]=sel4[0]=0;
-//	if(shm_data->ATM)		strcpy(sel2, " class=\"sel\"");
-//	if(shm_data->RTM && !shm_data->PROXY)		strcpy(sel3, " class=\"sel\"");
-//	if(shm_data->PROXY)	strcpy(sel4, " class=\"sel\"");
-//  if(!(shm_data->ATM || shm_data->RTM || shm_data->PROXY)) strcpy(sel1, " class=\"sel\"");
+///----------------------------------------------------------------------------------------
 
-printf("Content-Type: text/html\r\n\r\n"); 
+  //--- вывод контента
+  printf("Content-Type: text/html\r\n\r\n"); 
+
+	if(diff>GATE_WEB_INTERFACE_TIMEOUT) {
+		printf("\
+<div class=\"err_block\">\
+Modbus-шлюз не отвечает %d секунд(ы).\
+</div>\
+\n", diff);
+	  }
 
 printf("\
 <table id=\"mode\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\" style=\"float:right;\">\n\
 <tr>\n\
-<td>%s\n\
-<td>%s\n\
-<td>%s\n\
+<td>%s \n\
+<td>%s \n\
+<td>%s \n\
 <td style=\"border-right:none;\">%d.%d.%d.%d\n\
 </table>\n\
-\n", gate->object, gate->location, gate->networkName, gate->IPAddress>>24, gate->IPAddress>>16&0xff, gate->IPAddress>>8&0xff, gate->IPAddress&0xff);
+\n", security->Object,
+     security->Location,
+     security->NetworkName,
+     security->LAN1Address>>24,
+     security->LAN1Address>>16&0xff,
+     security->LAN1Address>>8&0xff,
+     security->LAN1Address&0xff);
 
-/*printf("\
-<table id=\"mode\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\" style=\"float:right;\">\n\
-<tr>\n\
-<td class=\"sel\">РЕЖИМ\n\
-<td%s>GATEWAY SIMPLE\n\
-<td%s>GATEWAY ATM\n\
-<td%s>GATEWAY RTM\n\
-<td%s style=\"border-right:none;\">GATEWAY PROXY\n\
-</table>\n\
-\n", sel1, sel2, sel3, sel4);*/
-
-///----------------------------------------------------------------------------------------
+  //--- определяем запрашиваемую страницу
 
 int display=DISPLAY_MAIN_TABLE;
 
@@ -202,7 +243,7 @@ if(	(*p!=NULL) &&
 if(	(*p!=NULL) &&
 		(strncmp(&(*p)[23], "HALT", 4)==0)
 	) {
-		gate->halt=1;
+		security->halt=1;
 		printf("<div class=\"err_block\">Modbus-шлюз остановлен. Перейдите на главную</div>\n");
 		return 0;
 		}
@@ -217,29 +258,29 @@ switch(display) {
   	break;
 														
   case DISPLAY_EVENTS:
-  	show_events(app_log, gate);
+  	show_events(event_log, gate);
   	break;
 
   case DISPLAY_QUERY_TABLES:
 		printf("<h1 align=\"center\">Таблицы опроса</h1>\n");
-  	show_vslaves(SERIAL_STUB);
+  	show_vslaves(GATEWAY_NONE);
 		printf("<p>&nbsp;</p>\n");
-  	show_tcp_servers(SERIAL_STUB);
-		printf("<p>&nbsp;</p>\n");
-  	show_proxy_queries(SERIAL_STUB);
+//  	show_tcp_servers(GATEWAY_NONE);
+//		printf("<p>&nbsp;</p>\n");
+  	show_proxy_queries(GATEWAY_NONE);
   	break;
 
   case DISPLAY_MAIN_TABLE:
   default:
 		printMOXA_UC7410(moment);
-		main_table(shared_memory);
+		main_table(iface_rtu);
   }
 
-shmdt(shared_memory);
+shmdt(pointer);
 return 0;
-} 
+}
 ///-----------------------------------------------------------
-void main_table(input_cfg *shared_memory)
+void main_table()
 {
 
 printf("\
@@ -264,11 +305,11 @@ printf("\
   for(i=0; i<MAX_MOXA_PORTS; i++) {
   	strcpy(pstatus, "Включен");
   	strcpy(row_class, "p_on");
-		if(shared_memory[i].modbus_mode==MODBUS_PORT_OFF) {
+		if(iface_rtu[i].modbus_mode==MODBUS_PORT_OFF) {
 	  	strcpy(pstatus, "Отключен");
 	  	strcpy(row_class, "p_off");
 			}
-		if(shared_memory[i].modbus_mode==MODBUS_PORT_ERROR) {
+		if(iface_rtu[i].modbus_mode==MODBUS_PORT_ERROR) {
 	  	strcpy(pstatus, "Сбой");
 	  	strcpy(row_class, "p_err");
 			}
@@ -277,9 +318,9 @@ printf("\
 <tr class=\"%s\">\n\
 <td class=\"f\" title=\"Порт P%d. %s\"><a href=\"index.shtml?PORT%d\">P%d</a>\n\
 <td class=\"pstatus\">%s\n",
-						row_class, i+1, shared_memory[i].description, i+1, i+1, pstatus);
+						row_class, i+1, iface_rtu[i].description, i+1, i+1, pstatus);
 
-	  if(shared_memory[i].modbus_mode==MODBUS_PORT_OFF) {
+	  if(iface_rtu[i].modbus_mode==MODBUS_PORT_OFF) {
 printf("\
 <td>&nbsp;\
 <td>&nbsp;\
@@ -291,7 +332,7 @@ printf("\
 	  	continue;
 	    }
 	  
-	  switch(shared_memory[i].modbus_mode) {
+	  switch(iface_rtu[i].modbus_mode) {
 			case GATEWAY_SIMPLE: printf("<td class=\"pstatus\">GATEWAY_SIMPLE\n"); break;
 			case GATEWAY_ATM: printf("<td class=\"pstatus\">GATEWAY_ATM\n"); break;
 			case GATEWAY_RTM: printf("<td class=\"pstatus\">GATEWAY_RTM\n"); break;
@@ -301,13 +342,13 @@ printf("\
 			default: printf("<td class=\"pstatus\">UNKNOWN\n");
 			}	  
 
-	  printf("<td>%d\n", shared_memory[i].stat.sended);
-	  printf("<td>%d\n", shared_memory[i].stat.errors);
-	  printf("<td>%d\n", shared_memory[i].stat.request_time);
-//	  printf("<td>%d\n", shared_memory[i].accepted_connections_number);
-//	  printf("<td>%d\n", shared_memory[i].current_connections_number);
-//	  printf("<td>%d\n", shared_memory[i].rejected_connections_number);
-	  switch(shared_memory[i].modbus_mode) {
+	  printf("<td>%d\n", iface_rtu[i].stat.sended);
+	  printf("<td>%d\n", iface_rtu[i].stat.errors);
+	  printf("<td>%d\n", iface_rtu[i].stat.request_time);
+//	  printf("<td>%d\n", iface_rtu[i].accepted_connections_number);
+//	  printf("<td>%d\n", iface_rtu[i].current_connections_number);
+//	  printf("<td>%d\n", iface_rtu[i].rejected_connections_number);
+	  switch(iface_rtu[i].modbus_mode) {
 			case GATEWAY_SIMPLE: printf("<td>1..247\n"); break;
 			case GATEWAY_ATM: printf("<td>%d..%d\n", i*30+1, i*30+31); break;
 			case GATEWAY_RTM: printf("<td>%d\n", gate->modbus_address); break;
@@ -315,11 +356,11 @@ printf("\
 	    default: printf("<td>---\n");						
 			}
 
-	  switch(shared_memory[i].modbus_mode) {
-			case GATEWAY_SIMPLE: printf("<td>%d\n", shared_memory[i].tcp_port); break;
-			case GATEWAY_ATM: printf("<td>%d\n", gate->tcp_port); break;
-			case GATEWAY_RTM: printf("<td>%d\n", gate->tcp_port); break;
-			case GATEWAY_PROXY: printf("<td>%d\n", gate->tcp_port); break;
+	  switch(iface_rtu[i].modbus_mode) {
+			case GATEWAY_SIMPLE: printf("<td>%d\n", iface_rtu[i].Security.tcp_port); break;
+			case GATEWAY_ATM: printf("<td>%d\n", security->tcp_port); break;
+			case GATEWAY_RTM: printf("<td>%d\n", security->tcp_port); break;
+			case GATEWAY_PROXY: printf("<td>%d\n", security->tcp_port); break;
 	    default: printf("<td>---\n");						
 			}
 	  }
@@ -340,7 +381,7 @@ return;
 void port_info(int port)
 {
 int P=0;
-if(((port-1)>=SERIAL_P1)&&((port-1)<=SERIAL_P8)) P=port-1; 
+if(((port-1)>=GATEWAY_P1)&&((port-1)<=GATEWAY_P8)) P=port-1; 
 	else {
 		printf("<div class=\"err_block\">Неверно указан номер последовательного интерфейса. Проверте ссылку</div>\n");
 		return;
@@ -351,11 +392,11 @@ if(((port-1)>=SERIAL_P1)&&((port-1)<=SERIAL_P8)) P=port-1;
 
 	printf("\
 <h1>Порт P%d. %s</h1>",
-	P+1, shared_memory[P].description);
+	P+1, iface_rtu[P].description);
 
 	show_stat_by_func(P);
 
-	switch(shared_memory[P].modbus_mode) {
+	switch(iface_rtu[P].modbus_mode) {
 		case GATEWAY_SIMPLE:
 	//		case BRIDGE_SIMPLE:
   //		show_interface_clients(P);
@@ -379,9 +420,9 @@ void settings()
 	{
 	char wdt[16], buz[16], bl[16];
 
-	if(gate->watchdog_timer==1)	strcpy(wdt, " checked=\"on\""); else wdt[0]=0;
-	if(gate->use_buzzer==1)			strcpy(buz, " checked=\"on\""); else buz[0]=0;
-	if(gate->back_light==1)			strcpy(bl,  " checked=\"on\""); else bl[0]=0;
+	if(security->watchdog_timer==1)	strcpy(wdt, " checked=\"on\""); else wdt[0]=0;
+	if(security->use_buzzer==1)			strcpy(buz, " checked=\"on\""); else buz[0]=0;
+	if(security->back_light==1)			strcpy(bl,  " checked=\"on\""); else bl[0]=0;
 
 	printf("\
 <h1>Настройка шлюза</h1>\n\n\
@@ -416,8 +457,8 @@ void settings()
 <input type=\"hidden\" name=\"form_id\" value=\"gateway_settings\">\n\
 </table>\n\
 </form>\n",
-	gate->IPAddress>>24, gate->IPAddress>>16&0xff, gate->IPAddress>>8&0xff, gate->IPAddress&0xff,
-	gate->tcp_port,
+	security->LAN1Address>>24, security->LAN1Address>>16&0xff, security->LAN1Address>>8&0xff, security->LAN1Address&0xff,
+	security->tcp_port,
 	gate->modbus_address,
 	gate->status_info+1,																 
 	wdt, buz, bl);
@@ -444,9 +485,9 @@ void settings()
 return;
 }
 ///-----------------------------------------------------------
-void show_events(GW_EventLog *app_log, input_cfg_502 *gate)
+void show_events()
 {
-
+/*
 		printf("\
 <h1 align=\"center\">Журнал событий</h1>\n\n\
 <table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" align=\"center\" style=\"width:80%\" id=\"events_table\">\n\
@@ -519,7 +560,7 @@ void show_events(GW_EventLog *app_log, input_cfg_502 *gate)
 		printf("\
 </table>\n\
 \n");
-
+*/
 return;
 }
 ///-----------------------------------------------------------
@@ -541,7 +582,7 @@ printf("\
 <tr><td colspan=\"2\">Время работы шлюза\n\
 <tr><td colspan=\"2\" class=\"val\">%3.3dд %2.2d:%2.2d:%2.2d\n\
 </table>\n\
-\n", gate->version, (diff/86400)%1000, (diff/3600)%24, (diff/60)%60, diff%60);
+\n", security->VersionNumber, (diff/86400)%1000, (diff/3600)%24, (diff/60)%60, diff%60);
 }
 ///-----------------------------------------------------------
 void show_vslaves(char port)
@@ -566,7 +607,7 @@ printf("\
 
 	for(i=0; i<MAX_VIRTUAL_SLAVES; i++) {
 
-		switch(t_rtm[i].modbus_table) {
+		switch(vslave[i].modbus_table) {
 			case COIL_STATUS_TABLE: strcpy(mbtbl, "COIL_STATUS"); break;
 			case INPUT_STATUS_TABLE: strcpy(mbtbl, "INPUT_STATUS"); break;
 			case HOLDING_REGISTER_TABLE: strcpy(mbtbl, "HOLDING_REGISTER"); break;
@@ -574,7 +615,7 @@ printf("\
 			default: continue;
 			}
 
-		if((t_rtm[i].port!=port)&&(port!=SERIAL_STUB)) continue;
+		if((vslave[i].iface!=port)&&(port!=GATEWAY_NONE)) continue;
 
 printf("\
 <tr>\n\
@@ -587,13 +628,13 @@ printf("\
 <td>P%d\n\
 <td style=\"text-align: left;\">&nbsp;%s\n",
 		i+1,
-		t_rtm[i].device,
+		vslave[i].device,
 		mbtbl,
-		t_rtm[i].start+1,
-		t_rtm[i].length,
-		t_rtm[i].address_shift,
-		t_rtm[i].port+1,
-		t_rtm[i].device_name);
+		vslave[i].start+1,
+		vslave[i].length,
+		vslave[i].offset,
+		vslave[i].iface+1,
+		vslave[i].device_name);
 
 		any_entry=1;
 	  }
@@ -603,7 +644,7 @@ printf("\
 	printf("</table>\n");
 	return;
 	}
-///-----------------------------------------------------------
+/*//-----------------------------------------------------------
 void show_tcp_servers(char port)
 	{
 	int i;
@@ -652,7 +693,7 @@ printf("<tr>\n\
 	printf("</table>\n");
 	return;
 	}
-///-----------------------------------------------------------
+*///-----------------------------------------------------------
 void show_proxy_queries(char port)
 	{
 	int i;
@@ -679,7 +720,7 @@ printf("\
 
 	for(i=0; i<MAX_QUERY_ENTRIES; i++) {
 
-		switch(t_proxy[i].mbf) {
+		switch(pquery[i].mbf) {
 			case MBF_READ_COILS: strcpy(mbtbl, "COIL_STATUS"); break;
 			case MBF_READ_DECRETE_INPUTS: strcpy(mbtbl, "INPUT_STATUS"); break;
 			case MBF_READ_HOLDING_REGISTERS: strcpy(mbtbl, "HOLDING_REGISTER"); break;
@@ -687,9 +728,9 @@ printf("\
 			default: continue;
 			}
 
-		if((t_proxy[i].port!=port)&&(port!=SERIAL_STUB)) continue;
+		if((pquery[i].iface!=port)&&(port!=GATEWAY_NONE)) continue;
 
-		if(t_proxy[i].status_bit==1)
+		if(pquery[i].status_bit==1)
 			strcpy(sClass, "p_on");
 			else strcpy(sClass, "p_err");
 
@@ -706,15 +747,15 @@ printf("<tr class=\"%s\">\n\
 <td style=\"text-align: left;\">&nbsp;%s\n",
 		sClass,
 		i+1,
-		t_proxy[i].device,
+		pquery[i].device,
 		mbtbl,
-		t_proxy[i].start+1,
-		t_proxy[i].length,
-		t_proxy[i].offset+1,
-		t_proxy[i].port+1,
-		t_proxy[i].delay,
-		t_proxy[i].critical,
-		t_proxy[i].device_name);
+		pquery[i].start+1,
+		pquery[i].length,
+		pquery[i].offset+1,
+		pquery[i].iface+1,
+		pquery[i].delay,
+		pquery[i].critical,
+		pquery[i].device_name);
 
 		any_entry=1;
 	  }
@@ -727,7 +768,7 @@ printf("<tr class=\"%s\">\n\
 ///-----------------------------------------------------------
 void show_stat_by_stage(u8 p_num)
 {
-
+/*
 printf("\
 <table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" style=\"float:right;\" id=\"p_counters\">\n\
 <tr><th colspan=\"3\">Опрос по стадиям\n\
@@ -767,22 +808,22 @@ printf("\
 </form>\n\
 </table>\n\
 \n",
-	shared_memory[p_num].stat.accepted,
-	shared_memory[p_num].stat.errors_tcp_adu,
-	shared_memory[p_num].stat.errors_tcp_pdu,
-	shared_memory[p_num].stat.timeouts,
-	shared_memory[p_num].stat.crc_errors,
-	shared_memory[p_num].stat.errors_serial_adu,
-	shared_memory[p_num].stat.errors_serial_pdu,
-	shared_memory[p_num].stat.errors_tcp_sending,
-	shared_memory[p_num].stat.errors,
-	shared_memory[p_num].stat.sended,
+	iface_rtu[p_num].stat.accepted,
+	iface_rtu[p_num].stat.errors_tcp_adu,
+	iface_rtu[p_num].stat.errors_tcp_pdu,
+	iface_rtu[p_num].stat.timeouts,
+	iface_rtu[p_num].stat.crc_errors,
+	iface_rtu[p_num].stat.errors_serial_adu,
+	iface_rtu[p_num].stat.errors_serial_pdu,
+	iface_rtu[p_num].stat.errors_tcp_sending,
+	iface_rtu[p_num].stat.errors,
+	iface_rtu[p_num].stat.sended,
 	0,
-	shared_memory[p_num].stat.request_time,
+	iface_rtu[p_num].stat.request_time,
 	0,
-	shared_memory[p_num].stat.scan_rate
+	iface_rtu[p_num].stat.scan_rate
 	);
-
+*/
 return;
 }
 ///-----------------------------------------------------------
@@ -813,11 +854,11 @@ void show_stat_by_func(u8 P)
 		printf("\
 <tr>\n<th class=\"row_th\">%s\n<td>%d\n<td>%d\n<td>%d\n<td>%d\n<td>%d\n<td>%d\n<td>%d\n<td>%d\n<td>%d\n\n",
 			str,
-			shared_memory[P].stat.func[STAT_FUNC_0x01][i], shared_memory[P].stat.func[STAT_FUNC_0x02][i], 
-			shared_memory[P].stat.func[STAT_FUNC_0x03][i], shared_memory[P].stat.func[STAT_FUNC_0x04][i], 
-			shared_memory[P].stat.func[STAT_FUNC_0x05][i], shared_memory[P].stat.func[STAT_FUNC_0x06][i], 
-			shared_memory[P].stat.func[STAT_FUNC_0x0f][i], shared_memory[P].stat.func[STAT_FUNC_0x10][i], 
-			shared_memory[P].stat.func[STAT_FUNC_OTHER][i]);
+			iface_rtu[P].stat.func[STAT_FUNC_0x01][i], iface_rtu[P].stat.func[STAT_FUNC_0x02][i], 
+			iface_rtu[P].stat.func[STAT_FUNC_0x03][i], iface_rtu[P].stat.func[STAT_FUNC_0x04][i], 
+			iface_rtu[P].stat.func[STAT_FUNC_0x05][i], iface_rtu[P].stat.func[STAT_FUNC_0x06][i], 
+			iface_rtu[P].stat.func[STAT_FUNC_0x0f][i], iface_rtu[P].stat.func[STAT_FUNC_0x10][i], 
+			iface_rtu[P].stat.func[STAT_FUNC_OTHER][i]);
 		}
 
 	printf("\
@@ -841,7 +882,7 @@ strcpy(sClass, "p_on");
 strcpy(sText, "ВКЛЮЧЕН");
 memset(modeText, 0, sizeof(modeText));
 
-switch(shared_memory[p_num].modbus_mode) {
+switch(iface_rtu[p_num].modbus_mode) {
 	case MODBUS_PORT_OFF:
 		strcpy(sClass, "p_off");
 		strcpy(sText, "ОТКЛЮЧЕН");
@@ -887,17 +928,17 @@ switch(shared_memory[p_num].modbus_mode) {
 <!-- td style=\"text-align:left;\">Режим -->\n\n",
 	modeText[0], modeText[1], modeText[2], modeText[3], modeText[4], modeText[5], modeText[6]);
 
-	if(shared_memory[p_num].modbus_mode==GATEWAY_SIMPLE)
+	if(iface_rtu[p_num].modbus_mode==GATEWAY_SIMPLE)
 		printf("\
 <tr><td class=\"f\">\n\
 <input type=\"text\" name=\"tcp_port\" value=\"1502\" maxlength=\"5\" style=\"width:64pt;\" />\n\
-<td style=\"text-align:left;\">Порт TCP\n\n", shared_memory[p_num].tcp_port);
+<td style=\"text-align:left;\">Порт TCP\n\n", iface_rtu[p_num].Security.tcp_port);
 
 	memset(modeText, 0, sizeof(modeText));
-	if(strcmp(shared_memory[p_num].serial.p_mode, "RS232")==0) strcpy(modeText[0], " selected=\"on\"");
-	if(strcmp(shared_memory[p_num].serial.p_mode, "RS422")==0) strcpy(modeText[1], " selected=\"on\"");
-	if(strcmp(shared_memory[p_num].serial.p_mode, "RS485_2w")==0) strcpy(modeText[2], " selected=\"on\"");
-	if(strcmp(shared_memory[p_num].serial.p_mode, "RS485_4w")==0) strcpy(modeText[3], " selected=\"on\"");
+	if(strcmp(iface_rtu[p_num].serial.p_mode, "RS232")==0) strcpy(modeText[0], " selected=\"on\"");
+	if(strcmp(iface_rtu[p_num].serial.p_mode, "RS422")==0) strcpy(modeText[1], " selected=\"on\"");
+	if(strcmp(iface_rtu[p_num].serial.p_mode, "RS485_2w")==0) strcpy(modeText[2], " selected=\"on\"");
+	if(strcmp(iface_rtu[p_num].serial.p_mode, "RS485_4w")==0) strcpy(modeText[3], " selected=\"on\"");
 
 	if((strlen(modeText[0])==0)&&(strlen(modeText[1])==0)&&(strlen(modeText[2])==0)&&(strlen(modeText[3])==0))
 		strcpy(modeText[4], " style=\"color:red;\"");
@@ -914,15 +955,15 @@ switch(shared_memory[p_num].modbus_mode) {
 	modeText[4], modeText[0], modeText[1], modeText[2], modeText[3]);
 
 	memset(modeText, 0, sizeof(modeText));
-	if(strcmp(shared_memory[p_num].serial.speed, "2400")==0)		strcpy(modeText[0], " selected=\"on\"");
-	if(strcmp(shared_memory[p_num].serial.speed, "4800")==0)		strcpy(modeText[1], " selected=\"on\"");
-	if(strcmp(shared_memory[p_num].serial.speed, "9600")==0)		strcpy(modeText[2], " selected=\"on\"");
-	if(strcmp(shared_memory[p_num].serial.speed, "14400")==0)		strcpy(modeText[3], " selected=\"on\"");
-	if(strcmp(shared_memory[p_num].serial.speed, "19200")==0)		strcpy(modeText[4], " selected=\"on\"");
-	if(strcmp(shared_memory[p_num].serial.speed, "38400")==0)		strcpy(modeText[5], " selected=\"on\"");
-	if(strcmp(shared_memory[p_num].serial.speed, "56000")==0)		strcpy(modeText[6], " selected=\"on\"");
-	if(strcmp(shared_memory[p_num].serial.speed, "57600")==0)		strcpy(modeText[7], " selected=\"on\"");
-	if(strcmp(shared_memory[p_num].serial.speed, "115200")==0)	strcpy(modeText[8], " selected=\"on\"");
+	if(strcmp(iface_rtu[p_num].serial.speed, "2400")==0)		strcpy(modeText[0], " selected=\"on\"");
+	if(strcmp(iface_rtu[p_num].serial.speed, "4800")==0)		strcpy(modeText[1], " selected=\"on\"");
+	if(strcmp(iface_rtu[p_num].serial.speed, "9600")==0)		strcpy(modeText[2], " selected=\"on\"");
+	if(strcmp(iface_rtu[p_num].serial.speed, "14400")==0)		strcpy(modeText[3], " selected=\"on\"");
+	if(strcmp(iface_rtu[p_num].serial.speed, "19200")==0)		strcpy(modeText[4], " selected=\"on\"");
+	if(strcmp(iface_rtu[p_num].serial.speed, "38400")==0)		strcpy(modeText[5], " selected=\"on\"");
+	if(strcmp(iface_rtu[p_num].serial.speed, "56000")==0)		strcpy(modeText[6], " selected=\"on\"");
+	if(strcmp(iface_rtu[p_num].serial.speed, "57600")==0)		strcpy(modeText[7], " selected=\"on\"");
+	if(strcmp(iface_rtu[p_num].serial.speed, "115200")==0)	strcpy(modeText[8], " selected=\"on\"");
 
 	if(	(strlen(modeText[0])==0)&&
 			(strlen(modeText[1])==0)&&
@@ -957,9 +998,9 @@ switch(shared_memory[p_num].modbus_mode) {
 	modeText[4], modeText[5], modeText[6], modeText[7], modeText[8]);
 
 	memset(modeText, 0, sizeof(modeText));
-	if(strcmp(shared_memory[p_num].serial.parity, "none")==0) strcpy(modeText[0], " selected=\"on\"");
-	if(strcmp(shared_memory[p_num].serial.parity, "even")==0) strcpy(modeText[1], " selected=\"on\"");
-	if(strcmp(shared_memory[p_num].serial.parity, "odd")==0)	strcpy(modeText[2], " selected=\"on\"");
+	if(strcmp(iface_rtu[p_num].serial.parity, "none")==0) strcpy(modeText[0], " selected=\"on\"");
+	if(strcmp(iface_rtu[p_num].serial.parity, "even")==0) strcpy(modeText[1], " selected=\"on\"");
+	if(strcmp(iface_rtu[p_num].serial.parity, "odd")==0)	strcpy(modeText[2], " selected=\"on\"");
 
 	if((strlen(modeText[0])==0)&&(strlen(modeText[1])==0)&&(strlen(modeText[2])==0))
 		strcpy(modeText[3], " style=\"color:red;\"");
@@ -975,7 +1016,7 @@ switch(shared_memory[p_num].modbus_mode) {
 <tr><td class=\"f\">\n\
 <input type=\"text\" name=\"timeout\" value=\"%d\" maxlength=\"5\" style=\"width:64pt;\" />\n\
 <td style=\"text-align:left;\">Таймаут связи, мс\n\n",
-	modeText[3], modeText[0], modeText[1], modeText[2],	shared_memory[p_num].serial.timeout/1000);
+	modeText[3], modeText[0], modeText[1], modeText[2],	iface_rtu[p_num].serial.timeout/1000);
 
 printf("\
 <tr><td class=\"f\">\n\
@@ -1005,17 +1046,17 @@ printf("\
 
 return;
 }
-///-----------------------------------------------------------
+/*//-----------------------------------------------------------
 void show_interface_clients(u8 P)
 {
 
-//	if((shared_memory[P].modbus_mode!=GATEWAY_SIMPLE)&&(shared_memory[P].modbus_mode!=BRIDGE_SIMPLE)) return;
-	if(shared_memory[P].modbus_mode!=GATEWAY_SIMPLE) return;
+//	if((iface_rtu[P].modbus_mode!=GATEWAY_SIMPLE)&&(iface_rtu[P].modbus_mode!=BRIDGE_SIMPLE)) return;
+	if(iface_rtu[P].modbus_mode!=GATEWAY_SIMPLE) return;
 
   char pstatus[128], pmode[32], row_class[32];
   int i;
   
-//	if(shared_memory[P].modbus_mode==BRIDGE_SIMPLE) {
+//	if(iface_rtu[P].modbus_mode==BRIDGE_SIMPLE) {
 //	  strcpy(pmode, "сервера");
 //	  strcpy(pstatus, "\n<th rowspan=\"2\">Адрес<br />modbus\n<th rowspan=\"2\">Сдвиг<br />адреса<br />опроса\n");
 //	  } else {
@@ -1040,10 +1081,10 @@ printf("\
 for(i=0; i<MAX_TCP_CLIENTS_PER_PORT; i++) {
 
   if(//(
-  	 (shared_memory[P].clients[i].connection_status!=MB_CONNECTION_ESTABLISHED//)&&
-//  	 (shared_memory[P].modbus_mode!=BRIDGE_SIMPLE)	)||(
-//  	 (shared_memory[P].modbus_mode==BRIDGE_SIMPLE)&&
-//  	 (i>=shared_memory[P].accepted_connections_number)	
+  	 (iface_rtu[P].clients[i].connection_status!=MB_CONNECTION_ESTABLISHED//)&&
+//  	 (iface_rtu[P].modbus_mode!=BRIDGE_SIMPLE)	)||(
+//  	 (iface_rtu[P].modbus_mode==BRIDGE_SIMPLE)&&
+//  	 (i>=iface_rtu[P].accepted_connections_number)	
 )	) {
 printf("\
 <tr class=\"p_off\">\n\
@@ -1054,37 +1095,37 @@ printf("\
 <td>&nbsp;\n\
 <td>&nbsp;\n\
 ");
-//		if(shared_memory[P].modbus_mode==BRIDGE_SIMPLE)
+//		if(iface_rtu[P].modbus_mode==BRIDGE_SIMPLE)
 //		  printf("<td>&nbsp;\n<td>&nbsp;\n");
 
   	continue;
   	}
 
-	int diff=	shared_memory[P].clients[i].connection_time==0?0:\
-						difftime(moment, shared_memory[P].clients[i].connection_time);
+	int diff=	iface_rtu[P].clients[i].connection_time==0?0:\
+						difftime(moment, iface_rtu[P].clients[i].connection_time);
 
-	sprintf(pmode, "%3.3d.%3.3d.%3.3d.%3.3d",	shared_memory[P].clients[i].ip >> 24,
-																(shared_memory[P].clients[i].ip >> 16) & 0xff,
-																(shared_memory[P].clients[i].ip >> 8) & 0xff,
-																shared_memory[P].clients[i].ip & 0xff);
+	sprintf(pmode, "%3.3d.%3.3d.%3.3d.%3.3d",	iface_rtu[P].clients[i].ip >> 24,
+																(iface_rtu[P].clients[i].ip >> 16) & 0xff,
+																(iface_rtu[P].clients[i].ip >> 8) & 0xff,
+																iface_rtu[P].clients[i].ip & 0xff);
 																
-//	if(shared_memory[P].modbus_mode==BRIDGE_SIMPLE)
-//		sprintf(pstatus, "%d", shared_memory[P].clients[i].mb_slave);
+//	if(iface_rtu[P].modbus_mode==BRIDGE_SIMPLE)
+//		sprintf(pstatus, "%d", iface_rtu[P].clients[i].mb_slave);
 //		else 
 strcpy(pstatus, "N/A");
 		
 	strcpy(row_class, "p_on");
-//	if((shared_memory[P].modbus_mode==BRIDGE_SIMPLE)&&
-//		 (shared_memory[P].clients[i].connection_status!=MB_CONNECTION_ESTABLISHED)) strcpy(row_class, "p_err");
+//	if((iface_rtu[P].modbus_mode==BRIDGE_SIMPLE)&&
+//		 (iface_rtu[P].clients[i].connection_status!=MB_CONNECTION_ESTABLISHED)) strcpy(row_class, "p_err");
 
 printf("\
 <tr class=\"%s\">\n\
 <td style=\"text-align:left;\">%s:%d\n\
-",	row_class, pmode, shared_memory[P].clients[i].port);
+",	row_class, pmode, iface_rtu[P].clients[i].port);
   		
-//	if(shared_memory[P].modbus_mode==BRIDGE_SIMPLE) {
-//	  if(shared_memory[P].clients[i].address_shift!=MB_ADDRESS_NO_SHIFT)
-//		  sprintf(pmode, "%+d", shared_memory[P].clients[i].address_shift);
+//	if(iface_rtu[P].modbus_mode==BRIDGE_SIMPLE) {
+//	  if(iface_rtu[P].clients[i].address_shift!=MB_ADDRESS_NO_SHIFT)
+//		  sprintf(pmode, "%+d", iface_rtu[P].clients[i].address_shift);
 //		  else 
 sprintf(pmode, "Нет");
 		printf("\
@@ -1093,8 +1134,8 @@ sprintf(pmode, "Нет");
 ",	pstatus, pmode);
 //	  }
 			
-  if(shared_memory[P].clients[i].stat.scan_rate<MB_SCAN_RATE_INFINITE)
-    sprintf(pstatus, "%d", shared_memory[P].clients[i].stat.scan_rate);
+  if(iface_rtu[P].clients[i].stat.scan_rate<MB_SCAN_RATE_INFINITE)
+    sprintf(pstatus, "%d", iface_rtu[P].clients[i].stat.scan_rate);
     else sprintf(pstatus, "---");
 
 printf("\
@@ -1104,14 +1145,14 @@ printf("\
 <td>%d\n\
 <td>%s\n\
 ",	  (diff/86400)%1000, (diff/3600)%24, (diff/60)%60, diff%60,
-  		shared_memory[P].clients[i].stat.sended,
-  		shared_memory[P].clients[i].stat.errors,
-  		shared_memory[P].clients[i].stat.request_time,
+  		iface_rtu[P].clients[i].stat.sended,
+  		iface_rtu[P].clients[i].stat.errors,
+  		iface_rtu[P].clients[i].stat.request_time,
   		pstatus);
   		
 	}
 
-//pmode[0]=shared_memory[P].modbus_mode==BRIDGE_SIMPLE?'4':'2';
+//pmode[0]=iface_rtu[P].modbus_mode==BRIDGE_SIMPLE?'4':'2';
 pmode[0]='2';
 
 printf("\
@@ -1126,10 +1167,10 @@ printf("\
 
 return;
 }
-///-----------------------------------------------------------
+*///-----------------------------------------------------------
 int process_input_data()
 	{
-	int i, contlen;
+/*	int i, contlen;
 	char **p, srv[32];
 
 	p = environ;
@@ -1195,7 +1236,7 @@ Content-Type: text/html\r\n\r\n\
 
 	if(strcmp(form_value[form_id], "gateway_settings")==0) switch(action_id) {
 		case FORM_ACTION_REBOOT:
-			gate->halt=1;
+			security->halt=1;
 			printf("Location: http://%s/index.shtml\r\n\r\n", srv);
 //			printf("\
 Content-Type: text/html\r\n\r\n\
@@ -1209,7 +1250,7 @@ Content-Type: text/html\r\n\r\n\
 			for(i=0; i<MAX_FORM_FIELDS; i++)
 				if(strlen(form_field[i])>0)
 					if(strcmp(form_field[i], "backlight_enabled")==0) f=1;
-			gate->back_light=f;
+			security->back_light=f;
 
 			f=0;
 			for(i=0; i<MAX_FORM_FIELDS; i++)
@@ -1221,7 +1262,7 @@ Content-Type: text/html\r\n\r\n\
 		}
 
 //printf("HELLO WORLD!!!");
-
+*/
 	return 0;
 	}
 ///-----------------------------------------------------------

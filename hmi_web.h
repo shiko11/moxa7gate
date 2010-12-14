@@ -12,6 +12,8 @@
 
 ///=== HMI_WEB_H public constants
 
+// конфигурационные константы времени компил€ции
+
 #define GATE_WEB_INTERFACE_TIMEOUT 2
 
 // коды возврата ошибок
@@ -27,8 +29,7 @@
 ///=== HMI_WEB_H public variables
 
   int shm_segment_id;
-
-	time_t timestamp;  // врем€ последнего обновлени€ данных дл€ web-интерфейса
+  int shm_segment_ok;
 
 ///=== HMI_WEB_H public functions
 

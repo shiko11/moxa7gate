@@ -12,6 +12,8 @@
 
 ///=== STATISTICS_H constants
 
+// конфигурационные константы времени компил€ции
+
 #define MB_SCAN_RATE_INFINITE			100000
 
 #define STAT_FUNC_0x01		0

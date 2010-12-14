@@ -17,6 +17,8 @@
 
 ///=== CLIENTS_H constants
 
+// конфигурационные константы времени компил€ции
+
 ///!!! эта константа принадлежит модулю интерфейсов
 #define MAX_TCP_SERVERS 32
 
@@ -70,7 +72,10 @@ typedef struct {
   unsigned char watchdog_timer;     // »спользовать Watchdog-таймер
   unsigned char use_buzzer;         // »спльзовать зуммер дл€ сигнализации
 
+  ///!!!
+	time_t timestamp;  // врем€ последнего обновлени€ данных дл€ web-интерфейса
  	unsigned char halt; // флаг принудительного останова программы по команде
+  unsigned int back_light;
 
   unsigned int tcp_port;	// номер TCP-порта дл€ приема вход€щих клиентских соединений
 

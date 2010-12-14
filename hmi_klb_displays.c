@@ -363,6 +363,7 @@ void show_main_help()
     strcpy(screen.text[4], "statistic screen");
     strcpy(screen.text[5], "F4-Move cursor  ");
     strcpy(screen.text[6], "F5-Menu        ");
+    screen.text[3][5]=9;
     break;
 
     case LCM_MAIN_MOXAGATE:
@@ -458,26 +459,31 @@ void show_main_menu()
   screen.text[1][14]=marker[0];
 
   marker[0]=screen.text[2][14];
-  strcpy(&screen.text[2][2], "|          |");
+  strcpy(&screen.text[2][2], "l          l");
   screen.text[2][14]=marker[0];
 
   marker[0]=screen.text[3][14];
-  strcpy(&screen.text[3][2], "|          |");
+  strcpy(&screen.text[3][2], "l          l");
   screen.text[3][14]=marker[0];
 
   marker[0]=screen.text[4][14];
-  strcpy(&screen.text[4][2], "|          |");
+  strcpy(&screen.text[4][2], "l          l");
   screen.text[4][14]=marker[0];
 
   marker[0]=screen.text[5][14];
-  strcpy(&screen.text[5][2], "|          |");
+  strcpy(&screen.text[5][2], "l          l");
   screen.text[5][14]=marker[0];
 
-  marker[0]=screen.text[6][14];
-  strcpy(&screen.text[6][2], " ---------- ");
-  screen.text[6][14]=marker[0];
+  //marker[0]=screen.text[6][14];
+  //strcpy(&screen.text[6][2], " ---------- ");
+  for(i=3; i<=12; i++) screen.text[6][i]=22;
+  screen.text[6][2]=screen.text[6][13]='l';
+  //screen.text[6][14]=marker[0];
 
 	strcpy(screen.text[7], "F3-ENTER F4-DOWN");
+  screen.text[7][0]=screen.text[7][9]=0xF;
+  screen.text[7][1 ]=3;
+  screen.text[7][10]=4;
 
   if(menu_actions_amount[screen.prev_screen]==0) {
     mxlcm_write_screen(mxlcm_handle, screen.text);
@@ -504,12 +510,10 @@ void show_main_menu()
         (menu_tpl[screen.prev_screen][i][0]==0)
       ) continue;
     strcpy(marker, &screen.text[i-screen.main_menu_start+2][13]);
+    sprintf(&screen.text[i-screen.main_menu_start+2][3], " %s%s",
+      menu_tpl[screen.prev_screen][i], marker);
     if(i == screen.main_menu_current)
-      sprintf(&screen.text[i-screen.main_menu_start+2][3], ">%s%s",
-        menu_tpl[screen.prev_screen][i], marker);
-      else
-      sprintf(&screen.text[i-screen.main_menu_start+2][3], " %s%s",
-        menu_tpl[screen.prev_screen][i], marker);
+      screen.text[i-screen.main_menu_start+2][3]=16; // стрелка вида ->
     }
 
   screen.main_menu_action=LCM_MENU_NOACTION;
@@ -766,14 +770,27 @@ LCM_SCREEN_STUB_SECURITY
 *///---------------------------------------------------------------
 void show_stub_screen()
   {
-	strcpy(screen.text[0], "                ");
-	strcpy(screen.text[1], "     SORRY      ");
-	strcpy(screen.text[2], "  THIS FEATURE  ");
-	strcpy(screen.text[3], "     ISN'T      ");
-	strcpy(screen.text[4], "  IMPLEMENTED   ");
-	strcpy(screen.text[5], "      YET       ");
-	strcpy(screen.text[6], "                ");
-	strcpy(screen.text[7], "         F3-BACK");
+//	strcpy(screen.text[0], "                ");
+//	strcpy(screen.text[1], "     SORRY      ");
+//	strcpy(screen.text[2], "  THIS FEATURE  ");
+//	strcpy(screen.text[3], "     ISN'T      ");
+//	strcpy(screen.text[4], "  IMPLEMENTED   ");
+//	strcpy(screen.text[5], "      YET       ");
+//	strcpy(screen.text[6], "                ");
+//	strcpy(screen.text[7], "         F3-BACK");
+	
+  k=1;
+  if(screen.main_scr_sett==1) k=11;
+  if(screen.main_scr_sett==2) k=42;
+  if(screen.main_scr_sett==3) k=73;
+  if(screen.main_scr_sett==4) k=104;
+  for(i=0; i<8; i+=2) {
+    for(j=0; j<16; j+=2) {
+      screen.text[i][j]=32;
+      screen.text[i][j+1]=k++;
+      }
+    screen.text[i][j]=0;
+    }
 
   mxlcm_write_screen(mxlcm_handle, screen.text);
   return;
@@ -830,7 +847,7 @@ int ctrl_reboot_system()
 -----------------
 |LOG EVENTS <ALL>|
 |1234 INF   PORT1|
-|03DEC10 14:32:00|
+|03 DEC  14:32:00|
 |- COMMAND LINE P|
 |ARSED SUCCESSFUL|
 |LY              |

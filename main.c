@@ -37,6 +37,9 @@ int main(int argc, char *argv[])
   init_interfaces_h();
   init_frwd_queue_h();
   init_messages_h();
+									 
+  // необходимо здесь инициализировать:
+  shm_segment_ok=-1;
 
   // вывод возможных ошибок на экран LCM
   k=init_hmi_klb_h();
@@ -82,6 +85,7 @@ int main(int argc, char *argv[])
   /// т.к. конфигурация системы сообщений по умолчанию отсеивает все прочие сообщения
 
   ///!!! точка останова. возможен контроль прочитанной конфигурации средствами HMI
+  update_shm(); // копируем данные о конфигурации в разделяемый сегмент памяти
   do {usleep(1000000);} while (Security.halt!=1);
   close_shm();
   printf("stopping program...\n"); exit(1);

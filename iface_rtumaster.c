@@ -79,12 +79,12 @@ void *srvr_tcp_child2(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
 				//port_id=		i/0x2000; // 8 com ports
 				device_id2=tcp_adu[TCPADU_ADDRESS];
 				///!!!tcp_adu[6]=(i-port_id*0x2000)/0x200+1; // [1..16] device addresses
-				tcp_adu[TCPADU_ADDRESS]=vslave[device_id].device;
+				tcp_adu[TCPADU_ADDRESS]=VSlave[device_id].device;
 				///!!!i-=(port_id*0x2000+(tcp_adu[6]-1)*0x200);
 
 				i=((tcp_adu[TCPADU_START_HI]<<8)|tcp_adu[TCPADU_START_LO])-
-					vslave[device_id].start+
-					vslave[device_id].offset;
+					VSlave[device_id].start+
+					VSlave[device_id].offset;
 //				printf("result RTM adress: [%2.2X]\n", i);
 				tcp_adu[TCPADU_START_HI]=(i>>8)&0xff;
 				tcp_adu[TCPADU_START_LO]=i&0xff;
@@ -275,23 +275,23 @@ void *iface_rtu_master(void *arg)
 		clear_stat(&tmpstat);
 
 	if(i!=MAX_QUERY_ENTRIES) {//формируем следующий запрос из таблицы опроса
-		if(query_table[i].iface!=port_id) continue; ///!!! нужно реализовать массив с индексами
+		if(PQuery[i].iface!=port_id) continue; ///!!! нужно реализовать массив с индексами
     if(
-			(query_table[i].length==0) ||
-			(query_table[i].mbf==0) ||
-			(query_table[i].device==0)
+			(PQuery[i].length==0) ||
+			(PQuery[i].mbf==0) ||
+			(PQuery[i].device==0)
 			) continue; ///!!! нужно реализовать массив с индексами
 
-		usleep(query_table[i].delay*1000);
+		usleep(PQuery[i].delay*1000);
 		//printf("P%d, query #%d from table\n", port_id+1, i);
 
-		tcp_adu[TCPADU_ADDRESS]=query_table[i].device;
-		tcp_adu[TCPADU_FUNCTION]=query_table[i].mbf;
+		tcp_adu[TCPADU_ADDRESS]=PQuery[i].device;
+		tcp_adu[TCPADU_FUNCTION]=PQuery[i].mbf;
 
-		tcp_adu[TCPADU_START_HI]=(query_table[i].start>>8)&0xff;
-		tcp_adu[TCPADU_START_LO]= query_table[i].start&0xff;
-		tcp_adu[TCPADU_LEN_HI]=(query_table[i].length>>8)&0xff;
-		tcp_adu[TCPADU_LEN_LO]= query_table[i].length&0xff;
+		tcp_adu[TCPADU_START_HI]=(PQuery[i].start>>8)&0xff;
+		tcp_adu[TCPADU_START_LO]= PQuery[i].start&0xff;
+		tcp_adu[TCPADU_LEN_HI]=(PQuery[i].length>>8)&0xff;
+		tcp_adu[TCPADU_LEN_LO]= PQuery[i].length&0xff;
 																																	
 		tcp_adu_len=12;
 
@@ -300,10 +300,10 @@ void *iface_rtu_master(void *arg)
 //			tcp_adu_len+=6;
 //			for(j=tcp_adu_len-1; j>=6; j--) tcp_adu[j]=tcp_adu[j-6];
 
-			tcp_adu[TCPADU_ADDRESS]=query_table[device_id].device;
+			tcp_adu[TCPADU_ADDRESS]=PQuery[device_id].device;
 			j=	(((tcp_adu[TCPADU_START_HI]<<8) | tcp_adu[TCPADU_START_LO])&0xffff)-
-					query_table[device_id].offset+
-					query_table[device_id].start;
+					PQuery[device_id].offset+
+					PQuery[device_id].start;
 			tcp_adu[TCPADU_START_HI]=(j>>8)&0xff;
 			tcp_adu[TCPADU_START_LO]=j&0xff;
 
@@ -333,11 +333,11 @@ void *iface_rtu_master(void *arg)
 				update_stat(&IfaceRTU[port_id].stat, &tmpstat);
 
 		///!!! Место-положение этого бита находится в области памяти 4x шлюза
-		//gate502.wData4x[query_table[i].status_register]&=(~query_table[i].status_bit);
-				query_table[i].err_counter++;
+		//gate502.wData4x[PQuery[i].status_register]&=(~PQuery[i].status_bit);
+				PQuery[i].err_counter++;
 				if(i!=MAX_QUERY_ENTRIES)
-					if(query_table[i].err_counter >= query_table[i].critical)
-						query_table[i].status_bit=0; ///!!! добавить сообщение о пропадании связи с modbus-rtu сервером
+					if(PQuery[i].err_counter >= PQuery[i].critical)
+						PQuery[i].status_bit=0; ///!!! добавить сообщение о пропадании связи с modbus-rtu сервером
 				continue;
 		  	break;
 		  default:;
@@ -382,11 +382,11 @@ if((exceptions&EXPT_ACT_SKS07_DIOGEN)!=0)
 
 //				if(status==MB_SERIAL_READ_FAILURE) goto EndRun; ///!!!
 		///!!! Место-положение этого бита находится в области памяти 4x шлюза
-		//gate502.wData4x[query_table[i].status_register]&=(~query_table[i].status_bit);
-				query_table[i].err_counter++;
+		//gate502.wData4x[PQuery[i].status_register]&=(~PQuery[i].status_bit);
+				PQuery[i].err_counter++;
 				if(i!=MAX_QUERY_ENTRIES)
-					if(query_table[i].err_counter >= query_table[i].critical)
-						query_table[i].status_bit=0;  ///!!! добавить сообщение о пропадании связи с modbus-rtu сервером
+					if(PQuery[i].err_counter >= PQuery[i].critical)
+						PQuery[i].status_bit=0;  ///!!! добавить сообщение о пропадании связи с modbus-rtu сервером
 				continue;
 		  	break;
 		  default:;
@@ -395,7 +395,7 @@ if((exceptions&EXPT_ACT_SKS07_DIOGEN)!=0)
 ///###-----------------------------			
 	if(i!=MAX_QUERY_ENTRIES) { // сохраняем локально полученные данные
 //		for(j=3; j<serial_adu_len-2; j++)
-//			oDATA[2*query_table[i].offset+j-3]=serial_adu[j];
+//			oDATA[2*PQuery[i].offset+j-3]=serial_adu[j];
 		if((serial_adu[RTUADU_FUNCTION]&0x80)==0) {
 		switch(serial_adu[RTUADU_FUNCTION]) {
 
@@ -407,7 +407,7 @@ if((exceptions&EXPT_ACT_SKS07_DIOGEN)!=0)
 					mem_start=MoxaDevice.wData3x;
 
 				for(j=3; j<serial_adu_len-2; j+=2)
-					mem_start[query_table[i].offset+(j-3)/2]=
+					mem_start[PQuery[i].offset+(j-3)/2]=
 						(serial_adu[j] << 8) | serial_adu[j+1];
 
 				break;
@@ -423,8 +423,8 @@ if((exceptions&EXPT_ACT_SKS07_DIOGEN)!=0)
 					for(n=0; n<8; n++) {
 
 						mask_src = 0x01 << n; 								// битовая маска в исходном байте
-						mask_dst = 0x01 << (query_table[i].offset + n + (j-3)*8) % 8;	// битовая маска в байте назначения
-						status = (query_table[i].offset + n + (j-3)*8) / 8;						// индекс байта назначения в массиве
+						mask_dst = 0x01 << (PQuery[i].offset + n + (j-3)*8) % 8;	// битовая маска в байте назначения
+						status = (PQuery[i].offset + n + (j-3)*8) / 8;						// индекс байта назначения в массиве
 
 						m_start[status]= serial_adu[j] & mask_src ?\
 							m_start[status] | mask_dst:\
@@ -437,18 +437,18 @@ if((exceptions&EXPT_ACT_SKS07_DIOGEN)!=0)
 			default:;
 			}
 		///!!! Место-положение этого бита находится в области памяти 4x шлюза
-		//gate502.wData4x[query_table[i].status_register]|=query_table[i].status_bit;
-		query_table[i].status_bit=1;
-		query_table[i].err_counter=0;
+		//gate502.wData4x[PQuery[i].status_register]|=PQuery[i].status_bit;
+		PQuery[i].status_bit=1;
+		PQuery[i].err_counter=0;
 
   	tmpstat.sended++;
 		func_res_ok(serial_adu[RTUADU_FUNCTION], &tmpstat);
 		} else { // получено исключение
 			func_res_err(serial_adu[RTUADU_FUNCTION], &tmpstat);
 			
-			query_table[i].err_counter++;
-			if(query_table[i].err_counter >= query_table[i].critical)
-				query_table[i].status_bit=0;
+			PQuery[i].err_counter++;
+			if(PQuery[i].err_counter >= PQuery[i].critical)
+				PQuery[i].status_bit=0;
 		  }
 
 		///!!! статистику обновляем централизованно в функции int refresh_shm(void *arg) или подобной
@@ -458,8 +458,8 @@ if((exceptions&EXPT_ACT_SKS07_DIOGEN)!=0)
 
 			serial_adu[RTUADU_ADDRESS]=MoxaDevice.modbus_address;
 			j=(((serial_adu[RTUADU_START_HI]<<8) | serial_adu[RTUADU_START_LO])&0xffff)+
-				query_table[device_id].offset-
-				query_table[device_id].start;
+				PQuery[device_id].offset-
+				PQuery[device_id].start;
 			serial_adu[RTUADU_START_HI]=(j>>8)&0xff;
 			serial_adu[RTUADU_START_LO]=j&0xff;
 

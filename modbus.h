@@ -17,6 +17,8 @@
 
 ///=== MODBUS_H constants
 
+// конфигурационные константы времени компиляции
+
 #define DEVICE_NAME_LENGTH 64
 
 /* Predel'nye ТБЪНЕТЩ */

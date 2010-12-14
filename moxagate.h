@@ -17,6 +17,8 @@
 
 ///=== MOXAGATE_H constants
 
+// конфигурационные константы времени компил€ции
+
 #define	BASIC_STAT_GATEWAY_INFO 24
 #define	GATE_STATUS_BLOCK_LENGTH BASIC_STAT_GATEWAY_INFO+MAX_QUERY_ENTRIES/16
 

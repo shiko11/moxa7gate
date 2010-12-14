@@ -62,15 +62,15 @@ int check_AddressMap_Entry(int index)
 int init_Vslave_Entry(int index)
   {
   /// таблица назначения регистров
-	vslave[index].iface=GATEWAY_NONE;
-	vslave[index].device=MODBUS_ADDRESS_BROADCAST;
-  vslave[index].modbus_table=MB_TABLE_NONE;
-  vslave[index].offset=0;
+	VSlave[index].iface=GATEWAY_NONE;
+	VSlave[index].device=MODBUS_ADDRESS_BROADCAST;
+  VSlave[index].modbus_table=MB_TABLE_NONE;
+  VSlave[index].offset=0;
 
-	vslave[index].start=0;
-	vslave[index].length=0;
+	VSlave[index].start=0;
+	VSlave[index].length=0;
 
-	vslave[index].device_name[0]=0;
+	VSlave[index].device_name[0]=0;
 
   return 0;
   }
@@ -78,38 +78,38 @@ int init_Vslave_Entry(int index)
 int check_Vslave_Entry(int index)
   {
 
-  if( ((vslave[index].iface > GATEWAY_P8) && (vslave[index].iface < GATEWAY_T01)) ||
-      (vslave[index].iface > GATEWAY_T32)
+  if( ((VSlave[index].iface > GATEWAY_P8) && (VSlave[index].iface < GATEWAY_T01)) ||
+      (VSlave[index].iface > GATEWAY_T32)
     ) return VSLAVE_IFACE;
 	
   // игнорируем адрес MODBUS, если указан не RTU-интерфейс:
   if(AddressMap[index].iface<=GATEWAY_P8)
-    if(  (vslave[index].device < MODBUS_ADDRESS_MIN) ||
-         (vslave[index].device > MODBUS_ADDRESS_MAX)
+    if(  (VSlave[index].device < MODBUS_ADDRESS_MIN) ||
+         (VSlave[index].device > MODBUS_ADDRESS_MAX)
       ) return VSLAVE_MBADDR;
 
 	if(!(
-			vslave[index].modbus_table==COIL_STATUS_TABLE      ||
-			vslave[index].modbus_table==INPUT_STATUS_TABLE     ||
-			vslave[index].modbus_table==HOLDING_REGISTER_TABLE ||
-			vslave[index].modbus_table==INPUT_REGISTER_TABLE
+			VSlave[index].modbus_table==COIL_STATUS_TABLE      ||
+			VSlave[index].modbus_table==INPUT_STATUS_TABLE     ||
+			VSlave[index].modbus_table==HOLDING_REGISTER_TABLE ||
+			VSlave[index].modbus_table==INPUT_REGISTER_TABLE
 		)) return VSLAVE_MBTABL;
 
   // параметры, задающие адресуемый диапазон, проверяем в комплексе
 
   // начальный регистр диапазона	
-  if((unsigned int)(vslave[index].offset + vslave[index].start) > MB_ADDRESS_LAST) return VSLAVE_BEGDIAP;
+  if((unsigned int)(VSlave[index].offset + VSlave[index].start) > MB_ADDRESS_LAST) return VSLAVE_BEGDIAP;
 
   // конечный регистр диапазона	
   if((unsigned int)( \
-    vslave[index].offset + \
-    vslave[index].start + \
-    vslave[index].length) > MB_ADDRESS_LAST) return VSLAVE_ENDDIAP;
+    VSlave[index].offset + \
+    VSlave[index].start + \
+    VSlave[index].length) > MB_ADDRESS_LAST) return VSLAVE_ENDDIAP;
 
-  if(vslave[index].length==0) return VSLAVE_LENDIAP;
+  if(VSlave[index].length==0) return VSLAVE_LENDIAP;
 	
   /// Наименование устройства
-  // vslave[index].device_name
+  // VSlave[index].device_name
 
  	return 0;
   }
@@ -118,21 +118,21 @@ int check_Vslave_Entry(int index)
 int init_ProxyQuery_Entry(int index)
   {
   /// таблица опроса
-	query_table[index].iface=GATEWAY_NONE;
-	query_table[index].device=MODBUS_ADDRESS_BROADCAST;
-  query_table[index].mbf=MB_FUNC_NONE;
-  query_table[index].access=QT_ACCESS_DISABLED;
+	PQuery[index].iface=GATEWAY_NONE;
+	PQuery[index].device=MODBUS_ADDRESS_BROADCAST;
+  PQuery[index].mbf=MB_FUNC_NONE;
+  PQuery[index].access=QT_ACCESS_DISABLED;
 
-	query_table[index].start=0;
-	query_table[index].length=0;
-  query_table[index].offset=0;
+	PQuery[index].start=0;
+	PQuery[index].length=0;
+  PQuery[index].offset=0;
 
-  query_table[index].delay=0;
-	query_table[index].critical=0;
-	query_table[index].device_name[0]=0;
+  PQuery[index].delay=0;
+	PQuery[index].critical=0;
+	PQuery[index].device_name[0]=0;
 
-  query_table[index].err_counter=0;
-  query_table[index].status_bit=0;
+  PQuery[index].err_counter=0;
+  PQuery[index].status_bit=0;
 
   return 0;
   }
@@ -140,68 +140,68 @@ int init_ProxyQuery_Entry(int index)
 int check_ProxyQuery_Entry(int index)
   {
 
-  if( ((query_table[index].iface > GATEWAY_P8) && (query_table[index].iface < GATEWAY_T01)) ||
-      (query_table[index].iface > GATEWAY_T32)
+  if( ((PQuery[index].iface > GATEWAY_P8) && (PQuery[index].iface < GATEWAY_T01)) ||
+      (PQuery[index].iface > GATEWAY_T32)
     ) return PQUERY_IFACE;
 	
   // игнорируем адрес MODBUS, если указан не RTU-интерфейс:
   if(AddressMap[index].iface<=GATEWAY_P8)
-    if(  (query_table[index].device < MODBUS_ADDRESS_MIN) ||
-         (query_table[index].device > MODBUS_ADDRESS_MAX)
+    if(  (PQuery[index].device < MODBUS_ADDRESS_MIN) ||
+         (PQuery[index].device > MODBUS_ADDRESS_MAX)
       ) return PQUERY_MBADDR;
 
 	if(!(
-			query_table[index].mbf==MBF_READ_COILS             ||
-			query_table[index].mbf==MBF_READ_DECRETE_INPUTS    ||
-			query_table[index].mbf==MBF_READ_HOLDING_REGISTERS ||
-			query_table[index].mbf==MBF_READ_INPUT_REGISTERS
+			PQuery[index].mbf==MBF_READ_COILS             ||
+			PQuery[index].mbf==MBF_READ_DECRETE_INPUTS    ||
+			PQuery[index].mbf==MBF_READ_HOLDING_REGISTERS ||
+			PQuery[index].mbf==MBF_READ_INPUT_REGISTERS
 		)) return PQUERY_MBTABL;
 
 	if(!(
-			query_table[index].access==QT_ACCESS_READWRITE ||
-			query_table[index].access==QT_ACCESS_READONLY  ||
-			query_table[index].access==QT_ACCESS_DISABLED
+			PQuery[index].access==QT_ACCESS_READWRITE ||
+			PQuery[index].access==QT_ACCESS_READONLY  ||
+			PQuery[index].access==QT_ACCESS_DISABLED
 		)) return PQUERY_ACCESS;
 
   // начальный регистр области чтения
   // конечный регистр области чтения
-  if((unsigned int)(query_table[index].start + query_table[index].length -1) > MB_ADDRESS_LAST)
+  if((unsigned int)(PQuery[index].start + PQuery[index].length -1) > MB_ADDRESS_LAST)
     return PQUERY_ENDREGREAD;
 
   // длина пакета данных
-  if( (query_table[index].mbf==MBF_READ_COILS) && (
-      (query_table[index].length < MBF_0x01_MIN_QUANTITY) ||
-      (query_table[index].length > MBF_0x01_MAX_QUANTITY)
+  if( (PQuery[index].mbf==MBF_READ_COILS) && (
+      (PQuery[index].length < MBF_0x01_MIN_QUANTITY) ||
+      (PQuery[index].length > MBF_0x01_MAX_QUANTITY)
       )) return PQUERY_LENPACKET;
-  if( (query_table[index].mbf==MBF_READ_DECRETE_INPUTS) && (
-      (query_table[index].length < MBF_0x02_MIN_QUANTITY) ||
-      (query_table[index].length > MBF_0x02_MAX_QUANTITY)
+  if( (PQuery[index].mbf==MBF_READ_DECRETE_INPUTS) && (
+      (PQuery[index].length < MBF_0x02_MIN_QUANTITY) ||
+      (PQuery[index].length > MBF_0x02_MAX_QUANTITY)
       )) return PQUERY_LENPACKET;
-  if( (query_table[index].mbf==MBF_READ_HOLDING_REGISTERS) && (
-      (query_table[index].length < MBF_0x03_MIN_QUANTITY) ||
-      (query_table[index].length > MBF_0x03_MAX_QUANTITY)
+  if( (PQuery[index].mbf==MBF_READ_HOLDING_REGISTERS) && (
+      (PQuery[index].length < MBF_0x03_MIN_QUANTITY) ||
+      (PQuery[index].length > MBF_0x03_MAX_QUANTITY)
       )) return PQUERY_LENPACKET;
-  if( (query_table[index].mbf==MBF_READ_INPUT_REGISTERS) && (
-      (query_table[index].length < MBF_0x04_MIN_QUANTITY) ||
-      (query_table[index].length > MBF_0x04_MAX_QUANTITY)
+  if( (PQuery[index].mbf==MBF_READ_INPUT_REGISTERS) && (
+      (PQuery[index].length < MBF_0x04_MIN_QUANTITY) ||
+      (PQuery[index].length > MBF_0x04_MAX_QUANTITY)
       )) return PQUERY_LENPACKET;
 
   // начальный регистр области записи
   // конечный регистр области записи
-  if((unsigned int)(query_table[index].offset + query_table[index].length) > MB_ADDRESS_LAST)
+  if((unsigned int)(PQuery[index].offset + PQuery[index].length) > MB_ADDRESS_LAST)
     return PQUERY_ENDREGWRITE;
 
-  if( (((query_table[index].iface & IFACETCP_MASK)==0) && (query_table[index].delay < QT_DELAY_RTU_MIN)) ||
-      (((query_table[index].iface & IFACETCP_MASK)!=0) && (query_table[index].delay < QT_DELAY_TCP_MIN))
+  if( (((PQuery[index].iface & IFACETCP_MASK)==0) && (PQuery[index].delay < QT_DELAY_RTU_MIN)) ||
+      (((PQuery[index].iface & IFACETCP_MASK)!=0) && (PQuery[index].delay < QT_DELAY_TCP_MIN))
     ) return PQUERY_DELAYMIN;
-  if( (((query_table[index].iface & IFACETCP_MASK)==0) && (query_table[index].delay > QT_DELAY_RTU_MAX)) ||
-      (((query_table[index].iface & IFACETCP_MASK)!=0) && (query_table[index].delay > QT_DELAY_TCP_MAX))
+  if( (((PQuery[index].iface & IFACETCP_MASK)==0) && (PQuery[index].delay > QT_DELAY_RTU_MAX)) ||
+      (((PQuery[index].iface & IFACETCP_MASK)!=0) && (PQuery[index].delay > QT_DELAY_TCP_MAX))
     ) return PQUERY_DELAYMAX;
 
-  if(query_table[index].critical > QT_CRITICAL_MAX) return PQUERY_ERRCNTR;
+  if(PQuery[index].critical > QT_CRITICAL_MAX) return PQUERY_ERRCNTR;
 	
   /// Наименование устройства
-  // query_table[i].device_name
+  // PQuery[i].device_name
 
  	return 0;
   }
@@ -268,8 +268,8 @@ int init_frwd_queue_h()
   unsigned int i;			
 
 	memset(AddressMap,  0, sizeof(AddressMap));
-	memset(vslave,      0, sizeof(vslave));
-	memset(query_table, 0, sizeof(query_table));
+	memset(VSlave,      0, sizeof(VSlave));
+	memset(PQuery, 0, sizeof(PQuery));
 	memset(Exception,   0, sizeof(Exception));
 
   for(i=0; i<=MODBUS_ADDRESS_MAX; i++)        init_AddressMap_Entry(i);
@@ -457,19 +457,19 @@ int translateRegisters(int start_address, int length, int *port_id, int *device_
 
   for(i=0; i<MAX_VIRTUAL_SLAVES; i++) {
     if(
-//			(vslave[i].start==0) ||
-			(vslave[i].length==0) ||
-//			(vslave[i].port==SERIAL_STUB) ||
-			(vslave[i].device==0)
+//			(VSlave[i].start==0) ||
+			(VSlave[i].length==0) ||
+//			(VSlave[i].port==SERIAL_STUB) ||
+			(VSlave[i].device==0)
 			) continue;
 
-			if((start_address>=vslave[i].start)&&(start_address<(vslave[i].start+vslave[i].length))) break;
+			if((start_address>=VSlave[i].start)&&(start_address<(VSlave[i].start+VSlave[i].length))) break;
 			}
 	if(i==MAX_VIRTUAL_SLAVES) return 1;
-  //printf("%d + %d < %d + %d (i=%d)\n", vslave[i].start, vslave[i].length, start_address, length, i);
-  if((vslave[i].start+vslave[i].length)<(start_address+length)) return 2;
+  //printf("%d + %d < %d + %d (i=%d)\n", VSlave[i].start, VSlave[i].length, start_address, length, i);
+  if((VSlave[i].start+VSlave[i].length)<(start_address+length)) return 2;
 
-	*port_id=vslave[i].iface;
+	*port_id=VSlave[i].iface;
 	*device_id=i; // индекс блока адресов виртуального устройства
 	
   return 0;
@@ -481,19 +481,19 @@ int translateProxyDevice(int start_address, int length, int *port_id, int *devic
 
   for(i=0; i<MAX_QUERY_ENTRIES; i++) {
     if(
-			(query_table[i].length==0) ||
-			(query_table[i].mbf==0) ||
-			(query_table[i].device==0)
+			(PQuery[i].length==0) ||
+			(PQuery[i].mbf==0) ||
+			(PQuery[i].device==0)
 			) continue;
 
-			if((start_address>=query_table[i].offset)&&(start_address<(query_table[i].offset+query_table[i].length)))
+			if((start_address>=PQuery[i].offset)&&(start_address<(PQuery[i].offset+PQuery[i].length)))
 				break;
 			}
 	if(i==MAX_VIRTUAL_SLAVES) return 1;
-  //printf("%d + %d < %d + %d (i=%d)\n", vslave[i].start, vslave[i].length, start_address, length, i);
-  if((query_table[i].offset+query_table[i].length)<(start_address+length)) return 2;
+  //printf("%d + %d < %d + %d (i=%d)\n", VSlave[i].start, VSlave[i].length, start_address, length, i);
+  if((PQuery[i].offset+PQuery[i].length)<(start_address+length)) return 2;
 
-	*port_id=query_table[i].iface;
+	*port_id=PQuery[i].iface;
 	*device_id=i; // индекс блока адресов виртуального устройства
 	
   return 0;

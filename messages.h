@@ -19,8 +19,9 @@
 // конфигурационные константы времени компиляции
 
 #define EVENT_LOG_LENGTH 100        // длина журнала сообщений
-#define EVENT_MESSAGE_LENGTH 63     // в связи с размерами экрана LCM выбираем такое значение
 #define EVENT_TEMPLATE_AMOUNT 0x100 // количество сообщений в массиве шаблонов
+#define EVENT_MESSAGE_LENGTH 63     // в связи с размерами экрана LCM выбираем такое значение
+#define EVENT_MESSAGE_PREFIX 32     // префикс занимает не больше 2-х строк LCM
 
 /// Типы событий, возникающих в процессе работы:
 //    - внешние (monitor)
@@ -40,7 +41,7 @@
 
 #define EVENT_SRC_MASK        0x0F
 
-///!!!
+/// типы отладочных пакетов данных, выводимых в консоль сессии telnet
 #define TRAFFIC_RTU_RECV	182
 #define TRAFFIC_RTU_SEND	183
 #define TRAFFIC_TCP_RECV	184
@@ -66,6 +67,12 @@
 #define EVENT_TPL_S4_MASK 0x80
 
 #define EVENT_TPL_NOPARAM 0x100
+		
+// отображение типа в порядковый номер
+#define EVENT_TYPE_ORD(type) (((type) >> 4)&0x03)
+
+// отображение категории в порядковый номер
+#define EVENT_CAT_ORD(cat) ((cat) >> 6)
 
 ///=== MESSAGES_H data types
 
@@ -91,9 +98,15 @@ typedef struct { // ЖУРНАЛ СОБЫТИЙ ШЛЮЗА
 	unsigned int msg_filter;
 
   // счетчики сообщений каждого типа
-  unsigned int inf_msgs_amount;
-  unsigned int wrn_msgs_amount;
-  unsigned int err_msgs_amount;
+  unsigned int  cat_msgs_amount[4];
+  unsigned int type_msgs_amount[4];
+
+  // массив шаблонов сообщений, жестко связан с кодами возврата критичных функций в ПО:
+  char message_template[EVENT_TEMPLATE_AMOUNT][EVENT_MESSAGE_LENGTH];
+  // массив типов шаблонов по комбинациям параметров,
+  // генерируется автоматически путем анализа заданных шаблонов
+  unsigned int message_index[EVENT_TEMPLATE_AMOUNT];
+
 	} GW_EventLog;
 
 ///=== MESSAGES_H public variables
@@ -118,6 +131,11 @@ void make_msgstr(	unsigned char msgcode, char *str,
 									unsigned int prm2,
 									unsigned int prm3,
 									unsigned int prm4);
+
+/// возвращает трехсимвольное обозначение категории сообщения
+void get_msgtype_str(unsigned char msgtype, char *str);			 
+/// возвращает семисимвольное обозначение источника сообщения
+void get_msgsrc_str(unsigned char msgtype, unsigned int prm1, char *str);
 
 ///*************************************************************************************
 

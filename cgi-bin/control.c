@@ -93,6 +93,8 @@ int main(int argc, char *argv[])
 		sizeof(GW_Iface)*MAX_TCP_SERVERS+
 		sizeof(GW_Client)*MOXAGATE_CLIENTS_NUMBER+
 		sizeof(GW_EventLog)+
+		sizeof(event_log->message_index)+
+		sizeof(event_log->message_template)+
 		sizeof(GW_Event)*EVENT_LOG_LENGTH;
 
 	shm_segment_id=shmget(access_key, mem_size_ttl, S_IRUSR | S_IWUSR);
@@ -162,6 +164,14 @@ Modbus-шлюз не отвечает на этом компьютере MOXA. Код ошибки: %s\
 	event_log=(GW_EventLog *) (pointer+k);
 
   k+= sizeof(GW_EventLog);
+
+	event_log->message_index= (pointer+k);
+
+  k+= sizeof(eventlog->message_index);
+
+	event_log->message_template= (pointer+k);
+
+  k+= sizeof(eventlog->message_template);
 
   //EventLog.app_log=
   event_log->app_log=
@@ -487,7 +497,7 @@ return;
 ///-----------------------------------------------------------
 void show_events()
 {
-/*
+
 		printf("\
 <h1 align=\"center\">Журнал событий</h1>\n\n\
 <table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" align=\"center\" style=\"width:80%\" id=\"events_table\">\n\
@@ -497,7 +507,7 @@ void show_events()
 <th>Время\n\
 <th>Тип\n\
 <th>Источник\n\
-<th>Сообщение\n\
+<th>Текст сообщения\n\
 \n");
 
 	struct tm *tmd;
@@ -505,45 +515,35 @@ void show_events()
 	char timestr[32], sourcestr[16], typestr[8];
 	char eventmsg[EVENT_MESSAGE_LENGTH];
 
+  ///!!! использовать разделяемый сегмент памяти для хранения шаблонов сообщений
+  ///!!! для экономии процессорного времени:
 	init_message_templates();
 
-  j=gate->app_log_current_entry;
+  j = event_log->app_log_current_entry;
 	for(i=0; i<EVENT_LOG_LENGTH; i++) {
 
-	if(app_log[j].msgtype==0) {
-		j=j==EVENT_LOG_LENGTH-1?0:j+1;
+	if(event_log->app_log[j].msgtype==0) {
+		j = j==EVENT_LOG_LENGTH-1 ? 0 : j+1;
 		continue;
 		}
 
-	tmd=gmtime(&app_log[j].time);
-	sprintf(timestr, "%2.2d.%2.2d.%4.4d %2.2d:%2.2d:%2.2d", tmd->tm_mday, tmd->tm_mon+1, tmd->tm_year+1900, tmd->tm_hour, tmd->tm_min, tmd->tm_sec);
+	tmd=gmtime(&event_log->app_log[j].time);
+  strftime(eventmsg, 16, " %b", tmd);
+	sprintf(timestr, "%2.2d%s %2.2d:%2.2d:%2.2d ", tmd->tm_mday,
+                                                 eventmsg,
+                                                 tmd->tm_hour,
+                                                 tmd->tm_min,
+                                                 tmd->tm_sec);
 
-	switch(app_log[j].msgtype & EVENT_TYPE_MASK) {
-			case EVENT_TYPE_INF: sprintf(typestr, "INF"); break;
-			case EVENT_TYPE_WRN: sprintf(typestr, "WRN"); break;
-			case EVENT_TYPE_ERR: sprintf(typestr, "ERR"); break;
-			default: sprintf(typestr, "***");
-			}
+	get_msgtype_str(event_log->app_log[j].msgtype, typestr);
 
-	switch(app_log[j].msgtype & EVENT_SRC_MASK) {
-			case EVENT_SRC_SYSTEM: 	sprintf(sourcestr, "SYSTEM"); 	break;
-			case EVENT_SRC_GATE502: sprintf(sourcestr, "GATE502"); 	break;
-			case EVENT_SRC_P1: 			sprintf(sourcestr, "PORT1"); 		break;
-			case EVENT_SRC_P2: 			sprintf(sourcestr, "PORT2"); 		break;
-			case EVENT_SRC_P3: 			sprintf(sourcestr, "PORT3"); 		break;
-			case EVENT_SRC_P4: 			sprintf(sourcestr, "PORT4"); 		break;
-			case EVENT_SRC_P5: 			sprintf(sourcestr, "PORT5"); 		break;
-			case EVENT_SRC_P6: 			sprintf(sourcestr, "PORT6"); 		break;
-			case EVENT_SRC_P7: 			sprintf(sourcestr, "PORT7"); 		break;
-			case EVENT_SRC_P8: 			sprintf(sourcestr, "PORT8"); 		break;
-			case EVENT_SRC_MOXAMB: 	sprintf(sourcestr, "MOXAMB"); 	break;
-			case EVENT_SRC_MOXATCP: sprintf(sourcestr, "MOXATCP"); 	break;
-
-			default: 								sprintf(sourcestr, "NONAME");
-			}
+	get_msgsrc_str(event_log->app_log[j].msgtype, event_log->app_log[j].prm[0], sourcestr);
 
 	eventmsg[0]=0;
-	make_msgstr(app_log[j].msgcode, eventmsg, app_log[j].prm[0], app_log[j].prm[1], app_log[j].prm[2], app_log[j].prm[3]);
+	make_msgstr(event_log->app_log[j].msgcode, eventmsg, event_log->app_log[j].prm[0],
+                                                       event_log->app_log[j].prm[1],
+                                                       event_log->app_log[j].prm[2],
+                                                       event_log->app_log[j].prm[3]);
 
 	printf("\
 <tr>\n\
@@ -554,13 +554,13 @@ void show_events()
 <td>%s\n\
 \n", j+1, timestr, typestr, sourcestr, eventmsg);
 
-	j=j==EVENT_LOG_LENGTH-1?0:j+1;
+	j = j==EVENT_LOG_LENGTH-1 ? 0 : j+1;
   }
 
 		printf("\
 </table>\n\
 \n");
-*/
+
 return;
 }
 ///-----------------------------------------------------------

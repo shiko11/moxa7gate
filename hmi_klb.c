@@ -147,6 +147,10 @@ void *mx_keypad_lcm(void *arg)
         screen.current_screen==LCM_SETT_PORT7 ||
         screen.current_screen==LCM_SETT_PORT8
       ) process_key_settings(i);
+    else
+    if(screen.current_screen==LCM_EVENTLOG_DETAILS ||
+       screen.current_screen==LCM_EVENTLOG_FILTERS
+      ) process_key_event(i);
     }
 
     if(!(
@@ -196,6 +200,8 @@ void show_screen(int display)
     case LCM_SETT_PORT8:
       show_uart_settings(display-LCM_SETT_PORT1);
       break;
+
+    case LCM_EVENTLOG_DETAILS: show_log_event();  break;
 
 		default: return;
 	  }
@@ -261,6 +267,14 @@ void process_key_main(int key)
         screen.prev_screen = screen.current_screen;
         screen.current_screen = LCM_SETT_PORT1+screen.main_scr_rtu;
         break;
+        }
+
+      if(screen.current_screen==LCM_MAIN_EVENTLOG) {
+        screen.prev_screen=screen.current_screen;
+        screen.current_screen=LCM_EVENTLOG_DETAILS;
+        screen.eventlog_current = EventLog.app_log_current_entry==0 ?
+                                  EVENT_LOG_LENGTH-1 : EventLog.app_log_current_entry-1;
+       break;
         }
 
   		break;
@@ -336,6 +350,15 @@ void process_key_menu(int key)
         break;
         }
 
+      if((screen.prev_screen==LCM_MAIN_EVENTLOG) &&
+         (screen.main_menu_current==2)
+        ) {
+        screen.current_screen=LCM_EVENTLOG_DETAILS;
+        screen.eventlog_current = EventLog.app_log_current_entry==0 ?
+                                  EVENT_LOG_LENGTH-1 : EventLog.app_log_current_entry-1;
+        break;
+        }
+
       if(((screen.prev_screen==LCM_MAIN_IFRTU1) || (screen.prev_screen==LCM_MAIN_IFRTU2)) &&
          (screen.main_menu_current==4)
         ) {
@@ -396,5 +419,85 @@ void process_key_settings(int key)
     };
 
   return;
+  }
+///----------------------------------------------------------------------------
+void process_key_event(int key)
+  {
+
+  switch(key) {
+
+  	case KEY_F1: ///------------------
+  		break;
+
+  	case KEY_F2: ///------------------
+      screen.eventlog_current=\
+			  screen.eventlog_current==0?\
+			  EventLog.app_log_current_entry-1:screen.eventlog_current-1;
+  		break;
+
+  	case KEY_F3: ///------------------
+      screen.current_screen=screen.prev_screen;
+  		break;
+
+  	case KEY_F4: ///------------------
+      screen.eventlog_current=\
+			  screen.eventlog_current==EventLog.app_log_current_entry-1?\
+			  0:screen.eventlog_current+1;
+  		break;
+
+  	case KEY_F5: ///------------------
+  		break;
+
+  	default:;    ///------------------
+    };
+
+  return;
+  }
+///----------------------------------------------------------------------------
+int ctrl_reset_all_counters()
+  {
+  ctrl_reset_port_counters(GATEWAY_P1);
+  ctrl_reset_port_counters(GATEWAY_P2);
+  ctrl_reset_port_counters(GATEWAY_P3);
+  ctrl_reset_port_counters(GATEWAY_P4);
+  ctrl_reset_port_counters(GATEWAY_P5);
+  ctrl_reset_port_counters(GATEWAY_P6);
+  ctrl_reset_port_counters(GATEWAY_P7);
+  ctrl_reset_port_counters(GATEWAY_P8);
+   
+  return 0;	
+  }
+int ctrl_reset_port_counters(int port)
+  {
+  if(port<0 || port>7) return 1;
+
+  IfaceRTU[port].stat.accepted=\
+  IfaceRTU[port].stat.errors_input_communication=\
+  IfaceRTU[port].stat.errors_tcp_adu=\
+  IfaceRTU[port].stat.errors_tcp_pdu=\
+  IfaceRTU[port].stat.errors_serial_sending=\
+  IfaceRTU[port].stat.errors_serial_accepting=\
+  IfaceRTU[port].stat.timeouts=\
+  IfaceRTU[port].stat.crc_errors=\
+  IfaceRTU[port].stat.errors_serial_adu=\
+  IfaceRTU[port].stat.errors_serial_pdu=\
+  IfaceRTU[port].stat.errors_tcp_sending=\
+  IfaceRTU[port].stat.errors=\
+  IfaceRTU[port].stat.sended=0;
+
+//  IfaceRTU[port].stat.latency_history[MAX_LATENCY_HISTORY_POINTS];
+//  IfaceRTU[port].stat.clp; // current latensy point
+  int i;
+  for(i=0; i<MB_FUNCTIONS_IMPLEMENTED*2+1; i++)
+  	//IfaceRTU[port].stat.input_messages[i]=\
+  	IfaceRTU[port].stat.output_messages[i]=0;
+
+  return 0;	
+  }
+
+int ctrl_reboot_system()
+  {
+	Security.halt=1;
+  return 0;	
   }
 ///----------------------------------------------------------------------------

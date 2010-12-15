@@ -17,7 +17,8 @@
 ///=== HMI_KLB_H private variables
 
 unsigned int i, j, k;
-char marker[8];
+char marker[EVENT_MESSAGE_LENGTH+EVENT_MESSAGE_PREFIX];
+struct tm *tmd;
 
 unsigned menu_actions_amount[LCM_NOT_IMPLEMENTED];
 char     menu_tpl           [LCM_NOT_IMPLEMENTED][LCM_MENU_MAX_ACTIONS][LCM_MENU_ACTDEFLEN];
@@ -32,26 +33,29 @@ void init_menu_tpl()
   memset(menu_actions_amount, 0, sizeof(menu_actions_amount));
   memset(menu_tpl,            0, sizeof(menu_tpl));
 
-  menu_actions_amount[LCM_MAIN_IFRTU1]=5;
+  menu_actions_amount[LCM_MAIN_IFRTU1]=6;
   strcpy(menu_tpl[LCM_MAIN_IFRTU1][0], "page up  ");
   strcpy(menu_tpl[LCM_MAIN_IFRTU1][1], "home     ");
-  strcpy(menu_tpl[LCM_MAIN_IFRTU1][2], "stat detl");
+  strcpy(menu_tpl[LCM_MAIN_IFRTU1][2], "statatist");
   strcpy(menu_tpl[LCM_MAIN_IFRTU1][3], "about    ");
   strcpy(menu_tpl[LCM_MAIN_IFRTU1][4], "settings ");
+  strcpy(menu_tpl[LCM_MAIN_IFRTU1][5], "forwardin");
 
-  menu_actions_amount[LCM_MAIN_IFRTU2]=5;
+  menu_actions_amount[LCM_MAIN_IFRTU2]=6;
   strcpy(menu_tpl[LCM_MAIN_IFRTU2][0], "page up  ");
   strcpy(menu_tpl[LCM_MAIN_IFRTU2][1], "home     ");
   strcpy(menu_tpl[LCM_MAIN_IFRTU2][2], "stat detl");
   strcpy(menu_tpl[LCM_MAIN_IFRTU2][3], "about    ");
   strcpy(menu_tpl[LCM_MAIN_IFRTU2][4], "settings ");
+  strcpy(menu_tpl[LCM_MAIN_IFRTU2][5], "forwardin");
 
-  menu_actions_amount[LCM_MAIN_IFTCP]=5;
+  menu_actions_amount[LCM_MAIN_IFTCP]=6;
   strcpy(menu_tpl[LCM_MAIN_IFTCP][0], "page up  ");
   strcpy(menu_tpl[LCM_MAIN_IFTCP][1], "home     ");
   strcpy(menu_tpl[LCM_MAIN_IFTCP][2], "stat detl");
   strcpy(menu_tpl[LCM_MAIN_IFTCP][3], "about    ");
   strcpy(menu_tpl[LCM_MAIN_IFTCP][4], "settings ");
+  strcpy(menu_tpl[LCM_MAIN_IFTCP][5], "forwardin");
 
   menu_actions_amount[LCM_MAIN_MOXAGATE]=6;
   strcpy(menu_tpl[LCM_MAIN_MOXAGATE][0], "page up  ");
@@ -67,11 +71,12 @@ void init_menu_tpl()
   strcpy(menu_tpl[LCM_MAIN_EVENTLOG][2], "show log ");
   strcpy(menu_tpl[LCM_MAIN_EVENTLOG][3], "about    ");
 
-  menu_actions_amount[LCM_MAIN_SYSINFO]=4;
+  menu_actions_amount[LCM_MAIN_SYSINFO]=5;
   strcpy(menu_tpl[LCM_MAIN_SYSINFO][0], "page up  ");
   strcpy(menu_tpl[LCM_MAIN_SYSINFO][1], "home     ");
   strcpy(menu_tpl[LCM_MAIN_SYSINFO][2], "bck light");
   strcpy(menu_tpl[LCM_MAIN_SYSINFO][3], "about    ");
+  strcpy(menu_tpl[LCM_MAIN_SYSINFO][4], "turn buzz");
 
   menu_actions_amount[LCM_MAIN_SETTINGS]=4;
   strcpy(menu_tpl[LCM_MAIN_SETTINGS][0], "page up  ");
@@ -275,12 +280,13 @@ void show_main_eventlog()
 	sprintf(screen.text[0], "EVENT LOG [%4.4d]", EVENT_LOG_LENGTH);
 	strcpy (screen.text[1], "----------------");
 	sprintf(screen.text[2], "%cALL Events %4.4d", marker[0],
-                                                EventLog.inf_msgs_amount+
-                                                EventLog.wrn_msgs_amount+
-                                                EventLog.err_msgs_amount);
-	sprintf(screen.text[3], "%cINF Events %4.4d", marker[1], EventLog.inf_msgs_amount);
-	sprintf(screen.text[4], "%cWRN Events %4.4d", marker[2], EventLog.wrn_msgs_amount);
-	sprintf(screen.text[5], "%cERR Events %4.4d", marker[3], EventLog.err_msgs_amount);
+                                                EventLog.app_log_entries_total);
+	sprintf(screen.text[3], "%cINF Events %4.4d", marker[1],
+                                                EventLog.type_msgs_amount[EVENT_TYPE_ORD(EVENT_TYPE_INF)]);
+	sprintf(screen.text[4], "%cWRN Events %4.4d", marker[2],
+                                                EventLog.type_msgs_amount[EVENT_TYPE_ORD(EVENT_TYPE_WRN)]);
+	sprintf(screen.text[5], "%cERR Events %4.4d", marker[3],
+                                                EventLog.type_msgs_amount[EVENT_TYPE_ORD(EVENT_TYPE_ERR)]);
 //  if(Security.show_sys_messages)
 //	       sprintf(screen.text[6], "Debug Events  On");
 //    else sprintf(screen.text[6], "Debug Events Off");
@@ -291,6 +297,97 @@ void show_main_eventlog()
   return;
   }
 
+/*//----------------------------------------------------------------------------
+-----------------
+|LOG EVENTS <ALL>|
+|1234 INF   PORT1|
+|03 DEC  14:32:00|
+|- COMMAND LINE P|
+|ARSED SUCCESSFUL|
+|LY              |
+|                |
+|F2-PREV  F4-NEXT|
+-----------------
+F1-HELP (Контекстная справка)
+F3-BACK
+F5-MENU (Порядок сортировки, возрастание, убывание, форма фильтра по источникам)
+*///----------------------------------------------------------------------------
+void show_log_event()
+  {
+	// текущая реализация функции отображает только самое последнее сообщение
+
+  strcpy(screen.text[4], "                ");
+  strcpy(screen.text[5], "                ");
+  strcpy(screen.text[6], "                ");
+
+  if(EventLog.app_log_entries_total==0) {
+    strcpy(screen.text[0], "LOG EVENTS <ALL>");
+    strcpy(screen.text[1], "                ");
+    strcpy(screen.text[2], "                ");
+    strcpy(screen.text[3], " EVENT LOG HAVE ");
+    strcpy(screen.text[4], "   NO ENTRIES   ");
+    strcpy(screen.text[7], "F3-BACK         ");
+
+    mxlcm_write_screen(mxlcm_handle, screen.text);
+    return;
+    }
+  
+	strcpy (screen.text[0], "LOG EVENTS <ALL>");
+
+  k = screen.eventlog_current;
+
+  get_msgtype_str(EventLog.app_log[k].msgtype, marker);
+  get_msgsrc_str( EventLog.app_log[k].msgtype, EventLog.app_log[k].prm[0], &marker[8]);
+	sprintf(screen.text[1], "%3.3d %s %s", k+1, marker, &marker[8]);
+
+	tmd=gmtime(&EventLog.app_log[k].time);
+  strftime(marker, 16, " %b", tmd);
+	sprintf(screen.text[2], "%2.2d%s  %2.2d:%2.2d:%2.2d", tmd->tm_mday,
+                                       marker,
+                                       tmd->tm_hour,
+                                       tmd->tm_min,
+                                       tmd->tm_sec);
+
+	marker[0]=0;
+	make_msgstr(EventLog.app_log[k].msgcode, marker, EventLog.app_log[k].prm[0],
+                                                   EventLog.app_log[k].prm[1],
+                                                   EventLog.app_log[k].prm[2],
+                                                   EventLog.app_log[k].prm[3]);
+  j=strlen(marker);
+  for(i=0; i<j; i++) marker[i]=tolower(marker[i]);
+
+  i=marker[14];
+  marker[14]=0;
+	sprintf(screen.text[3], "- %s", &marker[0]);
+  screen.text[3][0]=26;
+  marker[14]=i;
+
+  if(j>14) {
+    i=marker[30];
+    marker[30]=0;
+  	sprintf(screen.text[4], "%s", &marker[14]);
+    marker[30]=i;
+    }
+
+  if(j>30) {
+    i=marker[46];
+    marker[46]=0;
+  	sprintf(screen.text[5], "%s", &marker[30]);
+    marker[46]=i;
+    }
+
+  if(j>46) {
+    i=marker[62];
+    marker[62]=0;
+  	sprintf(screen.text[6], "%s", &marker[46]);
+    marker[62]=i;
+    }
+
+	strcpy (screen.text[7], "F2-PREV  F4-NEXT");
+
+  mxlcm_write_screen(mxlcm_handle, screen.text);
+  return;
+  }
 /*//----------------------------------------------------------------------------
 LCM_MAIN_SYSINFO
 -----------------
@@ -453,7 +550,7 @@ LCM_MAIN_MENU
 
 *///----------------------------------------------------------------------------
 void show_main_menu()
-  {				
+  {
   marker[0]=screen.text[1][14];
 	strcpy(&screen.text[1][2], "-menu-------");
   screen.text[1][14]=marker[0];
@@ -796,65 +893,3 @@ void show_stub_screen()
   return;
   }
 ///----------------------------------------------------------------------------
-int ctrl_reset_all_counters()
-  {
-  ctrl_reset_port_counters(GATEWAY_P1);
-  ctrl_reset_port_counters(GATEWAY_P2);
-  ctrl_reset_port_counters(GATEWAY_P3);
-  ctrl_reset_port_counters(GATEWAY_P4);
-  ctrl_reset_port_counters(GATEWAY_P5);
-  ctrl_reset_port_counters(GATEWAY_P6);
-  ctrl_reset_port_counters(GATEWAY_P7);
-  ctrl_reset_port_counters(GATEWAY_P8);
-   
-  return 0;	
-  }
-int ctrl_reset_port_counters(int port)
-  {
-  if(port<0 || port>7) return 1;
-
-  IfaceRTU[port].stat.accepted=\
-  IfaceRTU[port].stat.errors_input_communication=\
-  IfaceRTU[port].stat.errors_tcp_adu=\
-  IfaceRTU[port].stat.errors_tcp_pdu=\
-  IfaceRTU[port].stat.errors_serial_sending=\
-  IfaceRTU[port].stat.errors_serial_accepting=\
-  IfaceRTU[port].stat.timeouts=\
-  IfaceRTU[port].stat.crc_errors=\
-  IfaceRTU[port].stat.errors_serial_adu=\
-  IfaceRTU[port].stat.errors_serial_pdu=\
-  IfaceRTU[port].stat.errors_tcp_sending=\
-  IfaceRTU[port].stat.errors=\
-  IfaceRTU[port].stat.sended=0;
-
-//  IfaceRTU[port].stat.latency_history[MAX_LATENCY_HISTORY_POINTS];
-//  IfaceRTU[port].stat.clp; // current latensy point
-  int i;
-  for(i=0; i<MB_FUNCTIONS_IMPLEMENTED*2+1; i++)
-  	//IfaceRTU[port].stat.input_messages[i]=\
-  	IfaceRTU[port].stat.output_messages[i]=0;
-
-  return 0;	
-  }
-
-int ctrl_reboot_system()
-  {
-	Security.halt=1;
-  return 0;	
-  }
-
-/*
------------------
-|LOG EVENTS <ALL>|
-|1234 INF   PORT1|
-|03 DEC  14:32:00|
-|- COMMAND LINE P|
-|ARSED SUCCESSFUL|
-|LY              |
-|                |
-|F2-BACK  F4-NEXT|
------------------
-F1-HELP (Контекстная справка)
-F5-OPTIONS (Порядок сортировки)
-
-*/

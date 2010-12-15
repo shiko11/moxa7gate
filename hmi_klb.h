@@ -16,8 +16,12 @@
 
 ///=== HMI_KEYPAD_LCM_H constants
 
-///!!! сделать бегущую строку в заголовке каждого экрана "MAIN" уровня
-///!!! строка содержит название экрана + сетевое имя устройства
+///!!! динамические эффекты экранов LCM
+/// - бегущая строка в заголовке каждого экрана "MAIN" уровня,
+///   строка содержит название экрана + сетевое имя устройства;
+/// - прокрутка строки с названием пункта меню в длину;
+/// - периодическая смена экранов уовня MAIN;
+/// - возврат к одному из экранов уровня MAIN по таймауту;
 
 // конфигурационные константы времени компиляции
 #define	LCM_SCREEN_UPDATE_RATE 800000
@@ -123,6 +127,8 @@ typedef struct { // net initsializatsii polej structury
   unsigned int main_menu_current; // LCM_MAIN_MENU
   unsigned int main_menu_action;  // LCM_MAIN_MENU
 
+  unsigned int eventlog_current;  // LCM_EVENTLOG_DETAILS
+
   //unsigned int menu_scr_mode;
   //unsigned int secr_scr_mode;
   //unsigned int back_light;
@@ -183,6 +189,7 @@ void show_screen(int display);
 void process_key_main(int key);
 void process_key_menu(int key);
 void process_key_settings(int key);
+void process_key_event(int key);
 
 ///--- control functions
 int ctrl_reset_all_counters();

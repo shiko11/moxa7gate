@@ -21,7 +21,12 @@ struct sockaddr_in	addr;
 ///=== MAIN_H private functions
 
 ///-----------------------------------------------------------------------------------------------------------------
-
+// коды возврата из функции main соответствуют стадии работы приложени€:
+// 0 - приложение завершилось штатным образом (по команде от HMI, либо автоматически)
+// 1 - возникла ошибка при чтении параметров конфигурации;
+// 2 - возникла ошибка при проверке ссылочной целостности параметров конфигурации;
+// 3 - возникла ошибка при инициализации системных переменных, выделении ресурсов дл€ нужд приложени€;
+// 4 - возникла фатальна€ ошибка в ходе работы приложени€;
 int main(int argc, char *argv[])
 {
 
@@ -36,19 +41,25 @@ int main(int argc, char *argv[])
   init_moxagate_h();
   init_interfaces_h();
   init_frwd_queue_h();
-  init_messages_h();
+
+  k=init_messages_h();
+  if(k!=0) {
+    // так как модуль сообщений не инициализирован, выводим сообщение здесь
+    printf("FTL HMI\tINI: CONFIGURED MESSAGE TEMPLATE IS TOO LONG");
+    exit(1);
+    }
 									 
   // необходимо здесь инициализировать:
   shm_segment_ok=-1;
 
   // вывод возможных ошибок на экран LCM
   k=init_hmi_klb_h();
-  if(k!=0) exit(1);
+  if(k!=0) exit(3);
 
   // создание раздел€емого сегмента пам€ти,
   // выделение пам€ти под журнал сообщений
   k=init_hmi_web_h();
-  if(k!=0) exit(1);
+  if(k!=0) exit(3);
 
   ///!!! точка останова. возможен контроль средствами HMI инициализации переменных
 
@@ -96,7 +107,7 @@ int main(int argc, char *argv[])
   if(k!=0) {
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_TCPPORT_CONFLICT, k >> 8, k & 0xff, 0, 0);
     close_shm();
-    exit(1);
+    exit(2);
     }
 
   k=check_GatewayAddressMap();
@@ -110,42 +121,42 @@ int main(int argc, char *argv[])
     } else {
       sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_ADDRMAP, k & 0xff, k >> 8, 0, 0);
       close_shm();
-      exit(1);
+      exit(2);
       }
 
   k=check_GatewayIfaces_ex();
   if(k!=0) {
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_FORWARDING, k & 0xff, 0, 0, 0);
     close_shm();
-    exit(1);
+    exit(2);
     }
 
   k=check_GatewayConf();
   if(k!=0) {
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_GATEWAY, 0, 0, 0, 0);
     close_shm();
-    exit(1);
+    exit(2);
     }
 
   k=check_IntegrityAddressMap();
   if(k!=0) {
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_ADDRMAP_INTEGRITY, k, 0, 0, 0);
     close_shm();
-    exit(1);
+    exit(2);
     }
 
   k=check_IntegrityVSlaves();
   if(k!=0) {
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_VSLAVES_INTEGRITY, k, 0, 0, 0);
     close_shm();
-    exit(1);
+    exit(2);
     }
 
   k=check_IntegrityPQueries();
   if(k!=0) {
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_PQUERIES_INTEGRITY, k, 0, 0, 0);
     close_shm();
-    exit(1);
+    exit(2);
     }
 
 /*** »Ќ»÷»јЋ»«ј÷»я ћј——»¬ќ¬ ѕјћя“» ѕќƒ “јЅЋ»÷џ MODBUS ***/
@@ -174,7 +185,7 @@ int main(int argc, char *argv[])
         // STATUS INFO OVERLAPS
         sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 39, 0, 0, 0, 0);
         close_shm();
-        exit(1);
+        exit(2);
         }
 
   // провер€ем, что области пам€ти виртуальных устройств и собственных адресов шлюза не пересекаютс€
@@ -210,7 +221,7 @@ int main(int argc, char *argv[])
   if(k!=0) {
     sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, CONFIG_PQUERIES_INTEGRITY, k, 0, 0, 0);
     close_shm();
-    exit(1);
+    exit(2);
     }
 
   // производим выделение пам€ти дл€ хранени€ данных локально

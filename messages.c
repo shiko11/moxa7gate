@@ -20,37 +20,48 @@
 
 ///=== MESSAGES_H private variables
 
-char eventmsg[EVENT_MESSAGE_LENGTH];
+char eventmsg[EVENT_MESSAGE_LENGTH+EVENT_MESSAGE_PREFIX];
 
-// массив шаблонов сообщений, жестко связан с кодами возврата критичных функций в ПО:
-char message_template[EVENT_TEMPLATE_AMOUNT][EVENT_MESSAGE_LENGTH];
-
-// массив типов шаблонов по комбинациям параметров, генерируется автоматически путем анализа заданных шаблонов
-unsigned int message_index[EVENT_TEMPLATE_AMOUNT];
+time_t	curtime;
+struct tm *tmd;
 
 ///=== MESSAGES_H private functions
 
-void init_message_templates();
+int init_message_templates();
 
 //******************************************************************************
 int init_messages_h()
   {
+  int i;	 
 
   EventLog.app_log_current_entry=0;
   EventLog.app_log_entries_total=0;
   EventLog.app_log=NULL;
   EventLog.msg_filter=0xffffffff;
 
-  init_message_templates();
+  memset(EventLog.cat_msgs_amount,  0, sizeof(EventLog.cat_msgs_amount ));
+  memset(EventLog.type_msgs_amount, 0, sizeof(EventLog.type_msgs_amount));
+
+//  i = sizeof(char) * EVENT_TEMPLATE_AMOUNT * EVENT_MESSAGE_LENGTH;
+//  EventLog.message_template=(char *) malloc(i);
+//  if(EventLog.message_template==NULL) return 1;
+
+//  i = sizeof(unsigned int) * EVENT_TEMPLATE_AMOUNT;
+//  EventLog.message_index=(unsigned int *) malloc(i);
+//  if(EventLog.message_index==NULL) return 2;
+
+  // первая инициализация массива (до инициализации разделяемого сегмента памяти)
+  i=init_message_templates();
+  if(i!=0) return 3;
 
   return 0;
   }
 
 ///----------------------------------------------------------------------------
-void init_message_templates()
+int init_message_templates()
   {
-	memset(message_template, 0, sizeof(message_template));
-	memset(message_index   , 0, sizeof(message_index   ));
+	memset(EventLog.message_template, 0, sizeof(EventLog.message_template));
+	memset(EventLog.message_index   , 0, sizeof(EventLog.message_index   ));
 
 /// проверка для тестовой компиляции на отсуствие косяков при присвоении значений константам,
 /// для генерации тестового кода нужно обработать код этой функции при помощи регулярных выражений,
@@ -71,156 +82,156 @@ void init_message_templates()
 
 /// COMAND LINE (КОМАНДНАЯ СТРОКА) [XX..XX, XX]
 
-strcpy(message_template[COMMAND_LINE_OK        ], "CLI: COMMAND LINE PARSED SUCCESSFULLY");
-strcpy(message_template[COMMAND_LINE_ERROR     ], "CLI: WHERE IS %d PARSING ERROR(S)");
-strcpy(message_template[COMMAND_LINE_INFO      ], "CLI: SYSINFO DISPLAYED AND EXIT");
-strcpy(message_template[COMMAND_LINE_ARGC      ], "CLI: WHERE IS UNKNOWN PARAMETER(S)");
-strcpy(message_template[COMMAND_LINE_UNDEFINED ], "CLI: COMMAND LINE UNDEFINED RESULT");
+strcpy(EventLog.message_template[COMMAND_LINE_OK        ], "CLI: COMMAND LINE PARSED SUCCESSFULLY");
+strcpy(EventLog.message_template[COMMAND_LINE_ERROR     ], "CLI: WHERE IS %d PARSING ERROR(S)");
+strcpy(EventLog.message_template[COMMAND_LINE_INFO      ], "CLI: SYSINFO DISPLAYED AND EXIT");
+strcpy(EventLog.message_template[COMMAND_LINE_ARGC      ], "CLI: WHERE IS UNKNOWN PARAMETER(S)");
+strcpy(EventLog.message_template[COMMAND_LINE_UNDEFINED ], "CLI: COMMAND LINE UNDEFINED RESULT");
 
-strcpy(message_template[SECURITY_CONF_STRUCT   ], "CLI: SECURITY STRUCTURE");
-strcpy(message_template[SECURITY_CONF_DUPLICATE], "CLI: SECURITY PARAM DUPLICATED");
-strcpy(message_template[SECURITY_CONF_SPELLING ], "CLI: SECURITY PARAM UNKNOWN");
+strcpy(EventLog.message_template[SECURITY_CONF_STRUCT   ], "CLI: SECURITY STRUCTURE");
+strcpy(EventLog.message_template[SECURITY_CONF_DUPLICATE], "CLI: SECURITY PARAM DUPLICATED");
+strcpy(EventLog.message_template[SECURITY_CONF_SPELLING ], "CLI: SECURITY PARAM UNKNOWN");
 
-strcpy(message_template[IFACE_CONF_RTUDUPLICATE], "CLI: IFACERTU %s DUPLICATED");
-strcpy(message_template[IFACE_CONF_RTUSTRUCT   ], "CLI: IFACERTU %s STRUCTURE");
-strcpy(message_template[IFACE_CONF_GWMODE      ], "CLI: IFACE %s GATEWAY MODE");
+strcpy(EventLog.message_template[IFACE_CONF_RTUDUPLICATE], "CLI: IFACERTU %s DUPLICATED");
+strcpy(EventLog.message_template[IFACE_CONF_RTUSTRUCT   ], "CLI: IFACERTU %s STRUCTURE");
+strcpy(EventLog.message_template[IFACE_CONF_GWMODE      ], "CLI: IFACE %s GATEWAY MODE");
 
-strcpy(message_template[IFACE_CONF_TCPDUPLICATE], "CLI: IFACETCP %s DUPLICATED");
-strcpy(message_template[IFACE_CONF_TCPSTRUCT   ], "CLI: IFACETCP %s STRUCTURE");
+strcpy(EventLog.message_template[IFACE_CONF_TCPDUPLICATE], "CLI: IFACETCP %s DUPLICATED");
+strcpy(EventLog.message_template[IFACE_CONF_TCPSTRUCT   ], "CLI: IFACETCP %s STRUCTURE");
 
-strcpy(message_template[ATM_CONF_SPELLING      ], "CLI: ADDRESS MAP SPELLING");
-strcpy(message_template[ATM_CONF_STRUCT        ], "CLI: ADDRESS MAP STRUCTURE");
+strcpy(EventLog.message_template[ATM_CONF_SPELLING      ], "CLI: ADDRESS MAP SPELLING");
+strcpy(EventLog.message_template[ATM_CONF_STRUCT        ], "CLI: ADDRESS MAP STRUCTURE");
 
-strcpy(message_template[VSLAVE_CONF_OVERFLOW   ], "CLI: VSLAVES OVERFLOW");
-strcpy(message_template[VSLAVE_CONF_STRUCT     ], "CLI: VSLAVES STRUCTURE");
-strcpy(message_template[VSLAVE_CONF_IFACE      ], "CLI: VSLAVES IFACE");
+strcpy(EventLog.message_template[VSLAVE_CONF_OVERFLOW   ], "CLI: VSLAVES OVERFLOW");
+strcpy(EventLog.message_template[VSLAVE_CONF_STRUCT     ], "CLI: VSLAVES STRUCTURE");
+strcpy(EventLog.message_template[VSLAVE_CONF_IFACE      ], "CLI: VSLAVES IFACE");
 
-strcpy(message_template[PQUERY_CONF_OVERFLOW   ], "CLI: PQUERIES OVERFLOW");
-strcpy(message_template[PQUERY_CONF_STRUCT     ], "CLI: PQUERIES STRUCTURE");
-strcpy(message_template[PQUERY_CONF_IFACE      ], "CLI: PQUERIES IFACE");
+strcpy(EventLog.message_template[PQUERY_CONF_OVERFLOW   ], "CLI: PQUERIES OVERFLOW");
+strcpy(EventLog.message_template[PQUERY_CONF_STRUCT     ], "CLI: PQUERIES STRUCTURE");
+strcpy(EventLog.message_template[PQUERY_CONF_IFACE      ], "CLI: PQUERIES IFACE");
 
-strcpy(message_template[EXPT_CONF_OVERFLOW     ], "CLI: EXCEPTIONS OVERFLOW");
-strcpy(message_template[EXPT_CONF_STRUCT       ], "CLI: EXCEPTIONS STRUCTURE");
-strcpy(message_template[EXPT_CONF_STAGE        ], "CLI: EXCEPTIONS STAGE");
+strcpy(EventLog.message_template[EXPT_CONF_OVERFLOW     ], "CLI: EXCEPTIONS OVERFLOW");
+strcpy(EventLog.message_template[EXPT_CONF_STRUCT       ], "CLI: EXCEPTIONS STRUCTURE");
+strcpy(EventLog.message_template[EXPT_CONF_STAGE        ], "CLI: EXCEPTIONS STAGE");
 
 /// SECURITY (ПОДСИСТЕМА РАБОТЫ С КЛИЕНТАМИ) [XX..XX, XX]
 
-strcpy(message_template[SECURITY_TCPPORT ], "CONFIGURATION TCP PORT");
+strcpy(EventLog.message_template[SECURITY_TCPPORT ], "CONFIGURATION TCP PORT");
 
 	/// MOXAGATE (ШЛЮЗ) [XX..XX, XX]
 
-strcpy(message_template[MOXAGATE_MBADDR  ], "CONFIGURATION MBADDR");
-strcpy(message_template[MOXAGATE_STATINFO], "CONFIGURATION STATINFO");
+strcpy(EventLog.message_template[MOXAGATE_MBADDR  ], "CONFIGURATION MBADDR");
+strcpy(EventLog.message_template[MOXAGATE_STATINFO], "CONFIGURATION STATINFO");
 
 /// IFACES (ИНТЕРФЕЙСЫ) [XX..XX, XX]
 
-strcpy(message_template[IFACE_MBMODE     ], "CONFIGURATION IFACE GATEWAY MODE");
+strcpy(EventLog.message_template[IFACE_MBMODE     ], "CONFIGURATION IFACE GATEWAY MODE");
 
-strcpy(message_template[IFACE_RTUPHYSPROT], "CONFIGURATION IFACERTU PHYSPROTO");
-strcpy(message_template[IFACE_RTUSPEED   ], "CONFIGURATION IFACERTU SPEED");
-strcpy(message_template[IFACE_RTUPARITY  ], "CONFIGURATION IFACERTU PARITY");
-strcpy(message_template[IFACE_RTUTIMEOUT ], "CONFIGURATION IFACERTU TIMEOUT");
-strcpy(message_template[IFACE_RTUTCPPORT ], "CONFIGURATION IFACERTU TCP PORT");
+strcpy(EventLog.message_template[IFACE_RTUPHYSPROT], "CONFIGURATION IFACERTU PHYSPROTO");
+strcpy(EventLog.message_template[IFACE_RTUSPEED   ], "CONFIGURATION IFACERTU SPEED");
+strcpy(EventLog.message_template[IFACE_RTUPARITY  ], "CONFIGURATION IFACERTU PARITY");
+strcpy(EventLog.message_template[IFACE_RTUTIMEOUT ], "CONFIGURATION IFACERTU TIMEOUT");
+strcpy(EventLog.message_template[IFACE_RTUTCPPORT ], "CONFIGURATION IFACERTU TCP PORT");
 
-strcpy(message_template[IFACE_TCPIP1     ], "CONFIGURATION IFACETCP IP ADDRESS");
-strcpy(message_template[IFACE_TCPPORT1   ], "CONFIGURATION IFACETCP TCP PORT");
-strcpy(message_template[IFACE_TCPUNITID  ], "CONFIGURATION IFACETCP UNIT ID");
-strcpy(message_template[IFACE_TCPOFFSET  ], "CONFIGURATION IFACETCP OFFSET");
-strcpy(message_template[IFACE_TCPMBADDR  ], "CONFIGURATION IFACETCP ATM ADDRESS");
-strcpy(message_template[IFACE_TCPIP2     ], "CONFIGURATION IFACETCP IP ADDRESS 2");
-strcpy(message_template[IFACE_TCPPORT2   ], "CONFIGURATION IFACETCP TCP PORT 2");
-strcpy(message_template[IFACE_TCPIPEQUAL ], "CONFIGURATION IFACETCP IP EQUALS");
+strcpy(EventLog.message_template[IFACE_TCPIP1     ], "CONFIGURATION IFACETCP IP ADDRESS");
+strcpy(EventLog.message_template[IFACE_TCPPORT1   ], "CONFIGURATION IFACETCP TCP PORT");
+strcpy(EventLog.message_template[IFACE_TCPUNITID  ], "CONFIGURATION IFACETCP UNIT ID");
+strcpy(EventLog.message_template[IFACE_TCPOFFSET  ], "CONFIGURATION IFACETCP OFFSET");
+strcpy(EventLog.message_template[IFACE_TCPMBADDR  ], "CONFIGURATION IFACETCP ATM ADDRESS");
+strcpy(EventLog.message_template[IFACE_TCPIP2     ], "CONFIGURATION IFACETCP IP ADDRESS 2");
+strcpy(EventLog.message_template[IFACE_TCPPORT2   ], "CONFIGURATION IFACETCP TCP PORT 2");
+strcpy(EventLog.message_template[IFACE_TCPIPEQUAL ], "CONFIGURATION IFACETCP IP EQUALS");
 
 
 /// HMI (Человеко-машинный интерфейс) [XX..XX, XX]
-strcpy(message_template[HMI_KLB_INIT_KEYPAD], "KEYPAD INITIALIZATION");
-strcpy(message_template[HMI_KLB_INIT_LCM   ], "LCM INITIALIZATION");
-strcpy(message_template[HMI_KLB_INIT_BUZZER], "BUZZER INITIALIZATION");
-strcpy(message_template[HMI_KLB_INIT_THREAD], "HMI THREAD INITIALIZATION");
+strcpy(EventLog.message_template[HMI_KLB_INIT_KEYPAD], "KEYPAD INITIALIZATION");
+strcpy(EventLog.message_template[HMI_KLB_INIT_LCM   ], "LCM INITIALIZATION");
+strcpy(EventLog.message_template[HMI_KLB_INIT_BUZZER], "BUZZER INITIALIZATION");
+strcpy(EventLog.message_template[HMI_KLB_INIT_THREAD], "HMI THREAD INITIALIZATION");
 
-strcpy(message_template[HMI_WEB_ENOENT ], "SHARED MEM: ENOENT");
-strcpy(message_template[HMI_WEB_EACCES ], "SHARED MEM: EACCES");
-strcpy(message_template[HMI_WEB_EINVAL ], "SHARED MEM: EINVAL");
-strcpy(message_template[HMI_WEB_ENOMEM ], "SHARED MEM: ENOMEM");
-strcpy(message_template[HMI_WEB_EEXIST ], "SHARED MEM: EEXIST");
-strcpy(message_template[HMI_WEB_UNKNOWN], "SHARED MEM: UNKNOWN");
-strcpy(message_template[HMI_WEB_OK     ], "SHARED MEM: OK SIZE %d bytes");
-strcpy(message_template[HMI_WEB_CLOSED ], "SHARED MEM: CLOSED");
+strcpy(EventLog.message_template[HMI_WEB_ENOENT ], "SHARED MEM: ENOENT");
+strcpy(EventLog.message_template[HMI_WEB_EACCES ], "SHARED MEM: EACCES");
+strcpy(EventLog.message_template[HMI_WEB_EINVAL ], "SHARED MEM: EINVAL");
+strcpy(EventLog.message_template[HMI_WEB_ENOMEM ], "SHARED MEM: ENOMEM");
+strcpy(EventLog.message_template[HMI_WEB_EEXIST ], "SHARED MEM: EEXIST");
+strcpy(EventLog.message_template[HMI_WEB_UNKNOWN], "SHARED MEM: UNKNOWN");
+strcpy(EventLog.message_template[HMI_WEB_OK     ], "SHARED MEM: OK SIZE %d bytes");
+strcpy(EventLog.message_template[HMI_WEB_CLOSED ], "SHARED MEM: CLOSED");
 
 /*
-strcpy(message_template[ 29], "SEMAPHORE SET EXISTS");
-strcpy(message_template[ 28], "MEMORY ALLOCATED 0%dx:%db");
-strcpy(message_template[ 38], ""); // РЕЗЕРВ
-strcpy(message_template[ 39], "STATUS INFO OVERLAPS");
+strcpy(EventLog.message_template[ 29], "SEMAPHORE SET EXISTS");
+strcpy(EventLog.message_template[ 28], "MEMORY ALLOCATED 0%dx:%db");
+strcpy(EventLog.message_template[ 38], ""); // РЕЗЕРВ
+strcpy(EventLog.message_template[ 39], "STATUS INFO OVERLAPS");
 
-strcpy(message_template[ 40], "SERIAL PORT INITIALIZED MODE %s");
-strcpy(message_template[ 41], "THREAD INITIALIZED CODE %d");
-strcpy(message_template[ 42], "THREAD STARTED MODE %s CLIENT %s");
-strcpy(message_template[ 43], "THREAD STOPPED");
-strcpy(message_template[ 44], "PROGRAM TERMINATED (WORKTIME %d)");
+strcpy(EventLog.message_template[ 40], "SERIAL PORT INITIALIZED MODE %s");
+strcpy(EventLog.message_template[ 41], "THREAD INITIALIZED CODE %d");
+strcpy(EventLog.message_template[ 42], "THREAD STARTED MODE %s CLIENT %s");
+strcpy(EventLog.message_template[ 43], "THREAD STOPPED");
+strcpy(EventLog.message_template[ 44], "PROGRAM TERMINATED (WORKTIME %d)");
 	
 /// CONNECTION (СЕТЕВОЕ СОЕДИНЕНИЕ) [65..127, 63]
-strcpy(message_template[ 65], "SOCKET INITIALIZED STAGE %d TCPSERVER %s");
-strcpy(message_template[ 66], ""); // РЕЗЕРВ
-strcpy(message_template[ 67], "CONNECTION ACCEPTED FROM %s CLIENT %d");
-strcpy(message_template[ 68], "CONNECTION ESTABLISHED WITH %d.%d.%d.%d");
-strcpy(message_template[ 69], "CONNECTION FAILED TO %d.%d.%d.%d");
-strcpy(message_template[ 70], "CONNECTION REJECTED FROM %d.%d.%d.%d");
-strcpy(message_template[ 71], "CONNECTION CLOSED (LINK DOWN) CLIENT %d");
-strcpy(message_template[ 72], "CONNECTION CLOSED (TIMEOUT) CLIENT %d");
+strcpy(EventLog.message_template[ 65], "SOCKET INITIALIZED STAGE %d TCPSERVER %s");
+strcpy(EventLog.message_template[ 66], ""); // РЕЗЕРВ
+strcpy(EventLog.message_template[ 67], "CONNECTION ACCEPTED FROM %s CLIENT %d");
+strcpy(EventLog.message_template[ 68], "CONNECTION ESTABLISHED WITH %d.%d.%d.%d");
+strcpy(EventLog.message_template[ 69], "CONNECTION FAILED TO %d.%d.%d.%d");
+strcpy(EventLog.message_template[ 70], "CONNECTION REJECTED FROM %d.%d.%d.%d");
+strcpy(EventLog.message_template[ 71], "CONNECTION CLOSED (LINK DOWN) CLIENT %d");
+strcpy(EventLog.message_template[ 72], "CONNECTION CLOSED (TIMEOUT) CLIENT %d");
 */
 	
 /// FORWARDING (ПЕРЕНАПРАВЛЕНИЕ) [XX..XX, XX]
 
-strcpy(message_template[ATM_IFACE         ], "CONFIGURATION ADDRESS MAP #%d IFACE");
-strcpy(message_template[ATM_MBADDR        ], "CONFIGURATION ADDRESS MAP #%d MBADDR");
+strcpy(EventLog.message_template[ATM_IFACE         ], "CONFIGURATION ADDRESS MAP #%d IFACE");
+strcpy(EventLog.message_template[ATM_MBADDR        ], "CONFIGURATION ADDRESS MAP #%d MBADDR");
 
-strcpy(message_template[VSLAVE_IFACE      ], "CONFIGURATION VSLAVE #%d IFACE");
-strcpy(message_template[VSLAVE_MBADDR     ], "CONFIGURATION VSLAVE #%d MBADDR");
-strcpy(message_template[VSLAVE_MBTABL     ], "CONFIGURATION VSLAVE #%d MBTABLE");
-strcpy(message_template[VSLAVE_BEGDIAP    ], "INCORRECT VSLAVE #%d BEGDIAP");
-strcpy(message_template[VSLAVE_ENDDIAP    ], "INCORRECT VSLAVE #%d ENDDIAP");
-strcpy(message_template[VSLAVE_LENDIAP    ], "INCORRECT VSLAVE #%d LENDIAP");
+strcpy(EventLog.message_template[VSLAVE_IFACE      ], "CONFIGURATION VSLAVE #%d IFACE");
+strcpy(EventLog.message_template[VSLAVE_MBADDR     ], "CONFIGURATION VSLAVE #%d MBADDR");
+strcpy(EventLog.message_template[VSLAVE_MBTABL     ], "CONFIGURATION VSLAVE #%d MBTABLE");
+strcpy(EventLog.message_template[VSLAVE_BEGDIAP    ], "INCORRECT VSLAVE #%d BEGDIAP");
+strcpy(EventLog.message_template[VSLAVE_ENDDIAP    ], "INCORRECT VSLAVE #%d ENDDIAP");
+strcpy(EventLog.message_template[VSLAVE_LENDIAP    ], "INCORRECT VSLAVE #%d LENDIAP");
 
-strcpy(message_template[PQUERY_IFACE      ], "CONFIGURATION PQUERY #%d IFACE");
-strcpy(message_template[PQUERY_MBADDR     ], "CONFIGURATION PQUERY #%d MBADDR");
-strcpy(message_template[PQUERY_MBTABL     ], "CONFIGURATION PQUERY #%d MBTABLE");
-strcpy(message_template[PQUERY_ACCESS     ], "CONFIGURATION PQUERY #%d ACCESS");
-strcpy(message_template[PQUERY_ENDREGREAD ], "CONFIGURATION PQUERY #%d ENDREAD");
-strcpy(message_template[PQUERY_LENPACKET  ], "CONFIGURATION PQUERY #%d PACKET LENGTH");
-strcpy(message_template[PQUERY_ENDREGWRITE], "CONFIGURATION PQUERY #%d ENDWRITE");
-strcpy(message_template[PQUERY_DELAYMIN   ], "CONFIGURATION PQUERY #%d DELAY MIN");
-strcpy(message_template[PQUERY_DELAYMAX   ], "CONFIGURATION PQUERY #%d DELAY MAX");
-strcpy(message_template[PQUERY_ERRCNTR    ], "CONFIGURATION PQUERY #%d CRITICAL");
+strcpy(EventLog.message_template[PQUERY_IFACE      ], "CONFIGURATION PQUERY #%d IFACE");
+strcpy(EventLog.message_template[PQUERY_MBADDR     ], "CONFIGURATION PQUERY #%d MBADDR");
+strcpy(EventLog.message_template[PQUERY_MBTABL     ], "CONFIGURATION PQUERY #%d MBTABLE");
+strcpy(EventLog.message_template[PQUERY_ACCESS     ], "CONFIGURATION PQUERY #%d ACCESS");
+strcpy(EventLog.message_template[PQUERY_ENDREGREAD ], "CONFIGURATION PQUERY #%d ENDREAD");
+strcpy(EventLog.message_template[PQUERY_LENPACKET  ], "CONFIGURATION PQUERY #%d PACKET LENGTH");
+strcpy(EventLog.message_template[PQUERY_ENDREGWRITE], "CONFIGURATION PQUERY #%d ENDWRITE");
+strcpy(EventLog.message_template[PQUERY_DELAYMIN   ], "CONFIGURATION PQUERY #%d DELAY MIN");
+strcpy(EventLog.message_template[PQUERY_DELAYMAX   ], "CONFIGURATION PQUERY #%d DELAY MAX");
+strcpy(EventLog.message_template[PQUERY_ERRCNTR    ], "CONFIGURATION PQUERY #%d CRITICAL");
 
-strcpy(message_template[EXPT_STAGE        ], "CONFIGURATION EXCEPTION #%d STAGE");
-strcpy(message_template[EXPT_ACTION       ], "CONFIGURATION EXCEPTION #%d ACTION");
-strcpy(message_template[EXPT_PRM1         ], "CONFIGURATION EXCEPTION #%d PRM1");
-strcpy(message_template[EXPT_PRM2         ], "CONFIGURATION EXCEPTION #%d PRM2");
-strcpy(message_template[EXPT_PRM3         ], "CONFIGURATION EXCEPTION #%d PRM3");
-strcpy(message_template[EXPT_PRM4         ], "CONFIGURATION EXCEPTION #%d PRM4");
+strcpy(EventLog.message_template[EXPT_STAGE        ], "CONFIGURATION EXCEPTION #%d STAGE");
+strcpy(EventLog.message_template[EXPT_ACTION       ], "CONFIGURATION EXCEPTION #%d ACTION");
+strcpy(EventLog.message_template[EXPT_PRM1         ], "CONFIGURATION EXCEPTION #%d PRM1");
+strcpy(EventLog.message_template[EXPT_PRM2         ], "CONFIGURATION EXCEPTION #%d PRM2");
+strcpy(EventLog.message_template[EXPT_PRM3         ], "CONFIGURATION EXCEPTION #%d PRM3");
+strcpy(EventLog.message_template[EXPT_PRM4         ], "CONFIGURATION EXCEPTION #%d PRM4");
 
 /*
-strcpy(message_template[128], "CLIENT\tFRWD: ADDRESS [%d] NOT TRANSLATED");
-strcpy(message_template[129], "CLIENT\tFRWD: BLOCK OVERLAPS [%d, %d]");
-strcpy(message_template[130], "CLIENT\tFRWD: PROXY TRANSLATION [%d, %d]");
-strcpy(message_template[131], "CLIENT\tFRWD: REGISTERS TRANSLATION [%d, %d]");
+strcpy(EventLog.message_template[128], "CLIENT\tFRWD: ADDRESS [%d] NOT TRANSLATED");
+strcpy(EventLog.message_template[129], "CLIENT\tFRWD: BLOCK OVERLAPS [%d, %d]");
+strcpy(EventLog.message_template[130], "CLIENT\tFRWD: PROXY TRANSLATION [%d, %d]");
+strcpy(EventLog.message_template[131], "CLIENT\tFRWD: REGISTERS TRANSLATION [%d, %d]");
 
 /// QUEUE (ОЧЕРЕДЬ) [148..179, 32]
-strcpy(message_template[148], "QUEUE EMPTY");
-strcpy(message_template[149], "QUEUE OVERLOADED CLIENT %d");
+strcpy(EventLog.message_template[148], "QUEUE EMPTY");
+strcpy(EventLog.message_template[149], "QUEUE OVERLOADED CLIENT %d");
 
 /// POLLING (ОПРОС) [180..219, 40]
-strcpy(message_template[180], "CLIENT\tPOLLING: FUNCTION [%d] NOT SUPPORTED");
-strcpy(message_template[181], ""); // РЕЗЕРВ
-strcpy(message_template[182], "CLIENT\tPOLLING: RTU  RECV - %s");
-strcpy(message_template[183], "CLIENT\tPOLLING: RTU  SEND - %s");
-strcpy(message_template[184], "CLIENT\tPOLLING: TCP  RECV - %s");
-strcpy(message_template[185], "CLIENT\tPOLLING: TCP  SEND - %s");
+strcpy(EventLog.message_template[180], "CLIENT\tPOLLING: FUNCTION [%d] NOT SUPPORTED");
+strcpy(EventLog.message_template[181], ""); // РЕЗЕРВ
+strcpy(EventLog.message_template[182], "CLIENT\tPOLLING: RTU  RECV - %s");
+strcpy(EventLog.message_template[183], "CLIENT\tPOLLING: RTU  SEND - %s");
+strcpy(EventLog.message_template[184], "CLIENT\tPOLLING: TCP  RECV - %s");
+strcpy(EventLog.message_template[185], "CLIENT\tPOLLING: TCP  SEND - %s");
 
 /// TRAFFIC (ДАННЫЕ) [220..239, 20]
-strcpy(message_template[220], "CLIENT\tTRAFFIC: QUEUE  IN [%d]");
-strcpy(message_template[221], "CLIENT\tTRAFFIC: QUEUE OUT [%d]");
+strcpy(EventLog.message_template[220], "CLIENT\tTRAFFIC: QUEUE  IN [%d]");
+strcpy(EventLog.message_template[221], "CLIENT\tTRAFFIC: QUEUE OUT [%d]");
 */
 
   /// анализируем массив шаблонов сообщений, заполняем массив типов шаблонов по комбинациям параметров
@@ -233,15 +244,19 @@ strcpy(message_template[221], "CLIENT\tTRAFFIC: QUEUE OUT [%d]");
     d[0]=d[1]=d[2]=d[3]=d[4]=0;
     s[0]=s[1]=s[2]=s[3]=s[4]=0;
 
-    msglen=strlen(message_template[i]);
+    msglen=strlen(EventLog.message_template[i]);
+
+    // проверка на длину текста сообщения без учета длины параметров при подстановке
+    if(msglen >= EVENT_MESSAGE_LENGTH) return 1;
+
     if(msglen>0) {
 
       for(j=0; j<msglen; j++)
-        if(message_template[i][j]=='%')
-        if(message_template[i][j+1]=='d')      {d[d[4]]=1; if(d[4]<3) d[4]++;}
-        else if(message_template[i][j+1]=='s') {s[s[4]]=1; if(s[4]<3) s[4]++;}
+        if(EventLog.message_template[i][j]=='%')
+        if(EventLog.message_template[i][j+1]=='d')      {d[d[4]]=1; if(d[4]<3) d[4]++;}
+        else if(EventLog.message_template[i][j+1]=='s') {s[s[4]]=1; if(s[4]<3) s[4]++;}
 
-      message_index[i]=\
+      EventLog.message_index[i]=\
         (d[3]<<3)|(d[2]<<2)|(d[1]<<1)|d[0]|\
         (s[3]<<7)|(s[2]<<6)|(s[1]<<5)|(s[0]<<4);
 
@@ -249,7 +264,7 @@ strcpy(message_template[221], "CLIENT\tTRAFFIC: QUEUE OUT [%d]");
 
     }
 
-  return;
+  return 0;
   }
 
 ///-----------------------------------------------------------------------------------------------------------------
@@ -260,8 +275,6 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 								unsigned int prm3,
 								unsigned int prm4)
 	{
-	time_t	curtime;
-	//int i;
 	
 	if(Security.show_sys_messages==0 && (msgtype & EVENT_CAT_MASK)==EVENT_CAT_DEBUG) return;
 	//if(Security.show_data_flow==0    && (msgtype & EVENT_CAT_MASK)==EVENT_CAT_TRAFFIC) return;
@@ -280,53 +293,31 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 		
 		EventLog.app_log_entries_total++;
 	  } else printf("!");
-	
+
 	// инкрементируем счетчик кольцевого буфера сообщений
 	if(EventLog.app_log!=NULL)
 		EventLog.app_log_current_entry=\
 			EventLog.app_log_current_entry==EVENT_LOG_LENGTH-1?\
 			0:EventLog.app_log_current_entry+1;
 	
+  EventLog. cat_msgs_amount[ EVENT_CAT_ORD(msgtype & EVENT_CAT_MASK )]++;
+  EventLog.type_msgs_amount[EVENT_TYPE_ORD(msgtype & EVENT_TYPE_MASK)]++;
 	/// выводим событие на консоль
 	
-	struct tm *tmd;
 	tmd=gmtime(&curtime);
   //strftime(eventmsg, 16, " %b %y", tmd);
   strftime(eventmsg, 16, " %b", tmd);
-	printf("%2.2d%s %2.2d:%2.2d:%2.2d ", tmd->tm_mday, eventmsg,
-                                         tmd->tm_hour, tmd->tm_min, tmd->tm_sec);
+	printf("%2.2d%s %2.2d:%2.2d:%2.2d ", tmd->tm_mday,
+                                       eventmsg,
+                                       tmd->tm_hour,
+                                       tmd->tm_min,
+                                       tmd->tm_sec);
 
-	switch(msgtype & EVENT_TYPE_MASK) {
-			case EVENT_TYPE_INF: printf("INF "); break;
-			case EVENT_TYPE_WRN: printf("WRN "); break;
-			case EVENT_TYPE_ERR: printf("ERR "); break;
-			case EVENT_TYPE_FTL: printf("FTL "); break;
-			default: printf("***\t");
-			}
+  get_msgtype_str(msgtype, eventmsg);
+	printf("%s ", eventmsg);
 
-	switch(msgtype & EVENT_SRC_MASK) {
-			case GATEWAY_P1: 			printf("PORT1\t"); 		break;
-			case GATEWAY_P2: 			printf("PORT2\t"); 		break;
-			case GATEWAY_P3: 			printf("PORT3\t"); 		break;
-			case GATEWAY_P4: 			printf("PORT4\t"); 		break;
-			case GATEWAY_P5: 			printf("PORT5\t"); 		break;
-			case GATEWAY_P6: 			printf("PORT6\t"); 		break;
-			case GATEWAY_P7: 			printf("PORT7\t"); 		break;
-			case GATEWAY_P8: 			printf("PORT8\t"); 		break;
-
-			case GATEWAY_SYSTEM:   printf("SYSTEM\t"); 	break;
-			case GATEWAY_MOXAGATE: printf("MOXAGTW\t"); 	break;
-
-			case GATEWAY_LANTCP: if((prm1>=GATEWAY_T01) && (prm1<=GATEWAY_T32))
-                             printf("TCP%0.2d\t", prm1-GATEWAY_T01+1);
-                             else printf("LANTCP\t");
-                           break;
-
-			case GATEWAY_FRWD: printf("FRWD\t"); 	break;
-			case GATEWAY_HMI: printf("HMI\t"); 	break;
-
-			default: 								printf("***\t");
-			}
+	get_msgsrc_str(msgtype, prm1, eventmsg);
+	printf("%s\t", eventmsg);
 
 	eventmsg[0]=0;
 	make_msgstr(msgcode, eventmsg, prm1, prm2, prm3, prm4);
@@ -370,28 +361,74 @@ void make_msgstr(	unsigned char msgcode, char *str,
 	char aux[24];
 
   // все сообщения без параметров
-  if(message_index[msgcode]==EVENT_TPL_DEFAULT)
-		sprintf(str, message_template[msgcode]);
+  if(EventLog.message_index[msgcode]==EVENT_TPL_DEFAULT)
+		sprintf(str, EventLog.message_template[msgcode]);
 
   // сообщения c первым числовым параметром
-  if(message_index[msgcode]==EVENT_TPL_000D)
-		sprintf(str, message_template[msgcode], prm1);
+  if(EventLog.message_index[msgcode]==EVENT_TPL_000D)
+		sprintf(str, EventLog.message_template[msgcode], prm1);
 
   // сообщения c двумя числовыми параметрами
-  if(message_index[msgcode]==EVENT_TPL_00DD)
-		sprintf(str, message_template[msgcode], prm1, prm2);
+  if(EventLog.message_index[msgcode]==EVENT_TPL_00DD)
+		sprintf(str, EventLog.message_template[msgcode], prm1, prm2);
 
   // сообщения c первым строковым параметром
-  if(message_index[msgcode]==EVENT_TPL_000S) {
+  if(EventLog.message_index[msgcode]==EVENT_TPL_000S) {
     // преобразуем строку в название интерфейса
     strcpy(aux, "***");
     if(prm1<=GATEWAY_P8) sprintf(aux, "PORT%d", prm1+1);
     if((prm1>=GATEWAY_T01)&&(prm1<=GATEWAY_T32))
       sprintf(aux, "TCP%0.2d", prm1-GATEWAY_T01+1);
-		sprintf(str, message_template[msgcode], aux);
+		sprintf(str, EventLog.message_template[msgcode], aux);
     }
 
 	return;
 	}
+
+///-----------------------------------------------------------------------------------------------------------------
+void get_msgtype_str(unsigned char msgtype, char *str)
+  {
+	switch(msgtype & EVENT_TYPE_MASK) {
+			case EVENT_TYPE_INF: sprintf(str, "INF"); break;
+			case EVENT_TYPE_WRN: sprintf(str, "WRN"); break;
+			case EVENT_TYPE_ERR: sprintf(str, "ERR"); break;
+			case EVENT_TYPE_FTL: sprintf(str, "FTL"); break;
+			default: sprintf(str, "***\t");
+			}
+
+  return;
+  }
+
+///-----------------------------------------------------------------------------------------------------------------
+void get_msgsrc_str(unsigned char msgtype, unsigned int prm1, char *str)
+  {
+	switch(msgtype & EVENT_SRC_MASK) {
+			case GATEWAY_P1: 			 sprintf(str, "   PORT1"); 		break;
+			case GATEWAY_P2: 			 sprintf(str, "   PORT2"); 		break;
+			case GATEWAY_P3: 			 sprintf(str, "   PORT3"); 		break;
+			case GATEWAY_P4: 			 sprintf(str, "   PORT4"); 		break;
+			case GATEWAY_P5: 			 sprintf(str, "   PORT5"); 		break;
+			case GATEWAY_P6: 			 sprintf(str, "   PORT6"); 		break;
+			case GATEWAY_P7: 			 sprintf(str, "   PORT7"); 		break;
+			case GATEWAY_P8: 			 sprintf(str, "   PORT8"); 		break;
+
+			case GATEWAY_SYSTEM:   sprintf(str, "  SYSTEM"); 	break;
+			case GATEWAY_MOXAGATE: sprintf(str, "MOXAGATE"); break;
+
+			case GATEWAY_LANTCP: if((prm1>=GATEWAY_T01) && (prm1<=GATEWAY_T32))
+                             sprintf(str, "   TCP%0.2d", prm1-GATEWAY_T01+1);
+                             else 
+                             sprintf(str, " !LANTCP");
+                           break;
+
+			case GATEWAY_SECURITY: sprintf(str, "SECURITY"); 	break;
+			case GATEWAY_FRWD:     sprintf(str, " FORWARD"); 	break;
+			case GATEWAY_HMI:      sprintf(str, "     HMI"); 	break;
+
+			default: 							 sprintf(str, "    ****");
+			}
+
+  return;
+  }
 
 ///-----------------------------------------------------------------------------------------------------------------

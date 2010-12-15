@@ -76,6 +76,8 @@ int init_hmi_web_h()
 		sizeof(GW_Iface)*MAX_TCP_SERVERS+
 		sizeof(GW_Client)*MOXAGATE_CLIENTS_NUMBER+
 		sizeof(GW_EventLog)+
+		sizeof(EventLog.message_index)+
+		sizeof(EventLog.message_template)+
 		sizeof(GW_Event)*EVENT_LOG_LENGTH;
 
   shm_segment_id=shmget(access_key, mem_size_ttl, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
@@ -151,12 +153,24 @@ int init_hmi_web_h()
 
   k+= sizeof(GW_EventLog);
 
+	EventLog.message_index=(unsigned int *) (pointer+k);
+
+  k+= sizeof(EventLog.message_index);
+
+	EventLog.message_template=(char *) (pointer+k);
+
+  k+= sizeof(EventLog.message_template);
+
   EventLog.app_log=
   event_log->app_log=
     (GW_Event *) (pointer+k);
 
 ///  printf("%d %d %d\n", shm_data, shared_memory, app_log);
 ///  printf("%p %p %p\n", shm_data, shared_memory, app_log);
+
+  // вторично инициализируем массив шаблонов сообщений и индексов,
+  // код возврата не проверяем, т.к. в первый раз ошибок не было:
+  init_message_templates();
 
   shm_segment_ok=1;
 
@@ -234,9 +248,10 @@ int refresh_shm()
   event_log->app_log_current_entry=EventLog.app_log_current_entry;
   event_log->app_log_entries_total=EventLog.app_log_entries_total;
   event_log->msg_filter=      EventLog.msg_filter;
-  event_log->inf_msgs_amount= EventLog.inf_msgs_amount;
-  event_log->wrn_msgs_amount= EventLog.wrn_msgs_amount;
-  event_log->err_msgs_amount= EventLog.err_msgs_amount;
+  for(i=0; i<4; i++) {
+    event_log-> cat_msgs_amount[i]= EventLog. cat_msgs_amount[i];
+    event_log->type_msgs_amount[i]= EventLog.type_msgs_amount[i];
+    }
 
   // обновляем метку времени
   time(&Security.timestamp);

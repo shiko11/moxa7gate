@@ -74,6 +74,9 @@
 // отображение категории в порядковый номер
 #define EVENT_CAT_ORD(cat) ((cat) >> 6)
 
+// отображение массива строк фиксированной длины в массив символов
+#define A2D(str_addr) (str_addr*EVENT_MESSAGE_LENGTH)
+
 ///=== MESSAGES_H data types
 
 typedef struct {				// ЗАПИСЬ ЖУРНАЛА СОБЫТИЙ ШЛЮЗА
@@ -102,10 +105,12 @@ typedef struct { // ЖУРНАЛ СОБЫТИЙ ШЛЮЗА
   unsigned int type_msgs_amount[4];
 
   // массив шаблонов сообщений, жестко связан с кодами возврата критичных функций в ПО:
-  char message_template[EVENT_TEMPLATE_AMOUNT][EVENT_MESSAGE_LENGTH];
+  //char message_template[EVENT_TEMPLATE_AMOUNT][EVENT_MESSAGE_LENGTH];
+  char *msg_tpl;
   // массив типов шаблонов по комбинациям параметров,
   // генерируется автоматически путем анализа заданных шаблонов
-  unsigned int message_index[EVENT_TEMPLATE_AMOUNT];
+  //unsigned int message_index[EVENT_TEMPLATE_AMOUNT];
+  unsigned int *msg_index;
 
 	} GW_EventLog;
 

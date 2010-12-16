@@ -42,13 +42,13 @@ int init_messages_h()
   memset(EventLog.cat_msgs_amount,  0, sizeof(EventLog.cat_msgs_amount ));
   memset(EventLog.type_msgs_amount, 0, sizeof(EventLog.type_msgs_amount));
 
-//  i = sizeof(char) * EVENT_TEMPLATE_AMOUNT * EVENT_MESSAGE_LENGTH;
-//  EventLog.message_template=(char *) malloc(i);
-//  if(EventLog.message_template==NULL) return 1;
+  i = sizeof(char) * EVENT_TEMPLATE_AMOUNT * EVENT_MESSAGE_LENGTH;
+  EventLog.msg_tpl=(char *) malloc(i);
+  if(EventLog.msg_tpl==NULL) return 1;
 
-//  i = sizeof(unsigned int) * EVENT_TEMPLATE_AMOUNT;
-//  EventLog.message_index=(unsigned int *) malloc(i);
-//  if(EventLog.message_index==NULL) return 2;
+  i = sizeof(unsigned int) * EVENT_TEMPLATE_AMOUNT;
+  EventLog.msg_index=(unsigned int *) malloc(i);
+  if(EventLog.msg_index==NULL) return 2;
 
   // первая инициализация массива (до инициализации разделяемого сегмента памяти)
   i=init_message_templates();
@@ -60,8 +60,8 @@ int init_messages_h()
 ///----------------------------------------------------------------------------
 int init_message_templates()
   {
-	memset(EventLog.message_template, 0, sizeof(EventLog.message_template));
-	memset(EventLog.message_index   , 0, sizeof(EventLog.message_index   ));
+	memset(EventLog.msg_tpl,   0, sizeof(char) * EVENT_TEMPLATE_AMOUNT * EVENT_MESSAGE_LENGTH);
+	memset(EventLog.msg_index, 0, sizeof(unsigned int) * EVENT_TEMPLATE_AMOUNT);
 
 /// проверка для тестовой компиляции на отсуствие косяков при присвоении значений константам,
 /// для генерации тестового кода нужно обработать код этой функции при помощи регулярных выражений,
@@ -82,156 +82,156 @@ int init_message_templates()
 
 /// COMAND LINE (КОМАНДНАЯ СТРОКА) [XX..XX, XX]
 
-strcpy(EventLog.message_template[COMMAND_LINE_OK        ], "CLI: COMMAND LINE PARSED SUCCESSFULLY");
-strcpy(EventLog.message_template[COMMAND_LINE_ERROR     ], "CLI: WHERE IS %d PARSING ERROR(S)");
-strcpy(EventLog.message_template[COMMAND_LINE_INFO      ], "CLI: SYSINFO DISPLAYED AND EXIT");
-strcpy(EventLog.message_template[COMMAND_LINE_ARGC      ], "CLI: WHERE IS UNKNOWN PARAMETER(S)");
-strcpy(EventLog.message_template[COMMAND_LINE_UNDEFINED ], "CLI: COMMAND LINE UNDEFINED RESULT");
+strcpy(&EventLog.msg_tpl[A2D(COMMAND_LINE_OK        )], "CLI: COMMAND LINE PARSED SUCCESSFULLY");
+strcpy(&EventLog.msg_tpl[A2D(COMMAND_LINE_ERROR     )], "CLI: WHERE IS %d PARSING ERROR(S)");
+strcpy(&EventLog.msg_tpl[A2D(COMMAND_LINE_INFO      )], "CLI: SYSINFO DISPLAYED AND EXIT");
+strcpy(&EventLog.msg_tpl[A2D(COMMAND_LINE_ARGC      )], "CLI: WHERE IS UNKNOWN PARAMETER(S)");
+strcpy(&EventLog.msg_tpl[A2D(COMMAND_LINE_UNDEFINED )], "CLI: COMMAND LINE UNDEFINED RESULT");
 
-strcpy(EventLog.message_template[SECURITY_CONF_STRUCT   ], "CLI: SECURITY STRUCTURE");
-strcpy(EventLog.message_template[SECURITY_CONF_DUPLICATE], "CLI: SECURITY PARAM DUPLICATED");
-strcpy(EventLog.message_template[SECURITY_CONF_SPELLING ], "CLI: SECURITY PARAM UNKNOWN");
+strcpy(&EventLog.msg_tpl[A2D(SECURITY_CONF_STRUCT   )], "CLI: SECURITY STRUCTURE");
+strcpy(&EventLog.msg_tpl[A2D(SECURITY_CONF_DUPLICATE)], "CLI: SECURITY PARAM DUPLICATED");
+strcpy(&EventLog.msg_tpl[A2D(SECURITY_CONF_SPELLING )], "CLI: SECURITY PARAM UNKNOWN");
 
-strcpy(EventLog.message_template[IFACE_CONF_RTUDUPLICATE], "CLI: IFACERTU %s DUPLICATED");
-strcpy(EventLog.message_template[IFACE_CONF_RTUSTRUCT   ], "CLI: IFACERTU %s STRUCTURE");
-strcpy(EventLog.message_template[IFACE_CONF_GWMODE      ], "CLI: IFACE %s GATEWAY MODE");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_CONF_RTUDUPLICATE)], "CLI: IFACERTU %s DUPLICATED");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_CONF_RTUSTRUCT   )], "CLI: IFACERTU %s STRUCTURE");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_CONF_GWMODE      )], "CLI: IFACE %s GATEWAY MODE");
 
-strcpy(EventLog.message_template[IFACE_CONF_TCPDUPLICATE], "CLI: IFACETCP %s DUPLICATED");
-strcpy(EventLog.message_template[IFACE_CONF_TCPSTRUCT   ], "CLI: IFACETCP %s STRUCTURE");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_CONF_TCPDUPLICATE)], "CLI: IFACETCP %s DUPLICATED");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_CONF_TCPSTRUCT   )], "CLI: IFACETCP %s STRUCTURE");
 
-strcpy(EventLog.message_template[ATM_CONF_SPELLING      ], "CLI: ADDRESS MAP SPELLING");
-strcpy(EventLog.message_template[ATM_CONF_STRUCT        ], "CLI: ADDRESS MAP STRUCTURE");
+strcpy(&EventLog.msg_tpl[A2D(ATM_CONF_SPELLING      )], "CLI: ADDRESS MAP SPELLING");
+strcpy(&EventLog.msg_tpl[A2D(ATM_CONF_STRUCT        )], "CLI: ADDRESS MAP STRUCTURE");
 
-strcpy(EventLog.message_template[VSLAVE_CONF_OVERFLOW   ], "CLI: VSLAVES OVERFLOW");
-strcpy(EventLog.message_template[VSLAVE_CONF_STRUCT     ], "CLI: VSLAVES STRUCTURE");
-strcpy(EventLog.message_template[VSLAVE_CONF_IFACE      ], "CLI: VSLAVES IFACE");
+strcpy(&EventLog.msg_tpl[A2D(VSLAVE_CONF_OVERFLOW   )], "CLI: VSLAVES OVERFLOW");
+strcpy(&EventLog.msg_tpl[A2D(VSLAVE_CONF_STRUCT     )], "CLI: VSLAVES STRUCTURE");
+strcpy(&EventLog.msg_tpl[A2D(VSLAVE_CONF_IFACE      )], "CLI: VSLAVES IFACE");
 
-strcpy(EventLog.message_template[PQUERY_CONF_OVERFLOW   ], "CLI: PQUERIES OVERFLOW");
-strcpy(EventLog.message_template[PQUERY_CONF_STRUCT     ], "CLI: PQUERIES STRUCTURE");
-strcpy(EventLog.message_template[PQUERY_CONF_IFACE      ], "CLI: PQUERIES IFACE");
+strcpy(&EventLog.msg_tpl[A2D(PQUERY_CONF_OVERFLOW   )], "CLI: PQUERIES OVERFLOW");
+strcpy(&EventLog.msg_tpl[A2D(PQUERY_CONF_STRUCT     )], "CLI: PQUERIES STRUCTURE");
+strcpy(&EventLog.msg_tpl[A2D(PQUERY_CONF_IFACE      )], "CLI: PQUERIES IFACE");
 
-strcpy(EventLog.message_template[EXPT_CONF_OVERFLOW     ], "CLI: EXCEPTIONS OVERFLOW");
-strcpy(EventLog.message_template[EXPT_CONF_STRUCT       ], "CLI: EXCEPTIONS STRUCTURE");
-strcpy(EventLog.message_template[EXPT_CONF_STAGE        ], "CLI: EXCEPTIONS STAGE");
+strcpy(&EventLog.msg_tpl[A2D(EXPT_CONF_OVERFLOW     )], "CLI: EXCEPTIONS OVERFLOW");
+strcpy(&EventLog.msg_tpl[A2D(EXPT_CONF_STRUCT       )], "CLI: EXCEPTIONS STRUCTURE");
+strcpy(&EventLog.msg_tpl[A2D(EXPT_CONF_STAGE        )], "CLI: EXCEPTIONS STAGE");
 
 /// SECURITY (ПОДСИСТЕМА РАБОТЫ С КЛИЕНТАМИ) [XX..XX, XX]
 
-strcpy(EventLog.message_template[SECURITY_TCPPORT ], "CONFIGURATION TCP PORT");
+strcpy(&EventLog.msg_tpl[A2D(SECURITY_TCPPORT )], "CONFIGURATION TCP PORT");
 
 	/// MOXAGATE (ШЛЮЗ) [XX..XX, XX]
 
-strcpy(EventLog.message_template[MOXAGATE_MBADDR  ], "CONFIGURATION MBADDR");
-strcpy(EventLog.message_template[MOXAGATE_STATINFO], "CONFIGURATION STATINFO");
+strcpy(&EventLog.msg_tpl[A2D(MOXAGATE_MBADDR  )], "CONFIGURATION MBADDR");
+strcpy(&EventLog.msg_tpl[A2D(MOXAGATE_STATINFO)], "CONFIGURATION STATINFO");
 
 /// IFACES (ИНТЕРФЕЙСЫ) [XX..XX, XX]
 
-strcpy(EventLog.message_template[IFACE_MBMODE     ], "CONFIGURATION IFACE GATEWAY MODE");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_MBMODE     )], "CONFIGURATION IFACE GATEWAY MODE");
 
-strcpy(EventLog.message_template[IFACE_RTUPHYSPROT], "CONFIGURATION IFACERTU PHYSPROTO");
-strcpy(EventLog.message_template[IFACE_RTUSPEED   ], "CONFIGURATION IFACERTU SPEED");
-strcpy(EventLog.message_template[IFACE_RTUPARITY  ], "CONFIGURATION IFACERTU PARITY");
-strcpy(EventLog.message_template[IFACE_RTUTIMEOUT ], "CONFIGURATION IFACERTU TIMEOUT");
-strcpy(EventLog.message_template[IFACE_RTUTCPPORT ], "CONFIGURATION IFACERTU TCP PORT");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_RTUPHYSPROT)], "CONFIGURATION IFACERTU PHYSPROTO");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_RTUSPEED   )], "CONFIGURATION IFACERTU SPEED");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_RTUPARITY  )], "CONFIGURATION IFACERTU PARITY");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_RTUTIMEOUT )], "CONFIGURATION IFACERTU TIMEOUT");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_RTUTCPPORT )], "CONFIGURATION IFACERTU TCP PORT");
 
-strcpy(EventLog.message_template[IFACE_TCPIP1     ], "CONFIGURATION IFACETCP IP ADDRESS");
-strcpy(EventLog.message_template[IFACE_TCPPORT1   ], "CONFIGURATION IFACETCP TCP PORT");
-strcpy(EventLog.message_template[IFACE_TCPUNITID  ], "CONFIGURATION IFACETCP UNIT ID");
-strcpy(EventLog.message_template[IFACE_TCPOFFSET  ], "CONFIGURATION IFACETCP OFFSET");
-strcpy(EventLog.message_template[IFACE_TCPMBADDR  ], "CONFIGURATION IFACETCP ATM ADDRESS");
-strcpy(EventLog.message_template[IFACE_TCPIP2     ], "CONFIGURATION IFACETCP IP ADDRESS 2");
-strcpy(EventLog.message_template[IFACE_TCPPORT2   ], "CONFIGURATION IFACETCP TCP PORT 2");
-strcpy(EventLog.message_template[IFACE_TCPIPEQUAL ], "CONFIGURATION IFACETCP IP EQUALS");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_TCPIP1     )], "CONFIGURATION IFACETCP IP ADDRESS");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_TCPPORT1   )], "CONFIGURATION IFACETCP TCP PORT");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_TCPUNITID  )], "CONFIGURATION IFACETCP UNIT ID");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_TCPOFFSET  )], "CONFIGURATION IFACETCP OFFSET");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_TCPMBADDR  )], "CONFIGURATION IFACETCP ATM ADDRESS");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_TCPIP2     )], "CONFIGURATION IFACETCP IP ADDRESS 2");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_TCPPORT2   )], "CONFIGURATION IFACETCP TCP PORT 2");
+strcpy(&EventLog.msg_tpl[A2D(IFACE_TCPIPEQUAL )], "CONFIGURATION IFACETCP IP EQUALS");
 
 
 /// HMI (Человеко-машинный интерфейс) [XX..XX, XX]
-strcpy(EventLog.message_template[HMI_KLB_INIT_KEYPAD], "KEYPAD INITIALIZATION");
-strcpy(EventLog.message_template[HMI_KLB_INIT_LCM   ], "LCM INITIALIZATION");
-strcpy(EventLog.message_template[HMI_KLB_INIT_BUZZER], "BUZZER INITIALIZATION");
-strcpy(EventLog.message_template[HMI_KLB_INIT_THREAD], "HMI THREAD INITIALIZATION");
+strcpy(&EventLog.msg_tpl[A2D(HMI_KLB_INIT_KEYPAD)], "KEYPAD INITIALIZATION");
+strcpy(&EventLog.msg_tpl[A2D(HMI_KLB_INIT_LCM   )], "LCM INITIALIZATION");
+strcpy(&EventLog.msg_tpl[A2D(HMI_KLB_INIT_BUZZER)], "BUZZER INITIALIZATION");
+strcpy(&EventLog.msg_tpl[A2D(HMI_KLB_INIT_THREAD)], "HMI THREAD INITIALIZATION");
 
-strcpy(EventLog.message_template[HMI_WEB_ENOENT ], "SHARED MEM: ENOENT");
-strcpy(EventLog.message_template[HMI_WEB_EACCES ], "SHARED MEM: EACCES");
-strcpy(EventLog.message_template[HMI_WEB_EINVAL ], "SHARED MEM: EINVAL");
-strcpy(EventLog.message_template[HMI_WEB_ENOMEM ], "SHARED MEM: ENOMEM");
-strcpy(EventLog.message_template[HMI_WEB_EEXIST ], "SHARED MEM: EEXIST");
-strcpy(EventLog.message_template[HMI_WEB_UNKNOWN], "SHARED MEM: UNKNOWN");
-strcpy(EventLog.message_template[HMI_WEB_OK     ], "SHARED MEM: OK SIZE %d bytes");
-strcpy(EventLog.message_template[HMI_WEB_CLOSED ], "SHARED MEM: CLOSED");
+strcpy(&EventLog.msg_tpl[A2D(HMI_WEB_ENOENT )], "SHARED MEM: ENOENT");
+strcpy(&EventLog.msg_tpl[A2D(HMI_WEB_EACCES )], "SHARED MEM: EACCES");
+strcpy(&EventLog.msg_tpl[A2D(HMI_WEB_EINVAL )], "SHARED MEM: EINVAL");
+strcpy(&EventLog.msg_tpl[A2D(HMI_WEB_ENOMEM )], "SHARED MEM: ENOMEM");
+strcpy(&EventLog.msg_tpl[A2D(HMI_WEB_EEXIST )], "SHARED MEM: EEXIST");
+strcpy(&EventLog.msg_tpl[A2D(HMI_WEB_UNKNOWN)], "SHARED MEM: UNKNOWN");
+strcpy(&EventLog.msg_tpl[A2D(HMI_WEB_OK     )], "SHARED MEM: OK SIZE %d bytes");
+strcpy(&EventLog.msg_tpl[A2D(HMI_WEB_CLOSED )], "SHARED MEM: CLOSED");
 
 /*
-strcpy(EventLog.message_template[ 29], "SEMAPHORE SET EXISTS");
-strcpy(EventLog.message_template[ 28], "MEMORY ALLOCATED 0%dx:%db");
-strcpy(EventLog.message_template[ 38], ""); // РЕЗЕРВ
-strcpy(EventLog.message_template[ 39], "STATUS INFO OVERLAPS");
+strcpy(&EventLog.msg_tpl[A2D( 29)], "SEMAPHORE SET EXISTS");
+strcpy(&EventLog.msg_tpl[A2D( 28)], "MEMORY ALLOCATED 0%dx:%db");
+strcpy(&EventLog.msg_tpl[A2D( 38)], ""); // РЕЗЕРВ
+strcpy(&EventLog.msg_tpl[A2D( 39)], "STATUS INFO OVERLAPS");
 
-strcpy(EventLog.message_template[ 40], "SERIAL PORT INITIALIZED MODE %s");
-strcpy(EventLog.message_template[ 41], "THREAD INITIALIZED CODE %d");
-strcpy(EventLog.message_template[ 42], "THREAD STARTED MODE %s CLIENT %s");
-strcpy(EventLog.message_template[ 43], "THREAD STOPPED");
-strcpy(EventLog.message_template[ 44], "PROGRAM TERMINATED (WORKTIME %d)");
+strcpy(&EventLog.msg_tpl[A2D( 40)], "SERIAL PORT INITIALIZED MODE %s");
+strcpy(&EventLog.msg_tpl[A2D( 41)], "THREAD INITIALIZED CODE %d");
+strcpy(&EventLog.msg_tpl[A2D( 42)], "THREAD STARTED MODE %s CLIENT %s");
+strcpy(&EventLog.msg_tpl[A2D( 43)], "THREAD STOPPED");
+strcpy(&EventLog.msg_tpl[A2D( 44)], "PROGRAM TERMINATED (WORKTIME %d)");
 	
 /// CONNECTION (СЕТЕВОЕ СОЕДИНЕНИЕ) [65..127, 63]
-strcpy(EventLog.message_template[ 65], "SOCKET INITIALIZED STAGE %d TCPSERVER %s");
-strcpy(EventLog.message_template[ 66], ""); // РЕЗЕРВ
-strcpy(EventLog.message_template[ 67], "CONNECTION ACCEPTED FROM %s CLIENT %d");
-strcpy(EventLog.message_template[ 68], "CONNECTION ESTABLISHED WITH %d.%d.%d.%d");
-strcpy(EventLog.message_template[ 69], "CONNECTION FAILED TO %d.%d.%d.%d");
-strcpy(EventLog.message_template[ 70], "CONNECTION REJECTED FROM %d.%d.%d.%d");
-strcpy(EventLog.message_template[ 71], "CONNECTION CLOSED (LINK DOWN) CLIENT %d");
-strcpy(EventLog.message_template[ 72], "CONNECTION CLOSED (TIMEOUT) CLIENT %d");
+strcpy(&EventLog.msg_tpl[A2D( 65)], "SOCKET INITIALIZED STAGE %d TCPSERVER %s");
+strcpy(&EventLog.msg_tpl[A2D( 66)], ""); // РЕЗЕРВ
+strcpy(&EventLog.msg_tpl[A2D( 67)], "CONNECTION ACCEPTED FROM %s CLIENT %d");
+strcpy(&EventLog.msg_tpl[A2D( 68)], "CONNECTION ESTABLISHED WITH %d.%d.%d.%d");
+strcpy(&EventLog.msg_tpl[A2D( 69)], "CONNECTION FAILED TO %d.%d.%d.%d");
+strcpy(&EventLog.msg_tpl[A2D( 70)], "CONNECTION REJECTED FROM %d.%d.%d.%d");
+strcpy(&EventLog.msg_tpl[A2D( 71)], "CONNECTION CLOSED (LINK DOWN) CLIENT %d");
+strcpy(&EventLog.msg_tpl[A2D( 72)], "CONNECTION CLOSED (TIMEOUT) CLIENT %d");
 */
 	
 /// FORWARDING (ПЕРЕНАПРАВЛЕНИЕ) [XX..XX, XX]
 
-strcpy(EventLog.message_template[ATM_IFACE         ], "CONFIGURATION ADDRESS MAP #%d IFACE");
-strcpy(EventLog.message_template[ATM_MBADDR        ], "CONFIGURATION ADDRESS MAP #%d MBADDR");
+strcpy(&EventLog.msg_tpl[A2D(ATM_IFACE         )], "CONFIGURATION ADDRESS MAP #%d IFACE");
+strcpy(&EventLog.msg_tpl[A2D(ATM_MBADDR        )], "CONFIGURATION ADDRESS MAP #%d MBADDR");
 
-strcpy(EventLog.message_template[VSLAVE_IFACE      ], "CONFIGURATION VSLAVE #%d IFACE");
-strcpy(EventLog.message_template[VSLAVE_MBADDR     ], "CONFIGURATION VSLAVE #%d MBADDR");
-strcpy(EventLog.message_template[VSLAVE_MBTABL     ], "CONFIGURATION VSLAVE #%d MBTABLE");
-strcpy(EventLog.message_template[VSLAVE_BEGDIAP    ], "INCORRECT VSLAVE #%d BEGDIAP");
-strcpy(EventLog.message_template[VSLAVE_ENDDIAP    ], "INCORRECT VSLAVE #%d ENDDIAP");
-strcpy(EventLog.message_template[VSLAVE_LENDIAP    ], "INCORRECT VSLAVE #%d LENDIAP");
+strcpy(&EventLog.msg_tpl[A2D(VSLAVE_IFACE      )], "CONFIGURATION VSLAVE #%d IFACE");
+strcpy(&EventLog.msg_tpl[A2D(VSLAVE_MBADDR     )], "CONFIGURATION VSLAVE #%d MBADDR");
+strcpy(&EventLog.msg_tpl[A2D(VSLAVE_MBTABL     )], "CONFIGURATION VSLAVE #%d MBTABLE");
+strcpy(&EventLog.msg_tpl[A2D(VSLAVE_BEGDIAP    )], "INCORRECT VSLAVE #%d BEGDIAP");
+strcpy(&EventLog.msg_tpl[A2D(VSLAVE_ENDDIAP    )], "INCORRECT VSLAVE #%d ENDDIAP");
+strcpy(&EventLog.msg_tpl[A2D(VSLAVE_LENDIAP    )], "INCORRECT VSLAVE #%d LENDIAP");
 
-strcpy(EventLog.message_template[PQUERY_IFACE      ], "CONFIGURATION PQUERY #%d IFACE");
-strcpy(EventLog.message_template[PQUERY_MBADDR     ], "CONFIGURATION PQUERY #%d MBADDR");
-strcpy(EventLog.message_template[PQUERY_MBTABL     ], "CONFIGURATION PQUERY #%d MBTABLE");
-strcpy(EventLog.message_template[PQUERY_ACCESS     ], "CONFIGURATION PQUERY #%d ACCESS");
-strcpy(EventLog.message_template[PQUERY_ENDREGREAD ], "CONFIGURATION PQUERY #%d ENDREAD");
-strcpy(EventLog.message_template[PQUERY_LENPACKET  ], "CONFIGURATION PQUERY #%d PACKET LENGTH");
-strcpy(EventLog.message_template[PQUERY_ENDREGWRITE], "CONFIGURATION PQUERY #%d ENDWRITE");
-strcpy(EventLog.message_template[PQUERY_DELAYMIN   ], "CONFIGURATION PQUERY #%d DELAY MIN");
-strcpy(EventLog.message_template[PQUERY_DELAYMAX   ], "CONFIGURATION PQUERY #%d DELAY MAX");
-strcpy(EventLog.message_template[PQUERY_ERRCNTR    ], "CONFIGURATION PQUERY #%d CRITICAL");
+strcpy(&EventLog.msg_tpl[A2D(PQUERY_IFACE      )], "CONFIGURATION PQUERY #%d IFACE");
+strcpy(&EventLog.msg_tpl[A2D(PQUERY_MBADDR     )], "CONFIGURATION PQUERY #%d MBADDR");
+strcpy(&EventLog.msg_tpl[A2D(PQUERY_MBTABL     )], "CONFIGURATION PQUERY #%d MBTABLE");
+strcpy(&EventLog.msg_tpl[A2D(PQUERY_ACCESS     )], "CONFIGURATION PQUERY #%d ACCESS");
+strcpy(&EventLog.msg_tpl[A2D(PQUERY_ENDREGREAD )], "CONFIGURATION PQUERY #%d ENDREAD");
+strcpy(&EventLog.msg_tpl[A2D(PQUERY_LENPACKET  )], "CONFIGURATION PQUERY #%d PACKET LENGTH");
+strcpy(&EventLog.msg_tpl[A2D(PQUERY_ENDREGWRITE)], "CONFIGURATION PQUERY #%d ENDWRITE");
+strcpy(&EventLog.msg_tpl[A2D(PQUERY_DELAYMIN   )], "CONFIGURATION PQUERY #%d DELAY MIN");
+strcpy(&EventLog.msg_tpl[A2D(PQUERY_DELAYMAX   )], "CONFIGURATION PQUERY #%d DELAY MAX");
+strcpy(&EventLog.msg_tpl[A2D(PQUERY_ERRCNTR    )], "CONFIGURATION PQUERY #%d CRITICAL");
 
-strcpy(EventLog.message_template[EXPT_STAGE        ], "CONFIGURATION EXCEPTION #%d STAGE");
-strcpy(EventLog.message_template[EXPT_ACTION       ], "CONFIGURATION EXCEPTION #%d ACTION");
-strcpy(EventLog.message_template[EXPT_PRM1         ], "CONFIGURATION EXCEPTION #%d PRM1");
-strcpy(EventLog.message_template[EXPT_PRM2         ], "CONFIGURATION EXCEPTION #%d PRM2");
-strcpy(EventLog.message_template[EXPT_PRM3         ], "CONFIGURATION EXCEPTION #%d PRM3");
-strcpy(EventLog.message_template[EXPT_PRM4         ], "CONFIGURATION EXCEPTION #%d PRM4");
+strcpy(&EventLog.msg_tpl[A2D(EXPT_STAGE        )], "CONFIGURATION EXCEPTION #%d STAGE");
+strcpy(&EventLog.msg_tpl[A2D(EXPT_ACTION       )], "CONFIGURATION EXCEPTION #%d ACTION");
+strcpy(&EventLog.msg_tpl[A2D(EXPT_PRM1         )], "CONFIGURATION EXCEPTION #%d PRM1");
+strcpy(&EventLog.msg_tpl[A2D(EXPT_PRM2         )], "CONFIGURATION EXCEPTION #%d PRM2");
+strcpy(&EventLog.msg_tpl[A2D(EXPT_PRM3         )], "CONFIGURATION EXCEPTION #%d PRM3");
+strcpy(&EventLog.msg_tpl[A2D(EXPT_PRM4         )], "CONFIGURATION EXCEPTION #%d PRM4");
 
 /*
-strcpy(EventLog.message_template[128], "CLIENT\tFRWD: ADDRESS [%d] NOT TRANSLATED");
-strcpy(EventLog.message_template[129], "CLIENT\tFRWD: BLOCK OVERLAPS [%d, %d]");
-strcpy(EventLog.message_template[130], "CLIENT\tFRWD: PROXY TRANSLATION [%d, %d]");
-strcpy(EventLog.message_template[131], "CLIENT\tFRWD: REGISTERS TRANSLATION [%d, %d]");
+strcpy(&EventLog.msg_tpl[A2D(128], "CLIENT\tFRWD: ADDRESS [%d)] NOT TRANSLATED");
+strcpy(&EventLog.msg_tpl[A2D(129], "CLIENT\tFRWD: BLOCK OVERLAPS [%d, %d)]");
+strcpy(&EventLog.msg_tpl[A2D(130], "CLIENT\tFRWD: PROXY TRANSLATION [%d, %d)]");
+strcpy(&EventLog.msg_tpl[A2D(131], "CLIENT\tFRWD: REGISTERS TRANSLATION [%d, %d)]");
 
 /// QUEUE (ОЧЕРЕДЬ) [148..179, 32]
-strcpy(EventLog.message_template[148], "QUEUE EMPTY");
-strcpy(EventLog.message_template[149], "QUEUE OVERLOADED CLIENT %d");
+strcpy(&EventLog.msg_tpl[A2D(148)], "QUEUE EMPTY");
+strcpy(&EventLog.msg_tpl[A2D(149)], "QUEUE OVERLOADED CLIENT %d");
 
 /// POLLING (ОПРОС) [180..219, 40]
-strcpy(EventLog.message_template[180], "CLIENT\tPOLLING: FUNCTION [%d] NOT SUPPORTED");
-strcpy(EventLog.message_template[181], ""); // РЕЗЕРВ
-strcpy(EventLog.message_template[182], "CLIENT\tPOLLING: RTU  RECV - %s");
-strcpy(EventLog.message_template[183], "CLIENT\tPOLLING: RTU  SEND - %s");
-strcpy(EventLog.message_template[184], "CLIENT\tPOLLING: TCP  RECV - %s");
-strcpy(EventLog.message_template[185], "CLIENT\tPOLLING: TCP  SEND - %s");
+strcpy(&EventLog.msg_tpl[A2D(180], "CLIENT\tPOLLING: FUNCTION [%d)] NOT SUPPORTED");
+strcpy(&EventLog.msg_tpl[A2D(181)], ""); // РЕЗЕРВ
+strcpy(&EventLog.msg_tpl[A2D(182)], "CLIENT\tPOLLING: RTU  RECV - %s");
+strcpy(&EventLog.msg_tpl[A2D(183)], "CLIENT\tPOLLING: RTU  SEND - %s");
+strcpy(&EventLog.msg_tpl[A2D(184)], "CLIENT\tPOLLING: TCP  RECV - %s");
+strcpy(&EventLog.msg_tpl[A2D(185)], "CLIENT\tPOLLING: TCP  SEND - %s");
 
 /// TRAFFIC (ДАННЫЕ) [220..239, 20]
-strcpy(EventLog.message_template[220], "CLIENT\tTRAFFIC: QUEUE  IN [%d]");
-strcpy(EventLog.message_template[221], "CLIENT\tTRAFFIC: QUEUE OUT [%d]");
+strcpy(&EventLog.msg_tpl[A2D(220], "CLIENT\tTRAFFIC: QUEUE  IN [%d)]");
+strcpy(&EventLog.msg_tpl[A2D(221], "CLIENT\tTRAFFIC: QUEUE OUT [%d)]");
 */
 
   /// анализируем массив шаблонов сообщений, заполняем массив типов шаблонов по комбинациям параметров
@@ -244,7 +244,7 @@ strcpy(EventLog.message_template[221], "CLIENT\tTRAFFIC: QUEUE OUT [%d]");
     d[0]=d[1]=d[2]=d[3]=d[4]=0;
     s[0]=s[1]=s[2]=s[3]=s[4]=0;
 
-    msglen=strlen(EventLog.message_template[i]);
+    msglen=strlen(&EventLog.msg_tpl[A2D(i)]);
 
     // проверка на длину текста сообщения без учета длины параметров при подстановке
     if(msglen >= EVENT_MESSAGE_LENGTH) return 1;
@@ -252,11 +252,12 @@ strcpy(EventLog.message_template[221], "CLIENT\tTRAFFIC: QUEUE OUT [%d]");
     if(msglen>0) {
 
       for(j=0; j<msglen; j++)
-        if(EventLog.message_template[i][j]=='%')
-        if(EventLog.message_template[i][j+1]=='d')      {d[d[4]]=1; if(d[4]<3) d[4]++;}
-        else if(EventLog.message_template[i][j+1]=='s') {s[s[4]]=1; if(s[4]<3) s[4]++;}
+        if(EventLog.msg_tpl[A2D(i)+j]  =='%')
+        if(EventLog.msg_tpl[A2D(i)+j+1]=='d') {d[d[4]]=1; if(d[4]<3) d[4]++;}
+        else
+        if(EventLog.msg_tpl[A2D(i)+j+1]=='s') {s[s[4]]=1; if(s[4]<3) s[4]++;}
 
-      EventLog.message_index[i]=\
+      EventLog.msg_index[i]=\
         (d[3]<<3)|(d[2]<<2)|(d[1]<<1)|d[0]|\
         (s[3]<<7)|(s[2]<<6)|(s[1]<<5)|(s[0]<<4);
 
@@ -361,25 +362,25 @@ void make_msgstr(	unsigned char msgcode, char *str,
 	char aux[24];
 
   // все сообщения без параметров
-  if(EventLog.message_index[msgcode]==EVENT_TPL_DEFAULT)
-		sprintf(str, EventLog.message_template[msgcode]);
+  if(EventLog.msg_index[msgcode]==EVENT_TPL_DEFAULT)
+		sprintf(str, &EventLog.msg_tpl[A2D(msgcode)]);
 
   // сообщения c первым числовым параметром
-  if(EventLog.message_index[msgcode]==EVENT_TPL_000D)
-		sprintf(str, EventLog.message_template[msgcode], prm1);
+  if(EventLog.msg_index[msgcode]==EVENT_TPL_000D)
+		sprintf(str, &EventLog.msg_tpl[A2D(msgcode)], prm1);
 
   // сообщения c двумя числовыми параметрами
-  if(EventLog.message_index[msgcode]==EVENT_TPL_00DD)
-		sprintf(str, EventLog.message_template[msgcode], prm1, prm2);
+  if(EventLog.msg_index[msgcode]==EVENT_TPL_00DD)
+		sprintf(str, &EventLog.msg_tpl[A2D(msgcode)], prm1, prm2);
 
   // сообщения c первым строковым параметром
-  if(EventLog.message_index[msgcode]==EVENT_TPL_000S) {
+  if(EventLog.msg_index[msgcode]==EVENT_TPL_000S) {
     // преобразуем строку в название интерфейса
     strcpy(aux, "***");
     if(prm1<=GATEWAY_P8) sprintf(aux, "PORT%d", prm1+1);
     if((prm1>=GATEWAY_T01)&&(prm1<=GATEWAY_T32))
       sprintf(aux, "TCP%0.2d", prm1-GATEWAY_T01+1);
-		sprintf(str, EventLog.message_template[msgcode], aux);
+		sprintf(str, &EventLog.msg_tpl[A2D(msgcode)], aux);
     }
 
 	return;

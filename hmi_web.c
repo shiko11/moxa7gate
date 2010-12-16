@@ -76,8 +76,8 @@ int init_hmi_web_h()
 		sizeof(GW_Iface)*MAX_TCP_SERVERS+
 		sizeof(GW_Client)*MOXAGATE_CLIENTS_NUMBER+
 		sizeof(GW_EventLog)+
-		sizeof(EventLog.message_index)+
-		sizeof(EventLog.message_template)+
+		sizeof(unsigned int) * EVENT_TEMPLATE_AMOUNT+
+		sizeof(char) * EVENT_TEMPLATE_AMOUNT * EVENT_MESSAGE_LENGTH+
 		sizeof(GW_Event)*EVENT_LOG_LENGTH;
 
   shm_segment_id=shmget(access_key, mem_size_ttl, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
@@ -153,13 +153,13 @@ int init_hmi_web_h()
 
   k+= sizeof(GW_EventLog);
 
-	EventLog.message_index=(unsigned int *) (pointer+k);
+	EventLog.msg_index=(unsigned int *) (pointer+k);
 
-  k+= sizeof(EventLog.message_index);
+  k+= sizeof(unsigned int) * EVENT_TEMPLATE_AMOUNT;
 
-	EventLog.message_template=(char *) (pointer+k);
+	EventLog.msg_tpl=(char *) (pointer+k);
 
-  k+= sizeof(EventLog.message_template);
+  k+= sizeof(char) * EVENT_TEMPLATE_AMOUNT * EVENT_MESSAGE_LENGTH;
 
   EventLog.app_log=
   event_log->app_log=

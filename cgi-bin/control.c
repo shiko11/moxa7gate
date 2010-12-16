@@ -93,8 +93,8 @@ int main(int argc, char *argv[])
 		sizeof(GW_Iface)*MAX_TCP_SERVERS+
 		sizeof(GW_Client)*MOXAGATE_CLIENTS_NUMBER+
 		sizeof(GW_EventLog)+
-		sizeof(event_log->message_index)+
-		sizeof(event_log->message_template)+
+		sizeof(unsigned int) * EVENT_TEMPLATE_AMOUNT+
+		sizeof(char) * EVENT_TEMPLATE_AMOUNT * EVENT_MESSAGE_LENGTH+
 		sizeof(GW_Event)*EVENT_LOG_LENGTH;
 
 	shm_segment_id=shmget(access_key, mem_size_ttl, S_IRUSR | S_IWUSR);
@@ -165,13 +165,15 @@ Modbus-шлюз не отвечает на этом компьютере MOXA. Код ошибки: %s\
 
   k+= sizeof(GW_EventLog);
 
-	event_log->message_index= (pointer+k);
+	EventLog.msg_index= // указатель нужен для использования в функциях модуля MESSAGES_H
+  event_log->msg_index=(unsigned int *) (pointer+k);
 
-  k+= sizeof(eventlog->message_index);
+  k+= sizeof(unsigned int) * EVENT_TEMPLATE_AMOUNT;
 
-	event_log->message_template= (pointer+k);
+  EventLog.msg_tpl=  // указатель нужен для использования в функциях модуля MESSAGES_H
+	event_log->msg_tpl=(char *) (pointer+k);
 
-  k+= sizeof(eventlog->message_template);
+  k+= sizeof(char) * EVENT_TEMPLATE_AMOUNT * EVENT_MESSAGE_LENGTH;
 
   //EventLog.app_log=
   event_log->app_log=
@@ -513,11 +515,11 @@ void show_events()
 	struct tm *tmd;
   int i, j;
 	char timestr[32], sourcestr[16], typestr[8];
-	char eventmsg[EVENT_MESSAGE_LENGTH];
+  char eventmsg[EVENT_MESSAGE_LENGTH+EVENT_MESSAGE_PREFIX];
 
   ///!!! использовать разделяемый сегмент памяти для хранения шаблонов сообщений
   ///!!! для экономии процессорного времени:
-	init_message_templates();
+	//init_message_templates();
 
   j = event_log->app_log_current_entry;
 	for(i=0; i<EVENT_LOG_LENGTH; i++) {

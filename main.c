@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
   update_shm(); // копируем данные о конфигурации в разделяемый сегмент памяти
   do {usleep(1000000);} while (Security.halt!=1);
   close_shm();
-  printf("stopping program...\n"); exit(1);
+  printf("stopping program...\n"); exit(0);
 
 /*** ПРОВЕРКА КОНФИГУРАЦИИ ШЛЮЗА В ЦЕЛОМ, ИНИЦИАЛИЗАЦИЯ ВТОРИЧНЫХ КОНФИГУРАЦИОННЫХ ПАРАМЕТРОВ ***/
 

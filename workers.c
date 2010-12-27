@@ -819,10 +819,14 @@ void *gateway_proxy_thread(void *arg)
 		///!!! статистику обновляем централизованно в функции int refresh_shm(void *arg) или подобной
 		//gate502.wData4x[gate502.status_info+3*port_id+0]++;
 
-		if(gate502.show_data_flow==1)
-			show_traffic(TRAFFIC_RTU_SEND, port_id, i, &tcp_adu[6], tcp_adu_len-6);
+//		if(gate502.show_data_flow==1)
+//			show_traffic(TRAFFIC_RTU_SEND, port_id, i, &tcp_adu[6], tcp_adu_len-6);
 
 		status = mb_serial_send_adu(fd, &tmpstat, &tcp_adu[6], tcp_adu_len-6, serial_adu, &serial_adu_len);
+
+    // для получения возможности видеть заначение контрольной суммы выполняем здесь вывод в консоль:
+		if(gate502.show_data_flow==1)
+			show_traffic(TRAFFIC_RTU_SEND, port_id, i, serial_adu, serial_adu_len);
 
 		switch(status) {
 		  case 0:
@@ -897,6 +901,33 @@ if((exceptions&EXCEPTION_DIOGEN)!=0)
 		  	break;
 		  default:;
 		  };
+
+///---------- специальный случай при получении ответа от пожарного датчика ИПЭС
+///--- если один из шести сигналов в принятом пакете отличается от сохраненного, выдаем сообщение
+if((exceptions & EXCEPTION_IPES)!=0)					
+  if((i!=MAX_QUERY_ENTRIES) && (serial_adu[RTUADU_FUNCTION]==MBF_READ_HOLDING_REGISTERS))
+		if((except_prm[1] & (1 << port_id))!=0) {
+
+				n = gate502.wData4x[query_table[i].offset];
+
+        if((n & 0x0001) != (serial_adu[4] & 0x0001)) // пожар
+			 	  sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, 230, serial_adu[RTUADU_ADDRESS], serial_adu[4] & 0x0001, 0, 0);
+        if((n & 0x0002) != (serial_adu[4] & 0x0002)) // авария
+			 	  sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, 231, serial_adu[RTUADU_ADDRESS], serial_adu[4] & 0x0002, 0, 0);
+        if((n & 0x0004) != (serial_adu[4] & 0x0004)) // стекло
+			 	  sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, 232, serial_adu[RTUADU_ADDRESS], serial_adu[4] & 0x0004, 0, 0);
+
+        n = n >> 8;
+        
+        if((n & 0x0001) != (serial_adu[3] & 0x0001)) // быстро
+			 	  sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, 233, serial_adu[RTUADU_ADDRESS], serial_adu[3] & 0x0001, 0, 0);
+        if((n & 0x0002) != (serial_adu[3] & 0x0002)) // далеко
+			 	  sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, 234, serial_adu[RTUADU_ADDRESS], serial_adu[3] & 0x0002, 0, 0);
+        if((n & 0x0004) != (serial_adu[3] & 0x0004)) // фиксация
+			 	  sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, 235, serial_adu[RTUADU_ADDRESS], serial_adu[3] & 0x0004, 0, 0);
+        
+			}
+///-----------------------------------------------------------------------------
 
 ///###-----------------------------			
 	if(i!=MAX_QUERY_ENTRIES) { // сохраняем локально полученные данные

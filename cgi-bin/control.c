@@ -105,15 +105,6 @@ Modbus-шлюз не отвечает на этом компьютере MOXA. Код ошибки: %s\
 														sizeof(Query_Table_Entry)*MAX_QUERY_ENTRIES);
 	time(&moment);
 	diff=difftime(moment, gate->timestamp);
-	if(diff>GATE_WEB_INTERFACE_TIMEOUT) {
-		printf("\
-Content-Type: text/html\r\n\r\n\
-<div class=\"err_block\">\
-Modbus-шлюз не отвечает %d секунд(ы).\
-</div>\
-\n", diff);
-		return 0;
-	  }
 
 ///----------------------------------------------------------------------------------------
 	int t, i;
@@ -131,6 +122,16 @@ Modbus-шлюз не отвечает %d секунд(ы).\
 //  if(!(shm_data->ATM || shm_data->RTM || shm_data->PROXY)) strcpy(sel1, " class=\"sel\"");
 
 printf("Content-Type: text/html\r\n\r\n"); 
+
+	if(diff>GATE_WEB_INTERFACE_TIMEOUT) {
+		printf("\
+Content-Type: text/html\r\n\r\n\
+<div class=\"err_block\">\
+Modbus-шлюз не отвечает %d секунд(ы).\
+</div>\
+\n", diff);
+		// return 0;
+	  }
 
 printf("\
 <table id=\"mode\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\" style=\"float:right;\">\n\

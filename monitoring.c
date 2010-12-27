@@ -194,9 +194,17 @@ strcpy(message_template[183], "CLIENT\tPOLLING: RTU  SEND - %s");
 strcpy(message_template[184], "CLIENT\tPOLLING: TCP  RECV - %s");
 strcpy(message_template[185], "CLIENT\tPOLLING: TCP  SEND - %s");
 
-/// TRAFFIC (ÄÀÍÍÛÅ) [220..239, 20]
+/// TRAFFIC (ÄÀÍÍÛÅ) [220..230, 10]
 strcpy(message_template[220], "CLIENT\tTRAFFIC: QUEUE  IN [%d]");
 strcpy(message_template[221], "CLIENT\tTRAFFIC: QUEUE OUT [%d]");
+
+/// TRAFFIC (ÄÀÍÍÛÅ) [230..239, 9]
+strcpy(message_template[230], "IPES %d: FIRE %s");
+strcpy(message_template[231], "IPES %d: FAIL %s");
+strcpy(message_template[232], "IPES %d: GLASS %s");
+strcpy(message_template[233], "IPES %d: FAST %s");
+strcpy(message_template[234], "IPES %d: FAR %s");
+strcpy(message_template[235], "IPES %d: FIX %s");
 
   return;
   }
@@ -476,6 +484,11 @@ void make_msgstr(	unsigned char msgcode, char *str,
 
 	if(msgcode==221) // CLIENT\tTRAFFIC: QUEUE OUT [%d]
 		sprintf(str, message_template[msgcode], prm2);
+
+/// TRAFFIC (ÄÀÍÍÛÅ) [230..239, 9]
+	if((msgcode>=230)&&(msgcode<=235))
+    if(prm2==0) sprintf(str, message_template[msgcode], prm1, "OFF");
+      else      sprintf(str, message_template[msgcode], prm1, " ON");
 
 	return;
 	}

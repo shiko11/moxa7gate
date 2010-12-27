@@ -80,8 +80,12 @@ int mb_serial_send_adu(int ttyfd, GW_StaticData *stat, u8 *pdu, u16 pdu_len, u8 
 //     adu[adu_len++]       = count >> 8;                //
 //     adu[adu_len++]       = count &0x00ff;             //**************
 
+// для проверки поведения пожарных датчиков выдаем широковещательный запрос:
+// adu[RTUADU_ADDRESS]=MODBUS_ADDRESS_BROADCAST;
+
 //     if (!(_rtu_crc_off)) {
           temp_crc = crc(adu, 0, cur_pos);
+          // для проверки поведения пожарных датчиков отключаем временно формирование контрольной суммы:
           adu[cur_pos++] = temp_crc >> 8;                   //********
           adu[cur_pos++] = temp_crc & 0x00FF;               //   ДПВБЧМСЕН CRC Ч ЛПОЕГ
 //     }

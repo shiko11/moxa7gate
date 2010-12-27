@@ -4,27 +4,29 @@
 # SEM-ENGINEERING, BRYANSK 2010
 #
 # THIS CONFIGURATION FILE GENERATED AUTOMATICALLY
-# AT 15:46:30 12.10.2010
+# AT 10:29:40 28.12.2010
 #
-# Object: ЛПДС Кротовка
-# Location: УСО ЦПУ-П A3
+# Object: Нефтебаза СМНП Козьмино
+# Location: Кроссовая 214 
 #
-# File Version: 1.1
+# File Version: 1.16
 #
-# Network Name: moxa_cpup_a3
-# Network Address: 192.0.0.15
+# Network Name: moxa_test
+# Network Address: 10.0.6.88
 #
  
-./moxa7gate \
+/root/moxa7gate \
 --tcp_port 502 \
 --modbus_address 1 \
 --status_info 1 \
---Object "ЛПДС Кротовка" \
---Location "УСО ЦПУ-П A3" \
---confVersion "1.1" \
---NetworkName "moxa_cpup_a3" \
---NetworkAddress "192.0.0.15" \
-PORT1 RS485_2W 2400 NONE 1000 BRIDGE_SIMPLE --desc "Панель сигнализации" \
-TCP_SERVERS 1 \
-192.0.0.252:502 1 0 P1 --desc "QUANTUM CPU 671 60" \
+--Object "Нефтебаза СМНП Козьмино" \
+--Location "Кроссовая 214 " \
+--confVersion "1.16" \
+--NetworkName "moxa_test" \
+--NetworkAddress "10.0.6.88" \
+--exception 2 4 \
+PORT3 RS485_2W 9600 NONE 200 GATEWAY_PROXY --desc "Тестовый шлейф" \
+PROXY_TABLE 2 \
+2 1 33 P3 8 HOLDING_REGISTER 0 2 --desc "ИПЭС №8" \
+2 1 34 P3 10 HOLDING_REGISTER 0 2 --desc "ИПЭС №10" \
 &

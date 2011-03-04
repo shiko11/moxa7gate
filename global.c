@@ -959,7 +959,12 @@ int process_moxamb_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu, 
 //			for(i=0; i<adu_len; i++) printf("(%2.2X)", adu[i]);
 //			printf("\n");
 
-			status=enqueue_query_ex(&iDATA[port_id].queue, client_id, device_id, adu, adu_len);
+      // если запрос предназначен для RTU-интерфейса:
+      if(port_id<MAX_MOXA_PORTS)
+			  status=enqueue_query_ex(&iDATA[port_id].queue, client_id, device_id, adu, adu_len);
+				else
+			  status=enqueue_query_ex(&iDATAtcp[port_id-MAX_MOXA_PORTS*2].queue, client_id, device_id, adu, adu_len);
+
 //				printf("enqueue_query_ex %d P%d\n", status, port_id+1);
 //				status=enqueue_query(port_id, i, device_id, tcp_adu, tcp_adu_len);
 //				if(status!=0) continue;

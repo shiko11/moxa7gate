@@ -613,7 +613,7 @@ void *srvr_tcp_bridge(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
 		status = mb_tcp_receive_adu(inputDATA->clients[0].csd, &tmpstat, tcp_adu, &tcp_adu_len);
 
 		if(gate502.show_data_flow==1)
-			show_traffic(TRAFFIC_TCP_RECV, client_id, client_id, tcp_adu, tcp_adu_len);
+			show_traffic(TRAFFIC_TCP_RECV, client_id, client_id, tcp_adu, tcp_adu_len<MB_TCP_MAX_ADU_LENGTH?tcp_adu_len:MB_TCP_MAX_ADU_LENGTH-1);
 //	gettimeofday(&tv2, &tz);
 //	inputDATA->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
 //	printf("tcp received after %d msec\n", inputDATA->clients[client_id].stat.request_time_average);
@@ -712,7 +712,7 @@ void *srvr_tcp_bridge(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
 		///!!! статистику обновляем централизованно в функции int refresh_shm(void *arg) или подобной
 		//gate502.wData4x[gate502.status_info+3*port_id+1]++;
 
-		} /* else { //отправляем результат запроса непосредственно клиенту
+		} else { //отправляем результат запроса непосредственно клиенту
 
 			serial_adu[RTUADU_ADDRESS]=gate502.modbus_address;
 			j=(((serial_adu[RTUADU_START_HI]<<8) | serial_adu[RTUADU_START_LO])&0xffff)+
@@ -720,7 +720,7 @@ void *srvr_tcp_bridge(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
 				query_table[device_id].start;
 			serial_adu[RTUADU_START_HI]=(j>>8)&0xff;
 			serial_adu[RTUADU_START_LO]=j&0xff;
-
+			
 			/// определяем тип клиента и соответственно функцию, используемую для отправки ответа
 			if(gate502.clients[client_id].p_num<=SERIAL_P8)
 			if(	(iDATA[gate502.clients[client_id].p_num].modbus_mode==BRIDGE_PROXY) &&
@@ -751,7 +751,7 @@ void *srvr_tcp_bridge(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
 				  default:;
 				  };
 						
-				} else {
+				} /*else {
 	
 				if(gate502.show_data_flow==1)
 					show_traffic(TRAFFIC_TCP_SEND, port_id, client_id, serial_adu, serial_adu_len-2);
@@ -772,11 +772,11 @@ void *srvr_tcp_bridge(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
 				  	break;
 				  default:;
 				  };
-				}
+				} */
 	
 			/// при отсутствии записей в очереди переходим к обработке следующей записи из таблицы опроса
 			i=device_id;
-			} */
+			}
 
 //	update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 	update_stat(&inputDATA->stat, &tmpstat);
@@ -1244,7 +1244,7 @@ void *bridge_proxy_thread(void *arg)
 
 //	  pthread_mutex_unlock(&inputDATA->serial_mutex);
 	  
-//		tmpstat.accepted++;
+		tmpstat.accepted++;
 
 		switch(status) {
 		  case 0:
@@ -1256,6 +1256,7 @@ void *bridge_proxy_thread(void *arg)
 		  case MB_SERIAL_CRC_ERROR:
 		  case MB_SERIAL_PDU_ERR:
 		  	tmpstat.errors++;
+				func_res_err(tcp_adu[TCPADU_FUNCTION], &tmpstat);
   			// POLLING: RTU RECV
 			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|port_id, 182, (unsigned) status, client_id, 0, 0);
 				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
@@ -1276,17 +1277,18 @@ void *bridge_proxy_thread(void *arg)
 
 			if(status!=0) { // запрос был перенаправлен на другой порт
 				if(status!=3) { // учет ошибочных запросов
-					tmpstat.accepted++;
+					tmpstat.errors++;
 					func_res_err(tcp_adu[TCPADU_FUNCTION], &tmpstat);
-					update_stat(&iDATA[port_id].stat, &tmpstat);
-					//update_stat(&gate502.stat, &tmpstat);
-					}
+					} else {
+            tmpstat.sended++;
+			      func_res_ok(tcp_adu[TCPADU_FUNCTION], &tmpstat);
+            }
+				update_stat(&iDATA[port_id].stat, &tmpstat);
 				continue;
 				}
 
 //		gettimeofday(&tv1, &tz);
 		// считаем статистику, только если явно отправляем ответ клиенту
-		tmpstat.accepted++;
 
 ///--------------------------------------------------------
 
@@ -1297,14 +1299,17 @@ void *bridge_proxy_thread(void *arg)
 
 		switch(status) {
 		  case 0:
-		  	if(exception_adu_len==0) tmpstat.sended++;
-		  	  else {
+		  	if(exception_adu_len==0) {
+          tmpstat.sended++;
+				  func_res_ok(memory_adu[RTUADU_FUNCTION], &tmpstat);
+		  	  } else {
 			  		tmpstat.errors_serial_adu++;
 				  	tmpstat.errors++;
 		  	    }
 		  	break;
 		  case MB_SERIAL_WRITE_ERR:
 		  	tmpstat.errors++;
+				func_res_err(tcp_adu[TCPADU_FUNCTION], &tmpstat);
   			// POLLING: RTU SEND
 			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|port_id, 183, (unsigned) status, client_id, 0, 0);
 				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);

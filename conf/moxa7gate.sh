@@ -4,39 +4,43 @@
 # SEM-ENGINEERING, BRYANSK 2010
 #
 # THIS CONFIGURATION FILE GENERATED AUTOMATICALLY
-# AT 14:24:39 13.11.2010
+# AT 19:49:11 11.12.2010
 #
-# Object: Тестовый стенд
+# Object: Рез. парк
 # Location: Кроссовая (214) A4
 #
-# File Version: 1.13
+# File Version: 1.2
 #
-# Network Name: moxa_test_a4
-# Network Address: 10.0.6.37
-#
+# Network Name: moxa_rp
+# Network Address: 192.168.5.126
  
 /root/moxa7gate \
 --tcp_port 502 \
 --modbus_address 1 \
---status_info 1 \
+--status_info 2000 \
 --show_sys_messages \
---Object "Тестовый стенд" \
+--Object "Рез. парк" \
 --Location "Кроссовая (214) A4" \
---confVersion "1.13" \
---NetworkName "moxa_test_a4" \
---NetworkAddress "10.0.6.37" \
-PORT2 RS485_2W 9600 NONE 1000 GATEWAY_PROXY --desc "Тестовый шлейф из восьми пожарных датчиков" \
-PORT8 RS485_2W 9600 NONE 1000 BRIDGE_PROXY --desc "Устройство modbus-мастер на стороне RTU" \
-PROXY_TABLE 9 \
-1 8 33 T1 1 HOLDING_REGISTER 100 2 --desc "Тестовый блок регистров" \
-2 1 41 P2 1 HOLDING_REGISTER 0 2 --desc "ИПЭС №1" \
-2 1 42 P2 3 HOLDING_REGISTER 0 2 --desc "ИПЭС №3" \
-2 1 43 P2 5 HOLDING_REGISTER 0 2 --desc "ИПЭС №5" \
-2 1 44 P2 7 HOLDING_REGISTER 0 2 --desc "ИПЭС №7" \
-2 1 45 P2 9 HOLDING_REGISTER 0 2 --desc "ИПЭС №9" \
-2 1 46 P2 11 HOLDING_REGISTER 0 2 --desc "ИПЭС №11" \
-2 1 47 P2 13 HOLDING_REGISTER 0 2 --desc "ИПЭС №13" \
-2 1 48 P2 15 HOLDING_REGISTER 0 2 --desc "ИПЭС №15" \
+--confVersion "1.2" \
+--NetworkName "moxa_rp" \
+--NetworkAddress "192.168.5.126" \
+PORT1 RS485_2W 19200 EVEN 1000 GATEWAY_PROXY --desc "СИКН" \
+PORT3 RS485_2W 19200 EVEN 1000 BRIDGE_PROXY --desc "Контроллер телемеханики 2" \
+PORT4 RS485_2W 19200 NONE 1000 BRIDGE_PROXY --desc "Контроллер телемеханики 1" \
+PROXY_TABLE 13 \
+1 50 1 P1 1 HOLDING_REGISTER 1000 3 \
+51 50 51 P1 1 HOLDING_REGISTER 1000 3 \
+101 57 101 P1 1 HOLDING_REGISTER 500 3 \
+201 50 201 P1 1 HOLDING_REGISTER 500 3 \
+251 50 251 P1 1 HOLDING_REGISTER 500 3 \
+301 50 301 P1 1 HOLDING_REGISTER 500 3 \
+351 50 351 P1 1 HOLDING_REGISTER 500 3 \
+401 51 401 P1 1 HOLDING_REGISTER 500 3 \
+501 51 501 P1 1 HOLDING_REGISTER 500 3 \
+601 51 601 P1 1 HOLDING_REGISTER 500 3 \
+701 51 701 P1 1 HOLDING_REGISTER 500 3 \
+1562 40 1562 T1 1 HOLDING_REGISTER 100 4 --desc "Блок регистров ТС" \
+1662 70 1662 T1 1 HOLDING_REGISTER 100 4 --desc "Блок регистров ТИ" \
 TCP_SERVERS 1 \
-10.0.1.252:502 2 0 P1 --desc "MODSIM на локальном ПК" \
+192.168.5.121:502 1 0 P1 --desc "Контроллер рез. парка" \
 &

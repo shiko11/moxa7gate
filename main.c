@@ -4,8 +4,11 @@ SEM-ENGINEERING
                     BRYANSK 2009
 */
 
-#include "global.h"
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
+#include "global.h"
 #include "modbus_tcp.h"
 
 #define DEBUG_oDATA
@@ -21,6 +24,8 @@ int main(int argc, char *argv[])
 	memset(vslave,0,sizeof(vslave));
 	memset(query_table,0,sizeof(query_table));
 	memset(tcp_servers,0,sizeof(tcp_servers));
+
+	memset(except_counters,0,sizeof(except_counters));
 
 	int			i, j;
 	for(i=0; i<MAX_MOXA_PORTS; i++) {
@@ -40,7 +45,12 @@ int main(int argc, char *argv[])
 		iDATA[i].ssd=-1;
 		iDATA[i].modbus_mode=MODBUS_PORT_OFF;
 		strcpy(iDATA[i].bridge_status, "OFF");
+
+#ifdef ARCHITECTURE_I386
+		sprintf(iDATA[i].serial.p_name, "/dev/ttyS%d", i);
+#else
 		sprintf(iDATA[i].serial.p_name, "/dev/ttyM%d", i);
+#endif
 
 		iDATA[i].serial.p_num=i+1;
 		strcpy(iDATA[i].serial.p_mode, "RS485_2w");
@@ -315,7 +325,8 @@ int main(int argc, char *argv[])
 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_SYSTEM, 28, 2, k, 0, 0);
 		}*/
 
-  // выделение памяти под таблицу 3x
+	// отображаем таблицу input-регистров на таблицу holding-регистров
+  /*/ выделение памяти под таблицу 3x
 	if(gate502.amount3xRegisters>0) {
 		k=sizeof(u16)*gate502.amount3xRegisters;
 		gate502.wData3x=(u16 *) malloc(k);
@@ -325,7 +336,7 @@ int main(int argc, char *argv[])
 			}
 		memset(gate502.wData3x, 0, k);
 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_SYSTEM, 28, 3, k, 0, 0);
-		}
+		}*/
 
   // выделение памяти под таблицу 4x
 	if(gate502.amount4xRegisters>0) {
@@ -342,6 +353,12 @@ int main(int argc, char *argv[])
 		gate502.offset2xStatus=gate502.offset4xRegisters*sizeof(u16)*8;
 		gate502.amount2xStatus=gate502.amount4xRegisters*sizeof(u16)*8;
 		gate502.wData2x=(u8 *) gate502.wData4x;
+
+		// отображаем таблицу input-регистров на таблицу holding-регистров
+		gate502.offset3xRegisters=gate502.offset4xRegisters;
+		gate502.amount3xRegisters=gate502.amount4xRegisters;
+		gate502.wData3x=gate502.wData4x;
+
 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|EVENT_SRC_SYSTEM, 28, 2, k, 0, 0);
 		}
 
@@ -350,6 +367,8 @@ int main(int argc, char *argv[])
   gate502.status_info--;
 
 /*** ИНИЦИАЛИЗАЦИЯ WATCHDOG-ТАЙМЕРА (СРЕДСТВО ЗАЩИТЫ ОТ СБОЕВ И ЗАВИСАНИЙ) ***/
+#ifndef ARCHITECTURE_I386
+
 if(gate502.watchdog_timer==1) {																																 
 	mxwdt_handle=mxwdg_open(60*1000);
 	if(mxwdt_handle<0) {
@@ -358,8 +377,9 @@ if(gate502.watchdog_timer==1) {
 	  }
 	printf("succesfuly opened the watch dog\n");
 	}
-
+#endif
 /*** ИНИЦИАЛИЗАЦИЯ УСТРОЙСТВ КОНТРОЛЯ И МОНИТОРИНГА: LCM, KEYPAD, BUZZER (ДИСПЛЕЙ, КЛАВИАТУРА, ЗУММЕР) ***/
+#ifndef ARCHITECTURE_I386
 	mxkpd_handle=keypad_open();
 	sysmsg_ex(EVENT_CAT_MONITOR|(mxkpd_handle<0?EVENT_TYPE_ERR:EVENT_TYPE_INF)|EVENT_SRC_SYSTEM,
 						26, 0, 0, 0, 0);
@@ -384,17 +404,21 @@ if(gate502.watchdog_timer==1) {
   screen.buzzer_control=1;
   screen.secr_scr_changes_was_made=0;
 
+#endif
+
 	gettimeofday(&tv_mem, &tz);
 //	printf("tv_mem %d\n", tv_mem.tv_sec);
 
 /// запускаем поток для обработки ввода с клавиатуры и вывода на дисплей статусной информации
 	int			rc;
+#ifndef ARCHITECTURE_I386
 	pthread_t		tstTH;
 	rc = pthread_create(
 		&tstTH,
 		NULL,
 		mx_keypad_lcm,
 		NULL);
+#endif
 	//-------------------------------------------------------
 
 //  printf("stopping program...\n"); exit(1);
@@ -669,10 +693,12 @@ gateway_common_processing();
 	shutdown(gate502.ssd, SHUT_RDWR);
 	close(gate502.ssd);
 
+#ifndef ARCHITECTURE_I386
   mxlcm_close(mxlcm_handle);
   keypad_close(mxkpd_handle);
   mxbuzzer_close(mxbzr_handle);
   if(gate502.watchdog_timer==1) mxwdg_close(mxwdt_handle);
+#endif
 
 	close_shm();
 	semctl(semaphore_id, MAX_MOXA_PORTS, IPC_RMID, NULL);
@@ -709,6 +735,7 @@ int gateway_common_processing()
 
 		 rc=sizeof(addr);
 		 if(iDATA[i].ssd>=0) csd = accept(iDATA[i].ssd, (struct sockaddr *)&addr, &rc);
+
 		   else continue;
 			
 			if((csd<0)&&(errno==EAGAIN)) {
@@ -771,6 +798,9 @@ int gateway_common_processing()
 		gateway_single_port_processing();
 		/// механизм трансляции запросов
 		query_translating();
+
+  		///*** Заполняем массив диагностической информации, если он был инициализирован
+		update_status_info();
 	  
 		// останов программы по внешней команде
 		if(gate502.halt==1) break;
@@ -1033,3 +1063,27 @@ int query_translating()
   return 0;
   }
 ///-----------------------------------------------------------------------------------------------------------------
+int update_status_info()
+  {
+
+  int i, j;
+  ///*** Заполняем массив диагностической информации, если он был инициализирован
+
+  for(i=0; i<MAX_MOXA_PORTS; i++) {
+    gate502.wData4x[gate502.status_info+3*i+0]=iDATA[i].stat.accepted;
+    gate502.wData4x[gate502.status_info+3*i+1]=iDATA[i].stat.sended;
+    gate502.wData4x[gate502.status_info+3*i+2]=iDATA[i].stat.request_time;
+	  }
+
+  for(i=0; i<MAX_QUERY_ENTRIES; i++) {
+		j = 0x01 << (i % 16);
+    if(query_table[i].status_bit==0)
+			gate502.wData4x[gate502.status_info+3*MAX_MOXA_PORTS+(i/16)]&=~j;
+			else
+			gate502.wData4x[gate502.status_info+3*MAX_MOXA_PORTS+(i/16)]|=j;
+    }
+
+  return 0;
+  }
+///-----------------------------------------------------------------------------------------------------------------
+

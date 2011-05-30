@@ -4,6 +4,9 @@ SEM-ENGINEERING
                     BRYANSK 2009
 */
 
+#include <string.h>
+#include <stdio.h>
+
 #include "global.h"
 #include "mx_keypad_lcm.h"
 ///---------------------------------------------------------------

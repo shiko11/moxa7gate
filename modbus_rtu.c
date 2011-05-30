@@ -17,10 +17,13 @@ SEM-ENGINEERING
 #include <unistd.h> /* POSIX Symbolic Constants */
 #include <errno.h>  /* Error definitions */
 
+#include "global.h"
+
+#ifndef ARCHITECTURE_I386
 #include <moxadevice.h>
+#endif
 
 #include "modbus_rtu.h"
-#include "global.h"
 
 #define DEBUG_MB_RTU          /* uncomment to see the data sent and received */
 #define CRC_RTU
@@ -137,7 +140,7 @@ int receive_response(int ttyfd, u8 *received_string,int timeout,int ch_interval_
 //     }
 
      tv.tv_sec = 0;
-	  tv.tv_usec = ch_interval_timeout;
+	  tv.tv_usec = 8*ch_interval_timeout;
 
      FD_ZERO(&rfds );
      FD_SET(ttyfd, &rfds );
@@ -231,10 +234,13 @@ int mb_serial_receive_adu(int fd, GW_StaticData *stat, u8 *adu, u16 *adu_len, u8
 //     printf("TEST1    IN(%0.2d): ", context->tcp_adu_len);
 //     for (i=0;i<context->tcp_adu_len;i++) printf("[%0.2X]",context->tcp_adu[i]);
 //		 printf("!%d\n", context->tcp_adu[MB_TCP_ADU_HEADER_LEN]);
+
+#ifndef ARCHITECTURE_I386
 	if(mb_check_response_pdu(&adu[1], *adu_len-3, request)) {
 		stat->errors_serial_pdu++;
 		return MB_SERIAL_PDU_ERR;
 		}
+#endif
      
      return 0;
 }
@@ -263,6 +269,9 @@ int open_comm(char *device,char *mode)
 //     if (_mb_rtu) printf( "%s open\n", device );
 #endif
 	//анализ параметра "интерфейс порта (режим)"
+
+#ifndef ARCHITECTURE_I386
+
 	if ( strcmp( mode, "RS232") == 0 ) {
 	itmp = RS232_MODE;
 	} else {
@@ -285,6 +294,8 @@ int open_comm(char *device,char *mode)
 		fprintf( stderr, "set mode failed\n");
 		exit(1);
 	}
+#endif
+
 	return (ttyfd);	
 }
 /************************************************************************

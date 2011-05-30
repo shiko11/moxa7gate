@@ -109,8 +109,10 @@ Print #1, " "
 
 If ws.Cells(SETTConfUCModelRow, 2).Value = "MOXA UC-7410" Then
     Print #1, "/root/moxa7gate \"
-Else
+ElseIf ws.Cells(SETTConfUCModelRow, 2).Value = "MOXA UC-7410 Plus" Then
     Print #1, "/home/root/moxa7gate_plus \"
+Else
+    Print #1, "./moxa7gate_i386 \"
 End If
 
 If ws.Cells(SETTTCPPortRow, 2).Value <> "" And ws.Cells(SETTTCPPortRow, 2).Value <> 0 Then

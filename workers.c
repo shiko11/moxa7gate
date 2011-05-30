@@ -17,7 +17,7 @@ void *srvr_tcp_child(void *arg)
 	u8			serial_adu[MB_SERIAL_MAX_ADU_LEN];/// SERIAL ADU
 	u16			serial_adu_len;
 
-	int		status;
+	int		status; //, retry;
 
   int port_id=((unsigned)arg)>>8;
   int client_id=((unsigned)arg)&0xff;
@@ -48,7 +48,7 @@ void *srvr_tcp_child(void *arg)
 
 		status = mb_tcp_receive_adu(tcsd, &tmpstat, tcp_adu, &tcp_adu_len);
 
-		if(gate502.show_data_flow==1)
+		if((gate502.show_data_flow==1) && (status==0))
 			show_traffic(TRAFFIC_TCP_RECV, port_id, client_id, tcp_adu, tcp_adu_len);
 
 		gettimeofday(&tv2, &tz);
@@ -68,11 +68,12 @@ void *srvr_tcp_child(void *arg)
 		  case TCP_ADU_ERR_LEN:
 		  case TCP_ADU_ERR_UID:
 		  case TCP_PDU_ERR:
-		  	//tmpstat.errors++;
+		  	tmpstat.errors++;
+			func_res_err(tcp_adu[TCPADU_FUNCTION], &tmpstat);
   			// POLLING: TCP RECV ERROR
 			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|port_id, 184, (unsigned) status, client_id, 0, 0);
 				//update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
-				//update_stat(&iDATA[port_id].stat, &tmpstat);
+				update_stat(&iDATA[port_id].stat, &tmpstat);
 				if(status==TCP_COM_ERR_NULL) {
 					inputDATA->clients[client_id].connection_status=MB_CONNECTION_CLOSED;
 					// inputDATA->modbus_mode=MODBUS_PORT_ERROR; /// нельзя так делать
@@ -84,6 +85,11 @@ void *srvr_tcp_child(void *arg)
 		  };
 		
 	pthread_mutex_lock(&inputDATA->serial_mutex);
+
+//#ifdef ARCHITECTURE_I386
+//	retry=0;
+//	do {
+//#endif
 
 		if(gate502.show_data_flow==1)
 			show_traffic(TRAFFIC_RTU_SEND, port_id, client_id, &tcp_adu[6], tcp_adu_len-6);
@@ -98,7 +104,7 @@ void *srvr_tcp_child(void *arg)
 				func_res_err(tcp_adu[TCPADU_FUNCTION], &tmpstat);
   			// POLLING: RTU SEND
 			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|port_id, 183, (unsigned) status, client_id, 0, 0);
-				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
+				//update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 				update_stat(&iDATA[port_id].stat, &tmpstat);
 				continue;
 		  	break;
@@ -107,6 +113,11 @@ void *srvr_tcp_child(void *arg)
 
     /// kazhetsya net zaschity ot perepolneniya bufera priema "serial_adu[]"
 	  status = mb_serial_receive_adu(fd, &tmpstat, serial_adu, &serial_adu_len, &tcp_adu[MB_TCP_ADU_HEADER_LEN], inputDATA->serial.timeout, inputDATA->serial.ch_interval_timeout);
+
+//#ifdef ARCHITECTURE_I386
+//	retry++;
+//	} while((retry<=RETRIES_NUMBER_I386) && (status!=0));
+//#endif
 
 	  pthread_mutex_unlock(&inputDATA->serial_mutex);
 	  
@@ -138,7 +149,7 @@ void *srvr_tcp_child(void *arg)
 				func_res_err(serial_adu[RTUADU_FUNCTION], &tmpstat);
   			// POLLING: RTU RECV
 			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|port_id, 182, (unsigned) status, client_id, 0, 0);
-				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
+				//update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 				update_stat(&iDATA[port_id].stat, &tmpstat);
 				if(status==MB_SERIAL_READ_FAILURE) {
 					inputDATA->clients[client_id].connection_status=MB_CONNECTION_CLOSED;
@@ -172,7 +183,7 @@ void *srvr_tcp_child(void *arg)
 		  default:;
 		  };
 
-	update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
+	//update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
 	update_stat(&iDATA[port_id].stat, &tmpstat);
 
 	gettimeofday(&tv2, &tz);
@@ -822,6 +833,20 @@ void *gateway_proxy_thread(void *arg)
 //		if(gate502.show_data_flow==1)
 //			show_traffic(TRAFFIC_RTU_SEND, port_id, i, &tcp_adu[6], tcp_adu_len-6);
 
+///---------- специальный случай при подаче команд на СКС-7 Диоген, обрабатываем
+///--- выдаем оперативное сообщение о прохождении команды управления
+if((exceptions&EXCEPTION_DIOGEN)!=0)					
+		if(tcp_adu[TCPADU_FUNCTION]==0x06)
+		if((except_prm[0]&(1 << port_id))!=0)
+    if( ((tcp_adu[TCPADU_START_HI]<<8) | tcp_adu[TCPADU_START_LO]) == 58) {
+      if( ((tcp_adu[TCPADU_LEN_HI]<<8) | tcp_adu[TCPADU_LEN_LO]) == 0x120)
+			 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, 236, tcp_adu[TCPADU_ADDRESS], 0, 0, 0);
+      else
+      if( ((tcp_adu[TCPADU_LEN_HI]<<8) | tcp_adu[TCPADU_LEN_LO]) == 0x121)
+			 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, 237, tcp_adu[TCPADU_ADDRESS], 0, 0, 0);
+			}
+///-----------------------------------------------------------------------------
+
 		status = mb_serial_send_adu(fd, &tmpstat, &tcp_adu[6], tcp_adu_len-6, serial_adu, &serial_adu_len);
 
     // для получения возможности видеть заначение контрольной суммы выполняем здесь вывод в консоль:
@@ -854,17 +879,26 @@ void *gateway_proxy_thread(void *arg)
 	  status = mb_serial_receive_adu(fd, &tmpstat, serial_adu, &serial_adu_len, &tcp_adu[MB_TCP_ADU_HEADER_LEN], inputDATA->serial.timeout, inputDATA->serial.ch_interval_timeout);
 
 ///---------- специальный случай при подаче команд на СКС-7 Диоген, обрабатываем
-///--- убираем третий с конца байт в полученном ответе на запрос
+///--- убираем третий с конца байт в полученном ответе на запрос и выдаем сообщение
 if((exceptions&EXCEPTION_DIOGEN)!=0)					
 		if( (serial_adu[RTUADU_FUNCTION]==0x06) &&
         ((status==MB_SERIAL_CRC_ERROR) || (status==MB_SERIAL_PDU_ERR))
       )
 		if((except_prm[0]&(1 << port_id))!=0) {
+
 			serial_adu[serial_adu_len-3]=serial_adu[serial_adu_len-2];
 			serial_adu[serial_adu_len-2]=serial_adu[serial_adu_len-1];
 			serial_adu_len--;
 			//if(status==MB_SERIAL_PDU_ERR) status=0;
 			status=0;
+
+      if( ((serial_adu[RTUADU_START_HI]<<8) | serial_adu[RTUADU_START_LO]) == 58) {
+        if( ((serial_adu[RTUADU_LEN_HI]<<8) | serial_adu[RTUADU_LEN_LO]) == 0x120)
+		  	 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, 236, serial_adu[RTUADU_ADDRESS], 1, 0, 0);
+        else
+        if( ((serial_adu[RTUADU_LEN_HI]<<8) | serial_adu[RTUADU_LEN_LO]) == 0x121)
+			   	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, 237, serial_adu[RTUADU_ADDRESS], 1, 0, 0);
+			  }
 			}
 ///-----------------------------------------------------------------------------
 
@@ -904,14 +938,19 @@ if((exceptions&EXCEPTION_DIOGEN)!=0)
 
 ///---------- специальный случай при получении ответа от пожарного датчика ИПЭС
 ///--- если один из шести сигналов в принятом пакете отличается от сохраненного, выдаем сообщение
+///--- условие работы: должен читаться ровно один второй регистр из датчика ИПЭС.
 if((exceptions & EXCEPTION_IPES)!=0)					
   if((i!=MAX_QUERY_ENTRIES) && (serial_adu[RTUADU_FUNCTION]==MBF_READ_HOLDING_REGISTERS))
 		if((except_prm[1] & (1 << port_id))!=0) {
 
 				n = gate502.wData4x[query_table[i].offset];
 
-        if((n & 0x0001) != (serial_adu[4] & 0x0001)) // пожар
+        if((n & 0x0001) != (serial_adu[4] & 0x0001)) { // пожар
 			 	  sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, 230, serial_adu[RTUADU_ADDRESS], serial_adu[4] & 0x0001, 0, 0);
+          except_counters[serial_adu[RTUADU_ADDRESS]-1]++;
+          // сбрасываем бит "пожар" в ноль, обратный переход к нормальному состоянию происходит без задержки в три запроса
+          if(except_counters[serial_adu[RTUADU_ADDRESS]-1]<3) serial_adu[4]&=0xfffe;
+          } else except_counters[serial_adu[RTUADU_ADDRESS]-1]=0;
         if((n & 0x0002) != (serial_adu[4] & 0x0002)) // авария
 			 	  sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, 231, serial_adu[RTUADU_ADDRESS], serial_adu[4] & 0x0002, 0, 0);
         if((n & 0x0004) != (serial_adu[4] & 0x0004)) // стекло
@@ -999,6 +1038,8 @@ if((exceptions & EXCEPTION_IPES)!=0)
 				query_table[device_id].start;
 			serial_adu[RTUADU_START_HI]=(j>>8)&0xff;
 			serial_adu[RTUADU_START_LO]=j&0xff;
+
+
 
 			/// определяем тип клиента и соответственно функцию, используемую для отправки ответа
 			if(gate502.clients[client_id].p_num<=SERIAL_P8)

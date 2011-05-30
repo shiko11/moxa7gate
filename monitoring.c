@@ -1,3 +1,7 @@
+
+#include <string.h>
+#include <stdio.h>
+
 #include "global.h"
 #include "modbus_rtu.h"
 #include "modbus_tcp.h"
@@ -202,9 +206,19 @@ strcpy(message_template[221], "CLIENT\tTRAFFIC: QUEUE OUT [%d]");
 strcpy(message_template[230], "IPES %d: FIRE %s");
 strcpy(message_template[231], "IPES %d: FAIL %s");
 strcpy(message_template[232], "IPES %d: GLASS %s");
+
+
 strcpy(message_template[233], "IPES %d: FAST %s");
 strcpy(message_template[234], "IPES %d: FAR %s");
 strcpy(message_template[235], "IPES %d: FIX %s");
+
+strcpy(message_template[236], "DIOGEN %d: START %s");
+strcpy(message_template[237], "DIOGEN %d: STOP %s");
+
+
+  // инициализация переменных времени
+	gettimeofday(&msg_tv, &msg_tz);
+  //printf("sec=%d, usec=%d, west=%d, dst=%d\n", msg_tv.tv_sec, msg_tv.tv_usec, msg_tz.tz_minuteswest, msg_tz.tz_dsttime);
 
   return;
   }
@@ -232,6 +246,7 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 	
 	/// создаем запись в журнале
 	time(&curtime);
+	curtime-=60*msg_tz.tz_minuteswest;
 	if(app_log!=NULL) {
 		app_log[gate502.app_log_current_entry].time=curtime;
 		app_log[gate502.app_log_current_entry].msgtype=msgtype;
@@ -382,14 +397,22 @@ void make_msgstr(	unsigned char msgcode, char *str,
 	if(msgcode==67) // CONNECTION ACCEPTED FROM %s CLIENT %d;
 		if(prm1==0) sprintf(str, message_template[msgcode], "N/A", 0);
 		  else {
+#ifndef ARCHITECTURE_I386
 				sprintf(aux, "%d.%d.%d.%d", prm1 >> 24, (prm1 >> 16) & 0xff, (prm1 >> 8) & 0xff, prm1 & 0xff);
+#else
+				sprintf(aux, "%d.%d.%d.%d", prm1 & 0xff, (prm1 >> 8) & 0xff, (prm1 >> 16) & 0xff, prm1 >> 24);
+#endif
 				sprintf(str, message_template[msgcode], aux, prm2);
 		    }
 
 	if(	msgcode==68 || 	// CONNECTION ESTABLISHED WITH %d.%d.%d.%d;
 			msgcode==69 ||	// CONNECTION FAILED TO %d.%d.%d.%d;
 			msgcode==70) 		// CONNECTION REJECTED FROM %d.%d.%d.%d;
+#ifndef ARCHITECTURE_I386
 		sprintf(str, message_template[msgcode], prm1 >> 24, (prm1 >> 16) & 0xff, (prm1 >> 8) & 0xff, prm1 & 0xff);
+#else
+		sprintf(str, message_template[msgcode], prm1 & 0xff, (prm1 >> 8) & 0xff, (prm1 >> 16) & 0xff, prm1 >> 24);
+#endif
 
 	if(	msgcode==71 || 	// CONNECTION CLOSED (LINK DOWN) CLIENT %d
 			msgcode==72) 		// CONNECTION CLOSED (TIMEOUT) CLIENT %d
@@ -489,6 +512,10 @@ void make_msgstr(	unsigned char msgcode, char *str,
 	if((msgcode>=230)&&(msgcode<=235))
     if(prm2==0) sprintf(str, message_template[msgcode], prm1, "OFF");
       else      sprintf(str, message_template[msgcode], prm1, " ON");
+
+	if((msgcode>=236)&&(msgcode<=237))
+    if(prm2==0) sprintf(str, message_template[msgcode], prm1, "MSG");
+      else      sprintf(str, message_template[msgcode], prm1, "RSP");
 
 	return;
 	}

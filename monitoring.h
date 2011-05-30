@@ -131,6 +131,9 @@ GW_EventLog *app_log;
 char eventmsg[EVENT_MESSAGE_LENGTH];
 char message_template[EVENT_TEMPLATE_AMOUNT][EVENT_MESSAGE_LENGTH];
 
+struct timeval msg_tv;
+struct timezone msg_tz;
+
 void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 								unsigned int prm1,
 								unsigned int prm2,

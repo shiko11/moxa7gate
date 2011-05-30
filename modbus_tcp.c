@@ -18,7 +18,7 @@ int		mb_tcp_receive_adu(int sfd, GW_StaticData *stat, u8 *mb_received_adu, u16 *
 	mb_received_adu_len = recv(sfd,mb_received_adu,MB_TCP_MAX_ADU_LENGTH,0);
 	*adu_len=mb_received_adu_len;
 	
-	if (*adu_len<=0) {
+	if (*adu_len<=0) { ///!!! always positive
 		stat->errors_input_communication++;
 		return TCP_COM_ERR_NULL;
 		}

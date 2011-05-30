@@ -7,8 +7,10 @@ SEM-ENGINEERING
 #ifndef MX_KEYPAD_LCM_H
 #define MX_KEYPAD_LCM_H
 
+#ifndef ARCHITECTURE_I386
 #include "mxlib/mxkeypad.h"
 #include "mxlib/mxlcm.h"
+#endif
 
 #define KEY_F1 0
 #define KEY_F2 1

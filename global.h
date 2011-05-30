@@ -21,6 +21,9 @@ SEM-ENGINEERING
 //#include <sys/ipc.h>
 //#include <sys/types.h>
 
+#define ARCHITECTURE_I386
+#define RETRIES_NUMBER_I386	2
+
 #define DEVICE_NAME_LENGTH	64
 
 ///!!! √лобальные идентификаторы объектов (механизмов, модулей, потоков) moxa7gate
@@ -39,8 +42,12 @@ typedef unsigned short             u16;
 #define MB_SERIAL_MIN_ADU_LEN			3              // минимальна€ длина пакета-ответа (7
 
 #include "modbus_rtu.h"
+
+#ifndef ARCHITECTURE_I386
 #include "mx_keypad_lcm.h"
 #include "mxlib/mxwdg.h"
+#endif
+
 #include "monitoring.h"
 #include "workers.h"
 
@@ -60,7 +67,13 @@ typedef unsigned short             u16;
 #define MB_FUNCTION_0x10	7
 
 #define   NAME_MOXA_PORT           "PORT"
+
+#ifdef ARCHITECTURE_I386
+#define   NAME_MOXA_PORT_DEV  "/dev/ttyS"
+#else
 #define   NAME_MOXA_PORT_DEV  "/dev/ttyM"
+#endif
+
 #define SERIAL_P1	0
 #define SERIAL_P2	1
 #define SERIAL_P3	2
@@ -276,13 +289,19 @@ typedef struct { // запись таблицы TCP_SERVERS
 
 input_cfg		iDATA[MAX_MOXA_PORTS];        //массив параметров скорфигурированных точек ()
 input_cfg_502 gate502;
+
+#ifndef ARCHITECTURE_I386
 int mxlcm_handle;
 int mxkpd_handle;
 int mxbzr_handle;
 int mxwdt_handle;
+
+GW_Display screen;
+#endif
+
 unsigned short mxwdt_flarr; // массив флагов дл€ отслеживани€ состо€ни€ потоков программы
 int shm_segment_id;
-GW_Display screen;
+
 unsigned int buzzer_flag; // зуммер дает 1, 2 и 3 гудка в зависимости от количества ошибок: <15, 15-30, >30
 struct timeval tv;
 struct timeval tv_mem;
@@ -314,6 +333,7 @@ u8					_show_sys_messages;	/// obsolete
 
 unsigned int exceptions; // массив из 16 флагов
 unsigned int except_prm[16]; // параметр исключени€
+unsigned int except_counters[16]; // массив счетчиков ответов, содержащих сигнал "пожар" в »ѕЁ—
 
 #define   MAX_KEYS                 64        //максимальное количество параметров командной строки с префиксом "--"
 //ошибки интерпретации командной строки
@@ -372,6 +392,7 @@ int			get_query_from_queue(GW_Queue *queue, int *client_id, int *device_id, u8 *
 ///--- shared memory operations
 int init_shm();
 int refresh_shm(void *arg);
+int update_status_info();
 int close_shm();
 int check_gate_settings(input_cfg *data);
 

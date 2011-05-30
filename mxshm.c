@@ -10,6 +10,7 @@ SEM-ENGINEERING
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <string.h>
 
 char *pointer;
 
@@ -167,6 +168,7 @@ int refresh_shm(void *arg)
 
     }
     
+#ifndef ARCHITECTURE_I386
 	gettimeofday(&tv, &tz);
 	int sec=(tv.tv_sec-tv_mem.tv_sec)+(tv.tv_usec-tv_mem.tv_usec)/1000000;
 	if(sec>=LCM_BUZZER_CONTROL_PERIOD) {
@@ -179,6 +181,7 @@ int refresh_shm(void *arg)
 		  p_errors[i]=iDATA[i].stat.errors;
 		  }
 	  }
+#endif
   
 	//shmctl(shm_segment_id, IPC_STAT, &shmbuffer);
 	//unsigned segment_size=shmbuffer.shm_segsz;
@@ -251,7 +254,7 @@ int refresh_shm(void *arg)
   ///--------------------------------------------------
 	time(&gate->timestamp);
   ///--------------------------------------------------
-
+#ifndef ARCHITECTURE_I386
 	if(gate->halt==1) {
 		gate502.halt=1;
 		show_confirmation_reboot();
@@ -273,7 +276,7 @@ int refresh_shm(void *arg)
 		gate502.use_buzzer = gate->use_buzzer;
 		mxbuzzer_beep(mxbzr_handle, 400);
 		}
-
+#endif
   ///--------------------------------------------------
 
 	for(i=0; i<MAX_VIRTUAL_SLAVES; i++) {
@@ -309,26 +312,11 @@ int refresh_shm(void *arg)
 		strcpy(t_tcpsrv[i].device_name, tcp_servers[i].device_name);
 	  }
 
-  ///*** Заполняем массив диагностической информации, если он был инициализирован
-
-  for(i=0; i<MAX_MOXA_PORTS; i++) {
-    gate502.wData4x[gate502.status_info+3*i+0]=iDATA[i].stat.accepted;
-    gate502.wData4x[gate502.status_info+3*i+1]=iDATA[i].stat.sended;
-    gate502.wData4x[gate502.status_info+3*i+2]=iDATA[i].stat.request_time;
-	  }
-
-  for(i=0; i<MAX_QUERY_ENTRIES; i++) {
-		j = 0x01 << (i % 16);
-    if(query_table[i].status_bit==0)
-			gate502.wData4x[gate502.status_info+3*MAX_MOXA_PORTS+(i/16)]&=~j;
-			else
-			gate502.wData4x[gate502.status_info+3*MAX_MOXA_PORTS+(i/16)]|=j;
-    }
-
   ///*** Выполняем сброс Watchdog-таймера для данного потока
 	mxwdt_flarr&=~PHID_HMISYS;
 
   ///*** Выполняем сброс Watchdog-таймера
+#ifndef ARCHITECTURE_I386
 	if(mxwdt_flarr==0) {
 		mxwdt_flarr=PHID_MAIN|PHID_HMISYS; // PHID_MOXAGATE|
     if(gate502.watchdog_timer==1) mxwdg_refresh(mxwdt_handle);
@@ -336,6 +324,7 @@ int refresh_shm(void *arg)
 		//if(dogtmp==40) *((int *)(0))=1; // эта строка вызывает фатальную ошибку (тест watch dog таймера)
     //dogtmp++;
     }
+#endif
 
 	return 0;
 	}

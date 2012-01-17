@@ -1196,7 +1196,7 @@ void *bridge_proxy_thread(void *arg)
 	inputDATA = &iDATA[port_id];
 	int fd=inputDATA->serial.fd;
 	
-	struct timeval tv1, tv2;
+	struct timeval tv1, tv2, except_tv1, except_tv2;
 	struct timezone tz;
 
 	int i;
@@ -1209,6 +1209,8 @@ void *bridge_proxy_thread(void *arg)
 ///-----------------------------------------
   // THREAD STARTED
 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, 42, iDATA[port_id].modbus_mode, client_id, 0, 0);
+
+	gettimeofday(&except_tv1, &tz);
 
 	while (1) {
 		
@@ -1269,6 +1271,28 @@ void *bridge_proxy_thread(void *arg)
 		  	break;
 		  default:;
 		  };
+
+///-------- специальный случай при прохождении команды синхронизации времени с контроллера телемеханики "Элеси"
+///-------- в АСУ ТП НПС. в случае дублирования команды на коротком временном интервале длительностью 12 секунд
+///-------- повторные команды блокируются.
+
+if((exceptions & EXCEPTION_KMELESY)!=0)
+  if(tcp_adu[TCPADU_FUNCTION]==MBF_WRITE_MULTIPLE_REGISTERS)
+		if(except_prm[2]==(port_id+1)) 
+		  if (((tcp_adu[TCPADU_FUNCTION+3]<<8) | tcp_adu[TCPADU_FUNCTION+4])==2)
+			  if((tcp_adu[TCPADU_FUNCTION+8]==0xff) &&
+			    ((tcp_adu[TCPADU_FUNCTION+9]&0xf0)==0x90)) {
+
+					gettimeofday(&except_tv2, &tz);
+
+					// если время между двумя последовательными командами синхронизации времени меньше 12 сек, команда блокируется
+					if(((except_tv2.tv_sec-except_tv1.tv_sec)*1000+(except_tv2.tv_usec-except_tv1.tv_usec)/1000)<12000)
+					  continue;
+
+					gettimeofday(&except_tv1, &tz);
+					//printf("RTU  IN: sync command go\n");
+		      }
+
 
 ///###-----------------------------			
 // в режиме PROXY выдаем данные из локального буфера

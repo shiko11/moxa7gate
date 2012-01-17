@@ -727,9 +727,11 @@ gateway_common_processing();
 }
 ///-----------------------------------------------------------------------------------------------------------------
 int gateway_common_processing()
-  {									
+  {
 	struct sockaddr_in	addr;
   int i, j, csd, rc;
+
+	unsigned int cycles_counter=0;
 
 	FD_ZERO(&watchset);
 
@@ -810,6 +812,25 @@ int gateway_common_processing()
 	  
 		// останов программы по внешней команде
 		if(gate502.halt==1) break;
+		
+		// сохран€ем значение счетчика циклов сканировани€ главного потока программы
+		// в последнем регистре блока статусной информации шлюза
+		cycles_counter++;
+		gate502.wData4x[gate502.status_info+31]=cycles_counter/1000;
+		
+		// сохран€ем текущее врем€
+		struct tm *tmd;
+	  time_t moment;
+    time(&moment);
+    moment-=60*tz.tz_minuteswest;
+		tmd=gmtime(&moment);
+
+		gate502.wData4x[gate502.status_info+32]=tmd->tm_mon+1; // мес€ц (1..12)
+		gate502.wData4x[gate502.status_info+33]=tmd->tm_mday; // день (1..31)
+		gate502.wData4x[gate502.status_info+34]=tmd->tm_year-100; // год (0..99)
+		gate502.wData4x[gate502.status_info+35]=tmd->tm_hour; // час (0..23)
+		gate502.wData4x[gate502.status_info+36]=tmd->tm_min; // минуты (0..59)
+		gate502.wData4x[gate502.status_info+37]=tmd->tm_sec; // секунды (0..59)
 		}
 
 	return 0;

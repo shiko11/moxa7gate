@@ -315,7 +315,9 @@ int refresh_shm(void *arg)
     gate502.wData4x[gate502.status_info+3*i+2]=iDATA[i].stat.request_time;
 	  }
 
-  for(i=0; i<MAX_QUERY_ENTRIES; i++) {
+	///!!! "MAX_QUERY_ENTRIES-16": освобождаем один регистр в блоке статусной информации (последний)
+	///!!! для сохранения значения счетчика циклов сканирования главного потока программы
+  for(i=0; i<(MAX_QUERY_ENTRIES-16); i++) {
 		j = 0x01 << (i % 16);
     if(query_table[i].status_bit==0)
 			gate502.wData4x[gate502.status_info+3*MAX_MOXA_PORTS+(i/16)]&=~j;

@@ -133,7 +133,7 @@ int receive_response(int ttyfd, u8 *received_string,int timeout,int ch_interval_
 //     }
 
      tv.tv_sec = 0;
-	  tv.tv_usec = ch_interval_timeout;
+	  tv.tv_usec = 8*ch_interval_timeout;
 
      FD_ZERO(&rfds );
      FD_SET(ttyfd, &rfds );

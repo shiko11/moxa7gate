@@ -291,7 +291,7 @@ Query_Table_Entry query_table[MAX_QUERY_ENTRIES];
 GW_TCP_Server tcp_servers[MAX_TCP_SERVERS];
 
 #define	BASIC_STAT_GATEWAY_INFO	24
-#define	GATE_STATUS_BLOCK_LENGTH	BASIC_STAT_GATEWAY_INFO+MAX_QUERY_ENTRIES/16
+#define	GATE_STATUS_BLOCK_LENGTH	BASIC_STAT_GATEWAY_INFO+MAX_QUERY_ENTRIES/16+6
 
 //u8					_show_data_flow;		/// obsolete
 u8					_show_sys_messages;	/// obsolete
@@ -302,6 +302,8 @@ u8					_show_sys_messages;	/// obsolete
 
 // исключение дл€ — —-07, параметр - битовый массив номеров последовательных портов, к которым подключены диогены
 #define EXCEPTION_DIOGEN 0x00000001
+// исключение дл€ контроллера телемеханики "Ёлеси", параметр - номер последовательного порта, соединенного с контроллером
+#define EXCEPTION_KMELESY   0x00000004
 
 unsigned int exceptions; // массив из 16 флагов
 unsigned int except_prm[16]; // параметр исключени€

@@ -198,6 +198,10 @@ strcpy(message_template[185], "CLIENT\tPOLLING: TCP  SEND - %s");
 strcpy(message_template[220], "CLIENT\tTRAFFIC: QUEUE  IN [%d]");
 strcpy(message_template[221], "CLIENT\tTRAFFIC: QUEUE OUT [%d]");
 
+  // инициализация переменных времени
+	gettimeofday(&msg_tv, &msg_tz);
+  //printf("sec=%d, usec=%d, west=%d, dst=%d\n", msg_tv.tv_sec, msg_tv.tv_usec, msg_tz.tz_minuteswest, msg_tz.tz_dsttime);
+
   return;
   }
 
@@ -224,6 +228,7 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 	
 	/// создаем запись в журнале
 	time(&curtime);
+	curtime-=60*msg_tz.tz_minuteswest;
 	if(app_log!=NULL) {
 		app_log[gate502.app_log_current_entry].time=curtime;
 		app_log[gate502.app_log_current_entry].msgtype=msgtype;

@@ -4,26 +4,30 @@
 # SEM-ENGINEERING, BRYANSK 2011
 #
 # THIS CONFIGURATION FILE GENERATED AUTOMATICALLY
-# AT 11:40:11 13.04.2011
+# AT 10:15:53 28.11.2011
 #
-# Object: Линейная телемеханика
-# Location: Шкаф ЛТМ №1 A10
+# Object: НПС -3
+# Location: УСО ЦП A6 A10
 #
 # File Version: 1.1
 #
-# Network Name: UNO2171
-# Network Address: 10.0.3.69
+# Network Name: moxa_a6
+# Network Address: 192.0.0.13
 #
  
-./moxa7gate_i386 \
---tcp_port 9502 \
+/root/moxa7gate \
+--tcp_port 502 \
 --modbus_address 1 \
---status_info 1 \
+--status_info 2000 \
 --show_sys_messages \
---Object "Линейная телемеханика" \
---Location "Шкаф ЛТМ №1 A10" \
+--watchdog_timer \
+--Object "НПС -3" \
+--Location "УСО ЦП A6 A10" \
 --confVersion "1.1" \
---NetworkName "UNO2171" \
---NetworkAddress "10.0.3.69" \
-PORT1 RS232 19200 NONE 1000 GATEWAY_SIMPLE 502 --desc "PLC Schneider Momentum" \
+--NetworkName "moxa_a6" \
+--NetworkAddress "192.0.0.13" \
+PORT1 RS485_2W 9600 NONE 1000 GATEWAY_PROXY --desc "PLC Schneider Momentum" \
+PROXY_TABLE 2 \
+1 28 11 P1 11 HOLDING_REGISTER 0 2 \
+1 28 39 P1 12 HOLDING_REGISTER 0 2 \
 &

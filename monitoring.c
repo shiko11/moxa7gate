@@ -309,6 +309,7 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 void show_traffic(int traffic, int port_id, int client_id, u8 *adu, u16 adu_len)
   {
 ///	if(port_id!=SERIAL_P3) return; ///!!!
+  if(adu_len > MB_TCP_MAX_ADU_LENGTH) return;
 
   int i;
 	char str[8];

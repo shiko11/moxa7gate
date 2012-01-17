@@ -21,8 +21,7 @@ SEM-ENGINEERING
 //#include <sys/ipc.h>
 //#include <sys/types.h>
 
-#define ARCHITECTURE_I386
-#define RETRIES_NUMBER_I386	2
+//#define ARCHITECTURE_I386
 
 #define DEVICE_NAME_LENGTH	64
 
@@ -317,7 +316,7 @@ Query_Table_Entry query_table[MAX_QUERY_ENTRIES];
 GW_TCP_Server tcp_servers[MAX_TCP_SERVERS];
 
 #define	BASIC_STAT_GATEWAY_INFO	24
-#define	GATE_STATUS_BLOCK_LENGTH	BASIC_STAT_GATEWAY_INFO+MAX_QUERY_ENTRIES/16
+#define	GATE_STATUS_BLOCK_LENGTH	BASIC_STAT_GATEWAY_INFO+MAX_QUERY_ENTRIES/16+6
 
 //u8					_show_data_flow;		/// obsolete
 u8					_show_sys_messages;	/// obsolete

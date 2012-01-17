@@ -20,37 +20,27 @@
 ///-----------------------------------------------------------------------------------------------------------------
 void *iface_rtu_slave(void *arg)
   {
+	u8  req_adu[MB_UNIVERSAL_ADU_LEN];
+	u16 req_adu_len;
+	u8  rsp_adu[MB_UNIVERSAL_ADU_LEN];
+	u16 rsp_adu_len;
 
-	u8			tcp_adu[MB_TCP_MAX_ADU_LENGTH+2];// TCP ADU
-	u16			tcp_adu_len;
-	u8			serial_adu[MB_SERIAL_MAX_ADU_LEN];/// SERIAL ADU
-	u16			serial_adu_len;
-	u8			exception_adu[MB_SERIAL_MAX_ADU_LEN];/// SERIAL ADU
-	u16			exception_adu_len;
-	u8			memory_adu[MB_SERIAL_MAX_ADU_LEN];
-	u16			memory_adu_len;
-
-	int		status, j, k;
+	int status;
 
   int port_id=((unsigned)arg)>>8;
   int client_id=((unsigned)arg)&0xff;
 
-//  printf("port %d cliet %d\n", port_id, client_id);
-	GW_StaticData tmpstat;
-	
-	GW_Iface	*inputDATA;
-	inputDATA = &IfaceRTU[port_id];
-	int fd=inputDATA->serial.fd;
-	
+	GW_Iface	*rtu_slave;
+	rtu_slave = &IfaceRTU[port_id];
+
 	struct timeval tv1, tv2;
 	struct timezone tz;
 
-	int i;
-	//inputDATA->clients[client_id].stat.request_time_min=10000; // 10 seconds, must be "this->serial.timeout"
-	//inputDATA->clients[client_id].stat.request_time_max=0;
-	//inputDATA->clients[client_id].stat.request_time_average=0;
-	//for(i=0; i<MAX_LATENCY_HISTORY_POINTS; i++) inputDATA->clients[client_id].stat.latency_history[i]=1000; //ms
-	//inputDATA->clients[client_id].stat.clp=0;
+	//rtu_slave->clients[client_id].stat.request_time_min=10000; // 10 seconds, must be "this->serial.timeout"
+	//rtu_slave->clients[client_id].stat.request_time_max=0;
+	//rtu_slave->clients[client_id].stat.request_time_average=0;
+	//for(i=0; i<MAX_LATENCY_HISTORY_POINTS; i++) rtu_slave->clients[client_id].stat.latency_history[i]=1000; //ms
+	//rtu_slave->clients[client_id].stat.clp=0;
 
 ///-----------------------------------------
   // THREAD STARTED
@@ -58,136 +48,198 @@ void *iface_rtu_slave(void *arg)
 
 	while (1) {
 		
-		//if(inputDATA->clients[0].status!=MB_CONNECTION_ESTABLISHED) pthread_exit (0);
-		
-		clear_stat(&tmpstat);
-		
-		exception_adu_len=0;
-
 ///-----------------------------------
-    /// kazhetsya net zaschity ot perepolneniya bufera priema "serial_adu[]"
-	  status = serial_receive_adu(fd, &tmpstat, &tcp_adu[TCPADU_ADDRESS], &tcp_adu_len, NULL, inputDATA->serial.timeout, inputDATA->serial.ch_interval_timeout);
+
+	  status = mbcom_rtu_recv_req(rtu_slave->serial.fd,
+	  														&req_adu[TCPADU_ADDRESS],
+	  														&req_adu_len);
+
+		rtu_slave->stat.accepted++;
+		Client[client_id].stat.accepted++;
 
 		if(Security.show_data_flow==1)
-			show_traffic(TRAFFIC_RTU_RECV, port_id, client_id, &tcp_adu[TCPADU_ADDRESS], tcp_adu_len);
-		// так как прием данных ведется в буфер tcp_adu, приводим его содержимое в соответствие
-		tcp_adu[0]=0;
-		tcp_adu[1]=1;
-		tcp_adu[2]=0;
-		tcp_adu[3]=0;
-		tcp_adu_len-=2;
-		tcp_adu[TCPADU_SIZE_HI]=(tcp_adu_len >> 8) & 0xff;
-		tcp_adu[TCPADU_SIZE_LO]=tcp_adu_len & 0xff;
-		tcp_adu_len+=6;
+			show_traffic(TRAFFIC_RTU_RECV, port_id, client_id, &req_adu[TCPADU_ADDRESS], req_adu_len);
 
-		gettimeofday(&tv2, &tz);
-		Client[client_id].stat.scan_rate=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
-		if(Client[client_id].stat.scan_rate>MB_SCAN_RATE_INFINITE)
-		  Client[client_id].stat.scan_rate=MB_SCAN_RATE_INFINITE;
-//	inputDATA->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
-//	printf("cycle begins after %d msec\n", inputDATA->clients[client_id].stat.request_time_average);
+		// приводим в соответствие TCP ADU
+		req_adu_len-=MB_SERIAL_CRC_LEN;
+		make_tcp_adu(req_adu, req_adu_len);
+		req_adu_len+=TCPADU_ADDRESS;
+
+//		gettimeofday(&tv2, &tz);
+//		Client[client_id].stat.scan_rate=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
+//		if(Client[client_id].stat.scan_rate>MB_SCAN_RATE_INFINITE)
+//		  Client[client_id].stat.scan_rate=MB_SCAN_RATE_INFINITE;
+//	rtu_slave->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
+//	printf("cycle begins after %d msec\n", rtu_slave->clients[client_id].stat.request_time_average);
 		gettimeofday(&tv1, &tz);
 
-//	  pthread_mutex_unlock(&inputDATA->serial_mutex);
+//	  pthread_mutex_unlock(&rtu_slave->serial_mutex);
 	  
-//		tmpstat.accepted++;
-
 		switch(status) {
 		  case 0:
 		  	break;
+
 		  case MB_SERIAL_READ_FAILURE:
 		  case MB_SERIAL_COM_TIMEOUT:
 		  case MB_SERIAL_ADU_ERR_MIN:
 		  case MB_SERIAL_ADU_ERR_MAX:
 		  case MB_SERIAL_CRC_ERROR:
 		  case MB_SERIAL_PDU_ERR:
-		  	tmpstat.errors++;
-  			// POLLING: RTU RECV
-			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|port_id, 182, (unsigned) status, client_id, 0, 0);
-				update_stat(&Client[client_id].stat, &tmpstat);
-				update_stat(&IfaceRTU[port_id].stat, &tmpstat);
+
+				rtu_slave->stat.errors++;
+				Client[client_id].stat.errors++;
+				func_res_err(req_adu[TCPADU_FUNCTION], &rtu_slave->stat);
+				func_res_err(req_adu[TCPADU_FUNCTION], &Client[client_id].stat);
+				stage_to_stat((MBCOM_REQ<<16) | (MBCOM_RTU_RECV<<8) | status, &rtu_slave->stat);
+				stage_to_stat((MBCOM_REQ<<16) | (MBCOM_RTU_RECV<<8) | status, &Client[client_id].stat);
+
+			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|port_id, POLL_RTU_RECV, (unsigned) status, client_id, 0, 0);
+
 				if(status==MB_SERIAL_READ_FAILURE) {
-					IfaceRTU[port_id].modbus_mode=MODBUS_PORT_ERROR;
+					rtu_slave->modbus_mode=IFACE_ERROR;
 					goto EndRun;
 					}
 				continue;
 		  	break;
+
 		  default:;
 		  };
 
 ///###-----------------------------			
-// в режиме PROXY выдаем данные из локального буфера
+		// для обеспечения нормальной работы устройств связи устанавливаем
+		// выдержку времени перед отправкой ответа на запрос
+		usleep(rtu_slave->serial.timeout);
+///###-----------------------------			
 
-			status = process_moxamb_request(client_id, tcp_adu, tcp_adu_len, memory_adu, &memory_adu_len);
+			status=forward_query(client_id, req_adu, req_adu_len);
+
+			if((status & FRWD_RESULT_MASK)!=FRWD_RESULT_OK ) { // запрос завершился ошибкой
+
+				rtu_slave->stat.errors++;
+				Client[client_id].stat.errors++;
+				func_res_err(req_adu[TCPADU_FUNCTION], &rtu_slave->stat);
+				func_res_err(req_adu[TCPADU_FUNCTION], &Client[client_id].stat);
+				stage_to_stat((MBCOM_REQ<<16) | (MBCOM_FRWD_REQ<<8) | status, &rtu_slave->stat);
+				stage_to_stat((MBCOM_REQ<<16) | (MBCOM_FRWD_REQ<<8) | status, &Client[client_id].stat);
+
+				continue;
+			  }
+			  
+			if((status & FRWD_TYPE_MASK)  !=FRWD_TYPE_PROXY) { // запрос был перенаправлен
+
+				switch(status&FRWD_TYPE_MASK) {
+	
+					case FRWD_TYPE_REGISTER: 
+						rtu_slave->stat.frwd_r++;
+						Client[client_id].stat.frwd_r++;
+						break;
+
+					case FRWD_TYPE_ADDRESS:    
+						rtu_slave->stat.frwd_a++;
+						Client[client_id].stat.frwd_a++;
+						break;
+
+					default:;
+					}
+
+				func_res_ok(req_adu[TCPADU_FUNCTION], &rtu_slave->stat);
+				//func_res_ok(req_adu[TCPADU_FUNCTION], &Client[client_id].stat); // запрос пошел дальше
+
+				continue;
+			  }
+
+			// если запрос адресуется к внутренней памяти шлюза, то обрабатываем его
+			status = process_moxamb_request(client_id, req_adu, req_adu_len, rsp_adu, &rsp_adu_len);
 
 			if(status!=0) { // запрос был перенаправлен на другой порт
+
 				if(status!=3) { // учет ошибочных запросов
-					tmpstat.accepted++;
-					func_res_err(tcp_adu[TCPADU_FUNCTION], &tmpstat);
-					update_stat(&IfaceRTU[port_id].stat, &tmpstat);
-					//update_stat(&gate502.stat, &tmpstat);
+					rtu_slave->stat.errors++;
+					Client[client_id].stat.errors++;
+					func_res_err(req_adu[TCPADU_FUNCTION], &rtu_slave->stat);
+					func_res_err(req_adu[TCPADU_FUNCTION], &Client[client_id].stat);
+					stage_to_stat((MBCOM_REQ<<16) | (MBCOM_FRWD_REQ<<8) | FRWD_TYPE_PROXY, &rtu_slave->stat);
+					stage_to_stat((MBCOM_REQ<<16) | (MBCOM_FRWD_REQ<<8) | FRWD_TYPE_PROXY, &Client[client_id].stat);
+					
+				 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|port_id, FRWD_TRANS_PQUERY, client_id, (unsigned) status, 0, 0);
+					continue;
 					}
+
+				rtu_slave->stat.frwd_p++;
+				Client[client_id].stat.frwd_p++;
+				func_res_ok(req_adu[TCPADU_FUNCTION], &rtu_slave->stat);
+				//func_res_ok(req_adu[TCPADU_FUNCTION], &Client[client_id].stat); // запрос пошел дальше
 				continue;
 				}
 
 //		gettimeofday(&tv1, &tz);
-		// считаем статистику, только если явно отправляем ответ клиенту
-		tmpstat.accepted++;
 
-///--------------------------------------------------------
+///###-----------------------------			
+
+		rsp_adu_len-=TCPADU_ADDRESS;
+
+		status = crc(&rsp_adu[TCPADU_ADDRESS], 0, rsp_adu_len);
+		rsp_adu[TCPADU_ADDRESS+rsp_adu_len+0] = status >> 8;
+		rsp_adu[TCPADU_ADDRESS+rsp_adu_len+1] = status & 0x00FF;
+		rsp_adu_len+=MB_SERIAL_CRC_LEN;
 
 		if(Security.show_data_flow==1)
-			show_traffic(TRAFFIC_RTU_SEND, port_id, client_id, memory_adu, memory_adu_len-2);
+			show_traffic(TRAFFIC_RTU_SEND, port_id, client_id, &rsp_adu[TCPADU_ADDRESS], rsp_adu_len);
 
-		status = mb_serial_send_adu(fd, &tmpstat, memory_adu, memory_adu_len-2, serial_adu, &serial_adu_len);
+		status = mbcom_rtu_send(rtu_slave->serial.fd,
+														&rsp_adu[TCPADU_ADDRESS],
+														rsp_adu_len);
 
 		switch(status) {
 		  case 0:
-		  	if(exception_adu_len==0) tmpstat.sended++;
-		  	  else {
-			  		tmpstat.errors_serial_adu++;
-				  	tmpstat.errors++;
-		  	    }
+				rtu_slave->stat.sended++;
+				Client[client_id].stat.sended++;
+				func_res_ok(rsp_adu[TCPADU_FUNCTION], &rtu_slave->stat);
+				func_res_ok(rsp_adu[TCPADU_FUNCTION], &Client[client_id].stat);
 		  	break;
+
 		  case MB_SERIAL_WRITE_ERR:
-		  	tmpstat.errors++;
-  			// POLLING: RTU SEND
-			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|port_id, 183, (unsigned) status, client_id, 0, 0);
-				update_stat(&Client[client_id].stat, &tmpstat);
-				update_stat(&IfaceRTU[port_id].stat, &tmpstat);
+
+				rtu_slave->stat.errors++;
+				Client[client_id].stat.errors++;
+				func_res_err(rsp_adu[TCPADU_FUNCTION], &rtu_slave->stat);
+				func_res_err(rsp_adu[TCPADU_FUNCTION], &Client[client_id].stat);
+				stage_to_stat((MBCOM_RSP<<16) | (MBCOM_RTU_SEND<<8) | status, &rtu_slave->stat);
+				stage_to_stat((MBCOM_RSP<<16) | (MBCOM_RTU_SEND<<8) | status, &Client[client_id].stat);
+
+			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|port_id, POLL_RTU_SEND, (unsigned) status, client_id, 0, 0);
+
 				continue;
 		  	break;
+
 		  default:;
 		  };
 
-	update_stat(&Client[client_id].stat, &tmpstat);
-	update_stat(&IfaceRTU[port_id].stat, &tmpstat);
-
 	gettimeofday(&tv2, &tz);
 
-	//inputDATA->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
-	//inputDATA->clients[client_id].stat.latency_history[inputDATA->clients[client_id].stat.clp]=inputDATA->clients[client_id].stat.request_time_average;
-	//inputDATA->clients[client_id].stat.clp=inputDATA->clients[client_id].stat.clp<MAX_LATENCY_HISTORY_POINTS?inputDATA->clients[client_id].stat.clp+1:0;
+	//rtu_slave->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
+	//rtu_slave->clients[client_id].stat.latency_history[rtu_slave->clients[client_id].stat.clp]=rtu_slave->clients[client_id].stat.request_time_average;
+	//rtu_slave->clients[client_id].stat.clp=rtu_slave->clients[client_id].stat.clp<MAX_LATENCY_HISTORY_POINTS?rtu_slave->clients[client_id].stat.clp+1:0;
 
-	//if(inputDATA->clients[client_id].stat.request_time_min>inputDATA->clients[client_id].stat.request_time_average)
-	//  inputDATA->clients[client_id].stat.request_time_min=inputDATA->clients[client_id].stat.request_time_average;
-	//if(inputDATA->clients[client_id].stat.request_time_max<inputDATA->clients[client_id].stat.request_time_average)
-	//  inputDATA->clients[client_id].stat.request_time_max=inputDATA->clients[client_id].stat.request_time_average;
+	//if(rtu_slave->clients[client_id].stat.request_time_min>rtu_slave->clients[client_id].stat.request_time_average)
+	//  rtu_slave->clients[client_id].stat.request_time_min=rtu_slave->clients[client_id].stat.request_time_average;
+	//if(rtu_slave->clients[client_id].stat.request_time_max<rtu_slave->clients[client_id].stat.request_time_average)
+	//  rtu_slave->clients[client_id].stat.request_time_max=rtu_slave->clients[client_id].stat.request_time_average;
 
-	//inputDATA->clients[client_id].stat.request_time_average=0;
+	//rtu_slave->clients[client_id].stat.request_time_average=0;
 	//for(i=0; i<MAX_LATENCY_HISTORY_POINTS; i++)
-	//  inputDATA->clients[client_id].stat.request_time_average+=inputDATA->clients[client_id].stat.latency_history[i];
-	//inputDATA->clients[client_id].stat.request_time_average/=MAX_LATENCY_HISTORY_POINTS;
+	//  rtu_slave->clients[client_id].stat.request_time_average+=rtu_slave->clients[client_id].stat.latency_history[i];
+	//rtu_slave->clients[client_id].stat.request_time_average/=MAX_LATENCY_HISTORY_POINTS;
 	
-//	printf("%d\n", inputDATA->stat.request_time_average);
+//	printf("%d\n", rtu_slave->stat.request_time_average);
 //	printf("%d:%d\n", tv1.tv_sec, tv1.tv_usec);
 //	printf("%d:%d\n", tv2.tv_sec, tv2.tv_usec);
 //	printf("noop\n");
 //  usleep(100000);
 
 //	gettimeofday(&tv2, &tz);
-//	inputDATA->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
-//	printf("cycle ended after %d msec\n", inputDATA->clients[client_id].stat.request_time_average);
+//	rtu_slave->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
+//	printf("cycle ended after %d msec\n", rtu_slave->clients[client_id].stat.request_time_average);
 	}
 
 	EndRun: ;

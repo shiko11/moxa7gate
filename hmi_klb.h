@@ -16,21 +16,8 @@
 
 ///=== HMI_KEYPAD_LCM_H constants
 
-///!!! динамические эффекты экранов LCM
-/// - бегуща€ строка в заголовке каждого экрана "MAIN" уровн€,
-///   строка содержит название экрана + сетевое им€ устройства;
-/// - прокрутка строки с названием пункта меню в длину;
-/// - периодическа€ смена экранов уовн€ MAIN;
-/// - возврат к одному из экранов уровн€ MAIN по таймауту;
-
 // конфигурационные константы времени компил€ции
 #define	LCM_SCREEN_UPDATE_RATE 800000
-
-#define	LCM_MENU_MAX_ACTIONS 8
-#define	LCM_MENU_ACTDEFLEN   12
-
-#define	LCM_BUZZER_CONTROL_PERIOD 15
-#define	LCM_BUZZER_CONTROL_ERRORS 1
 
 // идентификаторы доступных клавиш KEYPAD
 #define KEY_F1 0
@@ -39,29 +26,17 @@
 #define KEY_F4 3
 #define KEY_F5 4
 
-#define	LCM_SCREEN_DEFAULT 1
-
-// действи€, доступные из меню
-#define	LCM_MENU_NOACTION  0
-#define	LCM_MENU_SHOWHELP  1
-#define	LCM_MENU_MOVE_UP   2
-#define	LCM_MENU_SELECT    3
-#define	LCM_MENU_MOVE_DOWN 4
-#define	LCM_MENU_GOBACK    5
-
 // главные дисплеи LCM уровн€ MAIN
-#define	LCM_MAIN_IFRTU1     1
-#define	LCM_MAIN_IFRTU2     2
-#define	LCM_MAIN_IFTCP      3
-#define	LCM_MAIN_MOXAGATE   4
+#define	LCM_MAIN_MOXAGATE   1
+#define	LCM_MAIN_IFRTU1     2
+#define	LCM_MAIN_IFRTU2     3
+#define	LCM_MAIN_IFTCP      4
 #define	LCM_MAIN_EVENTLOG   5
-#define	LCM_MAIN_SYSINFO    6
-#define	LCM_MAIN_SETTINGS   7
 
 // вспомогательные дисплеи LCM уровн€ MAIN
 #define	LCM_MAIN_HELP       8
 #define	LCM_MAIN_ABOUT      9
-#define	LCM_MAIN_MENU       10
+#define	LCM_CONFIRM_HALT    10
 
 // дисплеи LCM со статистическими данными
 #define	LCM_STAT_PORT1    11
@@ -89,20 +64,11 @@
 
 // дисплеи журнала сообщений
 #define LCM_EVENTLOG_DETAILS 31
-#define LCM_EVENTLOG_FILTERS 32
 
 // подтверждение выполн€мых действий
-#define	LCM_CONFIRM_RESETALL  33
-#define	LCM_CONFIRM_REBOOT    34
-
-// уведомлени€
-#define	LCM_NOT_IMPLEMENTED   35
-
-///!!! не реализуютс€ в этой версии
-#define	LCM_SCREEN_LAN				15
-#define	LCM_SCREEN_SECURITY					16
-#define	LCM_SCREEN_HELP_SECURITY		28
-#define	LCM_CONFIRM_SECR_CHANGES 		30
+#define	LCM_CONFIRM_RESET_RTU 33
+#define	LCM_CONFIRM_RESET_TCP 34
+#define	LCM_CONFIRM_RESET_M7G 35
 
 // коды возврата ошибок из функций модул€
 #define HMI_KLB_INIT_KEYPAD 62
@@ -121,26 +87,20 @@ typedef struct { // net initsializatsii polej structury
   unsigned int main_tcp_start;    // LCM_MAIN_IFTCP
   unsigned int main_tcp_current;  // LCM_MAIN_IFTCP
   unsigned int main_scr_eventlog; // LCM_MAIN_EVENTLOG
-  unsigned int main_scr_sett;     // LCM_MAIN_SETTINGS
-
-  unsigned int main_menu_start;   // LCM_MAIN_MENU
-  unsigned int main_menu_current; // LCM_MAIN_MENU
-  unsigned int main_menu_action;  // LCM_MAIN_MENU
 
   unsigned int eventlog_current;  // LCM_EVENTLOG_DETAILS
 
-  //unsigned int menu_scr_mode;
-  //unsigned int secr_scr_mode;
-  //unsigned int back_light;
+  unsigned int back_light;
+  //unsigned int buzzer_control;
   
-  //unsigned int secr_scr_changes_was_made;
-
   char text[MAX_LCM_ROWS][MAX_LCM_COLS];
 
-  //unsigned int max_tcp_clients_per_com;
-  unsigned int watch_dog_control;
-  unsigned int buzzer_control;
-
+	// так как константа MAX_LCM_COLS содержит количество символов в одной строке LCM,
+	// а фактическое количество байт в каждой строке массива должно быть больше на один
+	// вследствие использовани€ стандартных функций C++, предполагающих запись нулевого
+	// значени€ в конце каждой строки, вводим буферную переменную дл€ их хранени€.
+  char buffer[MAX_LCM_ROWS];
+  
 	} GW_Display;
 
 ///=== HMI_KEYPAD_LCM_H public variables
@@ -164,37 +124,36 @@ void show_main_ifrtu2();
 void show_main_iftcp();
 void show_main_moxagate();
 void show_main_eventlog();
-void show_system_info();
-void show_main_settings();
+//void show_system_info();
+//void show_main_settings();
 
 void show_main_help();
-void show_main_menu();
 void show_about_screen();
-void show_stub_screen();
+void show_confirm_halt();
 
-void show_inet_settings();
 void show_uart_settings(int uart);
-void show_security_settings();
-void show_uart_detail(int uart);
-void show_main_help_screen();
-void show_security_help_screen();
-void show_confirmation_reset_all();
-void show_confirmation_reboot();
-void show_menu_screen();
-void show_confirmation_secr_changes();
+void show_ifrtu_statistics(int uart);
+void show_confirm_reset_counters();
+
+void show_iftcp_statistics();
+void show_lantcp_settings();
+
+void show_stat_moxagate();
+void show_sett_moxagate();
+
+void show_log_event();
 
 ///--- keypad processing functions
 void show_screen(int display);
 
 void process_key_main(int key);
-void process_key_menu(int key);
-void process_key_settings(int key);
+void process_key_rtu_details(int key);
+void process_key_tcp_details(int key);
+void process_key_moxagate(int key);
 void process_key_event(int key);
 
 ///--- control functions
-int ctrl_reset_all_counters();
-int ctrl_reset_port_counters(int port);
-int ctrl_reboot_system();
-int ctrl_change_security_settings();
+//int ctrl_reset_all_counters();
+//int ctrl_reset_port_counters(int port);
 
 #endif  /* HMI_KEYPAD_LCM_H */

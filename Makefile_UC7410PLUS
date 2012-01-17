@@ -25,8 +25,9 @@ clean:
 
 release:
 	$(CC) -o $(NAME) \
-main.c global.c workers.c modbus_rtu.c modbus_tcp.c \
-mx_klb.c mxshm.c monitoring.c \
+main.c cli.c moxagate.c modbus_rtu.c modbus_tcp.c forwarding.c clients.c \
+iface_tcpserver.c iface_rtumaster.c iface_rtuslave.c iface_tcpmaster.c \
+interfaces.c hmi_klb.c hmi_klb_displays.c hmi_web.c messages.c statistics.c \
 mxlib/mxkeypad_lx.c mxlib/mxlcm_lx.c mxlib/mxwdg_lx.c mxlib/mxbuzzer_lx.c \
 -lpthread
 	$(STRIP) -s $(NAME)

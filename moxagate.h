@@ -19,10 +19,35 @@
 
 // конфигурационные константы времени компиляции
 
-#define	BASIC_STAT_GATEWAY_INFO 24
-#define	GATE_STATUS_BLOCK_LENGTH BASIC_STAT_GATEWAY_INFO+MAX_QUERY_ENTRIES/16
+#define GWINF_STATE_IFACERTU 1-1
+#define GWINF_STATE_IFACETCP 9-1
+#define GWINF_STATE_CLIENTS  41-1
+
+#define GWINF_PROXY_STATUS   73-1
+
+#define GWINF_SCAN_COUNTER   81-1
+
+#define GWINF_CONSTAT_M7G    82-1
+#define GWINF_CONSTAT_RTU    85-1
+
+#define GWINF_STATDETAILS_1  109-1
+#define GWINF_STATDETAILS_2  173-1
+#define GWINF_STATDETAILS_3  237-1
+#define GWINF_STATDETAILS_4  301-1
+
+#define GWINF_STAT_RTU       365-1
+#define GWINF_STAT_TCP       461-1
+#define GWINF_STAT_CLIENTS   845-1
+#define GWINF_STAT_MOXAGATE  1229-1
+
+#define	GATE_STATUS_BLOCK_LENGTH 1241
 
 #define MOXAGATE_MAX_MEMORY_LEAK 1024
+
+#define MOXAGATE_WATCHDOG_PERIOD 60
+
+// коды ошибок инициализации
+#define MOXAGATE_WATCHDOG_STARTED 130
 
 ///=== MOXAGATE_H data types
 
@@ -30,7 +55,6 @@ typedef struct {
 
 	time_t start_time;  // время запуска
   unsigned char modbus_address; // собственный Modbus-адрес шлюза для диагностики и управления средствами HMI систем
-  ///!!! реализовать блок данных диагностики отдельным массивом памяти, не связанным с указателем wData4x
   unsigned short status_info; // стартовый адрес блока собственных регистров шлюза (по умолчанию начинается с первого)
 
 	GW_Queue queue;
@@ -52,6 +76,8 @@ typedef struct {
 	unsigned short *wData3x; //массив виртуальных 3x регистров MOXA (input register)
 	unsigned short *wData4x; //массив виртуальных 4x регистров MOXA (holding register)
 	
+	int mxwdt_handle;
+
 	} GW_MoxaDevice;
 
 ///=== MOXAGATE_H public variables
@@ -64,5 +90,7 @@ int init_moxagate_h();
 int init_moxagate_memory();
 
 void *moxa_device(void *arg); /// Потоковая функция обработки запросов к MOXA
+
+int refresh_status_info(); // обновление динамических данных в блоке диагностики шлюза
 
 #endif  /* MOXAGATE_H */

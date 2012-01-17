@@ -20,10 +20,22 @@
 
 #define   MAX_GATEWAY_QUEUE_LENGTH 16
 
-#define MOXA_DIAPASON_UNDEFINED		0
-#define MOXA_DIAPASON_INSIDE			1
-#define MOXA_DIAPASON_OUTSIDE			2
-#define MOXA_DIAPASON_OVERLAPPED	3
+// режимы работы механизма перенаправления
+
+#define FRWD_RESULT_OK					0x00
+#define FRWD_RESULT_UNDEFINED		0x01
+#define FRWD_RESULT_OVERLAPPED	0x02
+#define FRWD_RESULT_QUEUE_FAIL	0x03
+#define FRWD_RESULT_UNSUP_FUNC	0x04
+
+#define FRWD_TYPE_PROXY					0x10
+#define FRWD_TYPE_REGISTER			0x20
+#define FRWD_TYPE_ADDRESS				0x30
+
+#define FRWD_RESULT_MASK				0x0F
+#define FRWD_TYPE_MASK					0xF0
+
+// коды возврата из функций верификации корректности значений параметров
 
 #define QT_ACCESS_DISABLED  0
 #define QT_ACCESS_READONLY  1
@@ -80,6 +92,10 @@
 #define EXPT_PRM3 58
 #define EXPT_PRM4 59
 
+/// коды ошибок инициализации
+
+#define SEMAPHORE_SET_EXISTS 102
+
 ///=== FRWD_QUEUE_H data types
 
 typedef struct { // очередь на семафорах
@@ -92,7 +108,7 @@ typedef struct { // очередь на семафорах
 	int			queue_start, queue_len;
 
   pthread_mutex_t queue_mutex;
-	struct sembuf operations[1];
+	struct sembuf operations[1]; // используется только для хранения значения sem_flg
 	} GW_Queue;
 
 typedef struct {
@@ -112,7 +128,7 @@ typedef struct {			// блок регистров внутреннего адресного пространства шлюза
 	unsigned short length;		// количество регистров дипазона адресного пространства шлюза
 
 	char device_name[DEVICE_NAME_LENGTH]; // наименование устройства
-  } RT_Table_Entry; // GW_VSlave_Entry
+  } GW_VSlave_Entry;
 
 typedef struct {			// modbus-запрос для циклического опроса ведомого устройства в режиме PROXY
 	unsigned char iface;		// интерфейс шлюза для опроса ведомого устройства
@@ -130,7 +146,7 @@ typedef struct {			// modbus-запрос для циклического опроса ведомого устройства 
 
   unsigned err_counter;  // счетчик текущего количества ошибок
   unsigned status_bit;  // бит статуса связи (первый в переменной)
-  } Query_Table_Entry; // GW_ProxyQuery_Entry
+  } GW_ProxyQuery_Entry;
 
 typedef struct {
   ///!!! Необходимо разделять этапы при обработке исключений на до и после проверки на целостность пакета
@@ -156,8 +172,8 @@ typedef struct {
 int semaphore_id;
 
 GW_AddressMap_Entry AddressMap[MODBUS_ADDRESS_MAX+1]; // нумерация с единицы
-RT_Table_Entry      VSlave[MAX_VIRTUAL_SLAVES];
-Query_Table_Entry   PQuery[MAX_QUERY_ENTRIES];
+GW_VSlave_Entry      VSlave[MAX_VIRTUAL_SLAVES];
+GW_ProxyQuery_Entry   PQuery[MAX_QUERY_ENTRIES];
 GW_Exception        Exception[MOXAGATE_EXCEPTIONS_NUMBER];
 
 unsigned short vsmem_offset1xStatus, vsmem_offset2xStatus, vsmem_offset3xRegisters, vsmem_offset4xRegisters;
@@ -189,11 +205,17 @@ int check_ProxyQuery_Entry(int index);
 int init_Exception(int index);
 int check_Exception(int index);
 
-int init_queue(); // инициализация семафоров
-int enqueue_query_ex(GW_Queue *queue, int client_id, int device_id, u8 *adu, u16 adu_len);
-int get_query_from_queue(GW_Queue *queue, int *client_id, int *device_id, u8 *adu, u16 *adu_len);
+int init_sem_set(); // инициализация семафоров
+int init_queue(GW_Queue *queue, int port); // инициализация очередей запросов
+int enqueue_query_ex(GW_Queue *queue, int client_id, int context, u8 *adu, u16 adu_len);
+int get_query_from_queue(GW_Queue *queue, int *client_id, int *context, u8 *adu, u16 *adu_len);
 
 int checkDiapason(int function, int start_address, int length);
 int process_moxamb_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu, u16 *memory_adu_len);
+int forward_query(int client_id, u8 *tcp_adu, u16 tcp_adu_len);
+
+// подготовка запроса и ответа в соответствии с правилами перенаправления
+void prepare_request (int context, u8 *tcp_adu, u16 tcp_adu_len);
+void prepare_response(int context, u8 *tcp_adu, u16 tcp_adu_len);
 
 #endif  /* FRWD_QUEUE_H */

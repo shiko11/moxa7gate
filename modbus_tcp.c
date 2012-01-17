@@ -9,206 +9,50 @@
 
 ///=== MODBUS_H IMPLEMENTATION
 
+#include <errno.h>
+
 #include "modbus.h"
 
 //#define DEBUG_TCP
 //#define CRC_TCP
 
-//int mb_tcp_receive_adu(int sfd,u8 *mb_received_adu) //прием ADU от подключившихся клиентов
-int		mb_tcp_receive_adu(int sfd, GW_StaticData *stat, u8 *mb_received_adu, u16 *adu_len)
-{	
+int mbcom_tcp_recv(int sfd, u8 *adu, u16 *adu_len)
+	{
 	int		mb_received_adu_len;
+	
+	*adu_len=0;
+	
+	mb_received_adu_len = recv(sfd, adu, MB_TCP_MAX_ADU_LENGTH, 0);
 
-	mb_received_adu_len = recv(sfd,mb_received_adu,MB_TCP_MAX_ADU_LENGTH,0);
+	if ( mb_received_adu_len== 0)										 	return TCP_COM_ERR_NULL;
+	if ((mb_received_adu_len==-1) && (errno==EAGAIN))	return TCP_COM_ERR_TIMEOUT;
+	if ( mb_received_adu_len==-1)										 	return TCP_COM_ERR_NULL;
+
 	*adu_len=mb_received_adu_len;
+	if (*adu_len <  MB_TCP_ADU_HEADER_LEN)	return TCP_ADU_ERR_MIN;
+	if (*adu_len >  MB_TCP_MAX_ADU_LENGTH)	return TCP_ADU_ERR_MAX;
 	
-	if (*adu_len<=0) {
-		stat->errors_input_communication++;
-		return TCP_COM_ERR_NULL;
-		}
-	if (mb_received_adu_len<MB_TCP_ADU_HEADER_LEN) {
-		stat->errors_tcp_adu++;
-		return TCP_ADU_ERR_MIN;
-		}
-	if (mb_received_adu_len>MB_TCP_MAX_ADU_LENGTH) {
-		stat->errors_tcp_adu++;
-		return TCP_ADU_ERR_MAX;
-		}
-
-//	if(gate502.show_data_flow==1) {
-//		int	i;
-//		for (i=0;i<mb_received_adu_len;i++) printf("{%0.2X}",mb_received_adu[i]);
-//		printf("\n");
-//	  }
-
-	//unsigned int	ti=	(mb_received_adu[0]<<8)|mb_received_adu[1]; //any value
-	unsigned int	pi=	(mb_received_adu[2]<<8)|mb_received_adu[3];
-	unsigned int	len=(mb_received_adu[4]<<8)|mb_received_adu[5];
-	unsigned char	ui=	mb_received_adu[6];
+	unsigned int	pi=	(adu[TCPADU_PROTO_HI]<<8) | adu[TCPADU_PROTO_LO];
+	unsigned int	len=(adu[TCPADU_SIZE_HI]<<8) | adu[TCPADU_SIZE_LO];
+	unsigned char	ui=	adu[TCPADU_ADDRESS];
 	
-	if(pi!=0x0000) {
-		stat->errors_tcp_adu++;
-		return TCP_ADU_ERR_PROTOCOL;
-		}
-	if(len!=mb_received_adu_len-MB_TCP_ADU_HEADER_LEN+1) {
-		stat->errors_tcp_adu++;
-		return TCP_ADU_ERR_LEN;
-		}
-	if((ui<1)||(ui>247)) {
-		stat->errors_tcp_adu++;
-		return TCP_ADU_ERR_UID;
-		}
+	if(pi!=0x0000)														return TCP_ADU_ERR_PROTOCOL;
+	if(len!=(*adu_len-MB_TCP_ADU_HEADER_LEN+1))	return TCP_ADU_ERR_LEN;
+	if((ui<MODBUS_ADDRESS_MIN)||(ui>MODBUS_ADDRESS_MAX)) return TCP_ADU_ERR_UID;
 	
-//	if(mb_check_request_pdu(&mb_received_adu[7], mb_received_adu_len-MB_TCP_ADU_HEADER_LEN)) {
-//		stat->errors_tcp_pdu++;
-//	  return TCP_PDU_ERR;
-//		}
-
-	return 0;
-}
-
-/*###int mb_tcp_analis_adu(opc *OPC,u8 *adu) //анализируем принятый ADU
-{
-	int		i=0;
-	
-	OPC->mbhap.Tid 	= (adu[i] << 8) | (adu[i+=1] & 0x00FF);
-	OPC->mbhap.Pid		= (adu[i+=1] << 8) | (adu[i+=1] & 0x00FF);
-	OPC->mbhap.Length 	= (adu[i+=1] << 8) | (adu[i+=1] & 0x00FF);
-	OPC->mbhap.Uid 	= adu[i+=1];
-	
-
-	OPC->pdu.function 	= adu[i+=1];
-	OPC->pdu.start		= (adu[i+=1] << 8) | (adu[i+=1] & 0x00FF);	
-	OPC->pdu.count		= (adu[i+=1] << 8) | (adu[i+=1] & 0x00FF);
-	
-///###	i = OPC->mbhap.Uid ;
-	
-	return i;
-}
-
-int mb_tcp_make_adu(opc *OPC,u16 *oDATA,u8 *mb_received_adu) //создаем ADU с считанными с у-в данными для отправки его клиенту
-{
-	int		adu_len = 0;
-	int		i;
-	u16		temp_crc;
-#ifdef DEBUG_TCP			
-	if (_mb_tcp) printf("MB TCP Maked ADU ... ");
-#endif		
-	if (OPC->pdu.function == MBF_READ_HOLDING_REGISTERS) {
-		mb_received_adu[adu_len++]    = (OPC->mbhap.Tid) >> 8; 
-		mb_received_adu[adu_len++] = (OPC->mbhap.Tid) & 0x00FF; 
-		mb_received_adu[adu_len++] = (OPC->mbhap.Pid) >> 8; 
-		mb_received_adu[adu_len++] = (OPC->mbhap.Pid) & 0x00FF; 
-		mb_received_adu[adu_len++] = (OPC->mbhap.Length) >> 8; 
-		mb_received_adu[adu_len++] = (OPC->mbhap.Length) & 0x00FF; 
-		mb_received_adu[adu_len++] = (OPC->mbhap.Uid); 
-		mb_received_adu[adu_len++] = (OPC->pdu.function); 
-		mb_received_adu[adu_len++] = (OPC->pdu.count*2) & 0xFF; 		
-		
-		for (i=0;i<OPC->pdu.count;i++) {
-			mb_received_adu[adu_len++] = oDATA[OPC->pdu.start + i ] >> 8; 
-			mb_received_adu[adu_len++] = oDATA[OPC->pdu.start + i ] & 0x00FF; 
-		}	
-#ifdef 	CRC_TCP	
-		if (!(_tcp_crc_off)) {
-			temp_crc = crc(mb_received_adu,0,adu_len);
-			mb_received_adu[adu_len++] = temp_crc >> 8;				//********
-			mb_received_adu[adu_len++] = temp_crc & 0x00FF;			//	добавляем CRC в конец
-		}
-#endif
+	return MBCOM_OK;
 	}
-#ifdef DEBUG_TCP	
-	if (_mb_tcp) {		
-		printf("OK");
-		printf(" | Len = %d bytes\n",adu_len);
-	}
-#endif	
-	return (adu_len);
-}
 
-int mb_tcp_make_status_adu(opc *OPC,u8 *mb_received_adu) //создаем ADU с данными о статусе точек для отправки его клиенту
-{
-	int		adu_len = 0;
-	int		i;
-	u16		temp_crc;
-	
-#ifdef DEBUG_TCP			
-	if (_mb_tcp) printf("MB TCP Maked status ADU ... ");
-#endif		
-	if ((OPC->pdu.function == MBF_READ_HOLDING_REGISTERS) &&
-		((OPC->mbhap.Uid == (OFFSET_STATUS_DEV + UID_STATUS_DEV_0)) || 
-		 (OPC->mbhap.Uid == (OFFSET_STATUS_DEV + UID_STATUS_DEV_1)) ||
-		 (OPC->mbhap.Uid == (OFFSET_STATUS_DEV + UID_STATUS_DEV_2)) ||
-		 (OPC->mbhap.Uid == (OFFSET_STATUS_DEV + UID_STATUS_DEV_3)) ||
-		 (OPC->mbhap.Uid == (OFFSET_STATUS_DEV + UID_STATUS_DEV_4)) ||
-		 (OPC->mbhap.Uid == (OFFSET_STATUS_DEV + UID_STATUS_DEV_5)) ||
-		 (OPC->mbhap.Uid == (OFFSET_STATUS_DEV + UID_STATUS_DEV_6)) ||
-		 (OPC->mbhap.Uid == (OFFSET_STATUS_DEV + UID_STATUS_DEV_7)))) {
-	
-			mb_received_adu[adu_len++] = (OPC->mbhap.Tid) >> 8; 
-			mb_received_adu[adu_len++] = (OPC->mbhap.Tid) & 0x00FF; 
-			mb_received_adu[adu_len++] = (OPC->mbhap.Pid) >> 8; 
-			mb_received_adu[adu_len++] = (OPC->mbhap.Pid) & 0x00FF; 
-			mb_received_adu[adu_len++] = (OPC->mbhap.Length) >> 8; 
-			mb_received_adu[adu_len++] = (OPC->mbhap.Length) & 0x00FF; 
-			mb_received_adu[adu_len++] = (OPC->mbhap.Uid); 
-			mb_received_adu[adu_len++] = (OPC->pdu.function); 
-			mb_received_adu[adu_len++] = (OPC->pdu.count*2) & 0xFF; 		
-		
-			for (i=0;i<OPC->pdu.count;i++) {
-				mb_received_adu[adu_len++] = (iDATA[OPC->mbhap.Uid - OFFSET_STATUS_DEV].map[OPC->pdu.start + i ].status) >> 8; 
-				mb_received_adu[adu_len++] = (iDATA[OPC->mbhap.Uid - OFFSET_STATUS_DEV].map[OPC->pdu.start + i ].status) & 0x00FF; 
-			}	
-#ifdef 	CRC_TCP	
-			if (!(_tcp_crc_off)) {
-				temp_crc = crc(mb_received_adu,0,adu_len);
-				mb_received_adu[adu_len++] = temp_crc >> 8;				//********
-				mb_received_adu[adu_len++] = temp_crc & 0x00FF;			//	добавляем CRC в конец
-			}
-#endif
-#ifdef DEBUG_TCP	
-			if (_mb_tcp) {		
-				printf("OK");
-				printf(" | Len = %d bytes\n",adu_len);
-			}
-#endif	
-	} else {
-#ifdef DEBUG_TCP	
-				if (_mb_tcp) {		
-					printf("FAIL");
-					printf(" | Len = %d bytes\n",adu_len);
-				}
-#endif		
-	}
-	return (adu_len);
-}*/
-	
-//int mb_tcp_send_adu(int sfd, input_cfg *context) //собственно сама отправка ADU клиенту
-int mb_tcp_send_adu(int sfd, GW_StaticData *stat, u8 *pdu, u16 pdu_len, u8 *request, u16 *tcp_len)
-{
+int mbcom_tcp_send(int sfd, u8 *adu, u16 adu_len)
+	{
 	int	sended_bytes;
+	
+	sended_bytes=send(sfd, adu, adu_len, 0);
 
-	int i, j=6;
-	for(i=0; i<pdu_len; i++)
-	  request[j++]=pdu[i];
-	request[5]=pdu_len; // unsigned char
-	*tcp_len=pdu_len-1+MB_TCP_ADU_HEADER_LEN;
-
-//	if(gate502.show_data_flow==1) {
-//		for (i=0;i<*tcp_len;i++) printf("{%0.2X}",request[i]);
-//		printf("\n");
-//	  }
-
-	sended_bytes=send(sfd, request, *tcp_len, 0);
-	if(sended_bytes!=*tcp_len) {
-		stat->errors_tcp_sending++;
-		return TCP_COM_ERR_SEND;
-		}
-
-//	printf("noop\n");
-
-	return 0;
-}
+	if(sended_bytes!=adu_len) return MBCOM_SEND;
+	
+	return MBCOM_OK;
+	}
 ///-------------------------------------------------------------------------------------------------------
 int 		mb_check_request_pdu(unsigned char *pdu, unsigned char len)
   {

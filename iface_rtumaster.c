@@ -15,354 +15,141 @@
 #include "messages.h"
 #include "modbus.h"
 
-///----------------------------------------------------------------------------
-void *srvr_tcp_child2(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
-  {
-	u8			tcp_adu[MB_TCP_MAX_ADU_LENGTH];// TCP ADU
-	u16			tcp_adu_len;
-	u8			serial_adu[MB_SERIAL_MAX_ADU_LEN];/// SERIAL ADU
-	u16			serial_adu_len;
-
-	int		status;
-	int device_id, client_id, device_id2, exception_on;
-
-  int port_id=((unsigned)arg)>>8;
-//  int client_id=((unsigned)arg)&0xff;
-
-//	int		tcsd = IfaceRTU[port_id].clients[client_id].csd;
-	GW_StaticData tmpstat;
-	
-	GW_Iface	*inputDATA;
-	inputDATA = &IfaceRTU[port_id];
-	
-	struct timeval tv1, tv2;
-	struct timezone tz;
-
-	unsigned i;
-
-///!!!
-//	inputDATA->clients[client_id].stat.request_time_min=10000; // 10 seconds, must be "this->serial.timeout"
-//	inputDATA->clients[client_id].stat.request_time_max=0;
-//	inputDATA->clients[client_id].stat.request_time_average=0;
-//	for(i=0; i<MAX_LATENCY_HISTORY_POINTS; i++) inputDATA->clients[client_id].stat.latency_history[i]=1000; //ms
-//	inputDATA->clients[client_id].stat.clp=0;
-
-	/// semaphore
-	struct sembuf operations[1];
-	operations[0].sem_num=port_id;
-	operations[0].sem_op=-1;
-	operations[0].sem_flg=0;
-	semop(semaphore_id, operations, 1);
-	
-	int fd=inputDATA->serial.fd;
-
-  // THREAD STARTED
-	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, 42, IfaceRTU[port_id].modbus_mode, 0, 0, 0);
-
-	while (1) {
-		
-		clear_stat(&tmpstat);
-
-		status=get_query_from_queue(&inputDATA->queue, &client_id, &device_id, tcp_adu, &tcp_adu_len);
-		if(status!=0) continue;
-
-///---------------------
-//		gettimeofday(&tv2, &tz);
-//		inputDATA->clients[client_id].stat.scan_rate=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
-//		if(inputDATA->clients[client_id].stat.scan_rate>MB_SCAN_RATE_INFINITE)
-//		  inputDATA->clients[client_id].stat.scan_rate=MB_SCAN_RATE_INFINITE;
-		gettimeofday(&tv1, &tz);
-		tmpstat.accepted++;
-
-			exception_on=0;
-			if(inputDATA->modbus_mode==GATEWAY_RTM) {
-				//port_id=		i/0x2000; // 8 com ports
-				device_id2=tcp_adu[TCPADU_ADDRESS];
-				///!!!tcp_adu[6]=(i-port_id*0x2000)/0x200+1; // [1..16] device addresses
-				tcp_adu[TCPADU_ADDRESS]=VSlave[device_id].device;
-				///!!!i-=(port_id*0x2000+(tcp_adu[6]-1)*0x200);
-
-				i=((tcp_adu[TCPADU_START_HI]<<8)|tcp_adu[TCPADU_START_LO])-
-					VSlave[device_id].start+
-					VSlave[device_id].offset;
-//				printf("result RTM adress: [%2.2X]\n", i);
-				tcp_adu[TCPADU_START_HI]=(i>>8)&0xff;
-				tcp_adu[TCPADU_START_LO]=i&0xff;
-
-				};
-
-		if(Security.show_data_flow==1)
-			show_traffic(TRAFFIC_RTU_SEND, port_id, client_id, &tcp_adu[6], tcp_adu_len-6);
-
-		status = mb_serial_send_adu(fd, &tmpstat, &tcp_adu[6], tcp_adu_len-6, serial_adu, &serial_adu_len);
-
-		switch(status) {
-		  case 0:
-		  	break;
-		  case MB_SERIAL_WRITE_ERR:
-		  	tmpstat.errors++;
-				func_res_err(tcp_adu[TCPADU_ADDRESS], &tmpstat);
-  			// POLLING: RTU SEND
-			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|port_id, 183, (unsigned) status, client_id, 0, 0);
-
-//				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
-				update_stat(&IfaceRTU[port_id].stat, &tmpstat);
-				continue;
-		  	break;
-		  default:;
-		  };
-
-    /// нужно проверить защиту от переполнения буфера приема "serial_adu[]"
-	  status = mb_serial_receive_adu(fd, &tmpstat, serial_adu, &serial_adu_len, &tcp_adu[MB_TCP_ADU_HEADER_LEN], inputDATA->serial.timeout, inputDATA->serial.ch_interval_timeout);
-
-		if(Security.show_data_flow==1)
-			show_traffic(TRAFFIC_RTU_RECV, port_id, client_id, serial_adu, serial_adu_len);
-//	  pthread_mutex_unlock(&inputDATA->serial_mutex);
-	  
-		switch(status) {
-		  case 0:
-		  	break;
-		  case MB_SERIAL_COM_TIMEOUT:
-		  case MB_SERIAL_ADU_ERR_MIN:
-		  case MB_SERIAL_ADU_ERR_MAX:
-		  case MB_SERIAL_CRC_ERROR:
-		  case MB_SERIAL_PDU_ERR:
-				exception_on=1;
-		  case MB_SERIAL_READ_FAILURE:
-		  	tmpstat.errors++;
-				func_res_err(tcp_adu[TCPADU_ADDRESS], &tmpstat);
-  			// POLLING: RTU RECV
-			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|port_id, 182, (unsigned) status, client_id, 0, 0);
-//				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
-				update_stat(&IfaceRTU[port_id].stat, &tmpstat);
-				if(status==MB_SERIAL_READ_FAILURE) {
-					IfaceRTU[port_id].modbus_mode=MODBUS_PORT_ERROR;
-					goto EndRun;
-					}
-				if(exception_on==0) continue;
-		  	break;
-		  default:;
-		  };
-
-///###-----------------------------			
-///$$$usleep(2000000);
-//			status = mb_tcp_make_adu(&OPC,oDATA,mb_tcp_adu);
-
-			///Обратное отображение адреса в запросе
-			//port_id=tcp_adu[6]/30;
-			//tcp_adu[6]-=port_id*30;
-
-			if(inputDATA->modbus_mode==GATEWAY_RTM)
-				serial_adu[RTUADU_ADDRESS]=device_id2;
-				else serial_adu[RTUADU_ADDRESS]+=port_id*30;
-
-			if(exception_on==1) {
-				serial_adu[1]|=0x80;
-				serial_adu[2]=0x0b;
-				serial_adu_len=3+2;
-				}
-
-			if(Security.show_data_flow==1)
-				show_traffic(TRAFFIC_TCP_SEND, port_id, client_id, serial_adu, serial_adu_len-2);
-
-			status = mb_tcp_send_adu(Client[client_id].csd,
-																&tmpstat, serial_adu, serial_adu_len-2, tcp_adu, &tcp_adu_len);
-
-		switch(status) {
-		  case 0:
-		  	if(exception_on!=1) tmpstat.sended++;
-				func_res_ok(serial_adu[RTUADU_FUNCTION], &tmpstat);
-		  	break;
-		  case TCP_COM_ERR_SEND:
-		  	tmpstat.errors++;
-				func_res_err(serial_adu[RTUADU_FUNCTION], &tmpstat);
-  			// POLLING: TCP SEND
-			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|port_id, 185, (unsigned) status, client_id, 0, 0);
-		  	break;
-		  default:;
-		  };
-
-	if(exception_on==1) continue;
-//	update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
-	update_stat(&IfaceRTU[port_id].stat, &tmpstat);
-
-	gettimeofday(&tv2, &tz);
-
-	//inputDATA->stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
-//	inputDATA->clients[client_id].stat.latency_history[inputDATA->clients[client_id].stat.clp]=inputDATA->clients[client_id].stat.request_time_average;
-//	inputDATA->clients[client_id].stat.clp=inputDATA->clients[client_id].stat.clp<MAX_LATENCY_HISTORY_POINTS?inputDATA->clients[client_id].stat.clp+1:0;
-
-//	if(inputDATA->clients[client_id].stat.request_time_min>inputDATA->clients[client_id].stat.request_time_average)
-//	  inputDATA->clients[client_id].stat.request_time_min=inputDATA->clients[client_id].stat.request_time_average;
-//	if(inputDATA->clients[client_id].stat.request_time_max<inputDATA->clients[client_id].stat.request_time_average)
-//	  inputDATA->clients[client_id].stat.request_time_max=inputDATA->clients[client_id].stat.request_time_average;
-
-//	inputDATA->clients[client_id].stat.request_time_average=0;
-//	for(i=0; i<MAX_LATENCY_HISTORY_POINTS; i++)
-//	  inputDATA->clients[client_id].stat.request_time_average+=inputDATA->clients[client_id].stat.latency_history[i];
-//	inputDATA->clients[client_id].stat.request_time_average/=MAX_LATENCY_HISTORY_POINTS;
-	
-	}
-	EndRun: ;
-	// THREAD STOPPED
- 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|port_id, 43, 0, 0, 0, 0);
-	//inputDATA->clients[client_id].rc=1;
-	pthread_exit (0);	
-}
-
 ///-----------------------------------------------------------------------------------------------------------------
-// Функция ассоциированна с последовательным интерфейсом, реализует режим GATEWAY_PROXY (циклический опрос)
 void *iface_rtu_master(void *arg)
   {
-	u8			tcp_adu[MB_TCP_MAX_ADU_LENGTH];// TCP ADU
-	u16			tcp_adu_len;
-	u8			serial_adu[MB_SERIAL_MAX_ADU_LEN];/// SERIAL ADU
-	u16			serial_adu_len;
-
-	u16			*mem_start;
-	u8			*m_start;
-	u8 mask_src, mask_dst;
-
-	int		status;
+	u8  req_adu[MB_UNIVERSAL_ADU_LEN];
+	u16 req_adu_len;
+	u8  rsp_adu[MB_UNIVERSAL_ADU_LEN];
+	u16 rsp_adu_len;
 
   int port_id=((unsigned)arg)>>8;
-  int client_id, device_id; //=((unsigned)arg)&0xff;
+  int client_id, device_id;
 
-//	int		tcsd = IfaceRTU[port_id].clients[client_id].csd;
-	GW_StaticData tmpstat;
-	
-	GW_Iface	*inputDATA;
-	inputDATA = &IfaceRTU[port_id];
+	int status;
+	unsigned i, j, Q;
+
+	GW_Iface	*rtu_master;
+	rtu_master = &IfaceRTU[port_id];
 	
 	struct timeval tv1, tv2;
 	struct timezone tz;
 
-	unsigned i, j, n;
-
 ///!!!
-//	inputDATA->clients[client_id].stat.request_time_min=10000; // 10 seconds, must be "this->serial.timeout"
-//	inputDATA->clients[client_id].stat.request_time_max=0;
-//	inputDATA->clients[client_id].stat.request_time_average=0;
-//	for(i=0; i<MAX_LATENCY_HISTORY_POINTS; i++) inputDATA->clients[client_id].stat.latency_history[i]=1000; //ms
-//	inputDATA->clients[client_id].stat.clp=0;
+//	rtu_master->clients[client_id].stat.request_time_min=10000; // 10 seconds, must be "this->serial.timeout"
+//	rtu_master->clients[client_id].stat.request_time_max=0;
+//	rtu_master->clients[client_id].stat.request_time_average=0;
+//	for(i=0; i<MAX_LATENCY_HISTORY_POINTS; i++) rtu_master->clients[client_id].stat.latency_history[i]=1000; //ms
+//	rtu_master->clients[client_id].stat.clp=0;
 
 	/// semaphore
-	struct sembuf operations[1];
-	operations[0].sem_num=port_id;
-	operations[0].sem_op=-1;
-	operations[0].sem_flg=0;
-
-	semop(semaphore_id, operations, 1);
-	int fd=inputDATA->serial.fd;
-	inputDATA->queue.operations[0].sem_flg=IPC_NOWAIT;
+	rtu_master->queue.operations[0].sem_op=-1;
+	semop(semaphore_id, rtu_master->queue.operations, 1);
+	rtu_master->queue.operations[0].sem_flg=IPC_NOWAIT;
 
   // THREAD STARTED
-	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, 42, IfaceRTU[port_id].modbus_mode, 0, 0, 0);
+	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, IFACE_THREAD_STARTED, rtu_master->modbus_mode, 0, 0, 0);
+///-----------------------------------------
 
 	int queue_has_query;
-	int queue_current;
 
-	while (1) for(i=0; i<=MAX_QUERY_ENTRIES; i++) {
+	while (1) for(i=0; i<=rtu_master->PQueryIndex[MAX_QUERY_ENTRIES]; i++) {
 
-		// status = semop ( semaphore_id, operations, 1);
-		status=get_query_from_queue(&IfaceRTU[port_id].queue, &client_id, &device_id, tcp_adu, &tcp_adu_len);
+		Q=rtu_master->PQueryIndex[i];
+		j=i;
 
-		//queue_has_query=(status==-1)&&(errno==EAGAIN)?0:1;
+		status=get_query_from_queue(&rtu_master->queue, &client_id, &device_id, req_adu, &req_adu_len);
+		
+		if(status==1) { // внутренняя ошибка в программе
+			rtu_master->stat.accepted++;
+			rtu_master->stat.errors++;
+			rtu_master->stat.frwd_queue_out++;
+		  }
+
 		queue_has_query=status==-1?0:1;
-		if(queue_has_query==1) i=MAX_QUERY_ENTRIES;
-		if((queue_has_query!=1)&&(i==MAX_QUERY_ENTRIES)) continue;
+		if(queue_has_query==1) i=rtu_master->PQueryIndex[MAX_QUERY_ENTRIES];
 
-		clear_stat(&tmpstat);
+		// эта итерация цикла сканирования нужна для проверки очереди порта при пустой таблице опроса
+		if( ((queue_has_query!=1) || (status==1)) &&
+		     (i==rtu_master->PQueryIndex[MAX_QUERY_ENTRIES])) continue;
 
-	if(i!=MAX_QUERY_ENTRIES) {//формируем следующий запрос из таблицы опроса
-		if(PQuery[i].iface!=port_id) continue; ///!!! нужно реализовать массив с индексами
-    if(
-			(PQuery[i].length==0) ||
-			(PQuery[i].mbf==0) ||
-			(PQuery[i].device==0)
-			) continue; ///!!! нужно реализовать массив с индексами
+	if(queue_has_query!=1) {//формируем следующий запрос из таблицы опроса
 
-		usleep(PQuery[i].delay*1000);
-		//printf("P%d, query #%d from table\n", port_id+1, i);
+		if(PQuery[Q].delay!=0) usleep(PQuery[Q].delay*1000);
 
-		tcp_adu[TCPADU_ADDRESS]=PQuery[i].device;
-		tcp_adu[TCPADU_FUNCTION]=PQuery[i].mbf;
+		create_proxy_request(Q, req_adu, &req_adu_len);
+		client_id=GW_CLIENT_MOXAGATE;
 
-		tcp_adu[TCPADU_START_HI]=(PQuery[i].start>>8)&0xff;
-		tcp_adu[TCPADU_START_LO]= PQuery[i].start&0xff;
-		tcp_adu[TCPADU_LEN_HI]=(PQuery[i].length>>8)&0xff;
-		tcp_adu[TCPADU_LEN_LO]= PQuery[i].length&0xff;
-																																	
-		tcp_adu_len=12;
+		rtu_master->Security.stat.accepted++;
 
 		} else { //обрабатываем запрос из очереди последовательного порта
 
-//			tcp_adu_len+=6;
-//			for(j=tcp_adu_len-1; j>=6; j--) tcp_adu[j]=tcp_adu[j-6];
+			i=j; // после обработки запроса из очереди будет обработан прерванный запрос из таблицы опроса
 
-			tcp_adu[TCPADU_ADDRESS]=PQuery[device_id].device;
-			j=	(((tcp_adu[TCPADU_START_HI]<<8) | tcp_adu[TCPADU_START_LO])&0xffff)-
-					PQuery[device_id].offset+
-					PQuery[device_id].start;
-			tcp_adu[TCPADU_START_HI]=(j>>8)&0xff;
-			tcp_adu[TCPADU_START_LO]=j&0xff;
+			prepare_request (device_id, req_adu, req_adu_len);
 
-//			printf("P%d query #%d from queue\n", port_id+1, queue_current);
 			}
 
 	  ///---------------------
+		rtu_master->stat.accepted++;
 		gettimeofday(&tv1, &tz);
-		tmpstat.accepted++;
-		///!!! статистику обновляем централизованно в функции int refresh_shm(void *arg) или подобной
-		//gate502.wData4x[gate502.status_info+3*port_id+0]++;
+
+		req_adu_len-=TCPADU_ADDRESS;
+
+		status = crc(&req_adu[TCPADU_ADDRESS], 0, req_adu_len);
+		req_adu[TCPADU_ADDRESS+req_adu_len+0] = status >> 8;
+		req_adu[TCPADU_ADDRESS+req_adu_len+1] = status & 0x00FF;
+		req_adu_len+=MB_SERIAL_CRC_LEN;
 
 		if(Security.show_data_flow==1)
-			show_traffic(TRAFFIC_RTU_SEND, port_id, i, &tcp_adu[6], tcp_adu_len-6);
+			show_traffic(TRAFFIC_RTU_SEND, port_id, client_id, &req_adu[TCPADU_ADDRESS], req_adu_len);
 
-		status = mb_serial_send_adu(fd, &tmpstat, &tcp_adu[6], tcp_adu_len-6, serial_adu, &serial_adu_len);
+		status = mbcom_rtu_send(rtu_master->serial.fd,
+														&req_adu[TCPADU_ADDRESS],
+														req_adu_len);
 
 		switch(status) {
 		  case 0:
 		  	break;
-		  case MB_SERIAL_WRITE_ERR:
-		  	tmpstat.errors++;
-				func_res_err(tcp_adu[TCPADU_FUNCTION], &tmpstat);
-  			// POLLING: RTU SEND
-			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|port_id, 183, (unsigned) status, i, 0, 0);
-//				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
-				update_stat(&IfaceRTU[port_id].stat, &tmpstat);
 
-		///!!! Место-положение этого бита находится в области памяти 4x шлюза
-		//gate502.wData4x[PQuery[i].status_register]&=(~PQuery[i].status_bit);
-				PQuery[i].err_counter++;
-				if(i!=MAX_QUERY_ENTRIES)
-					if(PQuery[i].err_counter >= PQuery[i].critical)
-						PQuery[i].status_bit=0; ///!!! добавить сообщение о пропадании связи с modbus-rtu сервером
+		  case MB_SERIAL_WRITE_ERR:
+
+				rtu_master->stat.errors++;
+				func_res_err(req_adu[TCPADU_FUNCTION], &rtu_master->stat);
+				stage_to_stat((MBCOM_REQ<<16) | (MBCOM_RTU_SEND<<8) | status, &rtu_master->stat);
+
+			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|port_id, POLL_RTU_SEND, (unsigned) status, client_id, 0, 0);
+
+				if(client_id==GW_CLIENT_MOXAGATE) {
+
+					rtu_master->Security.stat.errors++;
+					func_res_err(req_adu[TCPADU_FUNCTION], &rtu_master->Security.stat);
+					stage_to_stat((MBCOM_REQ<<16) | (MBCOM_RTU_SEND<<8) | status, &rtu_master->Security.stat);
+
+					PQuery[Q].err_counter++;
+					if(PQuery[Q].err_counter >= PQuery[Q].critical)
+						PQuery[Q].status_bit=0;
+					///!!! добавить сообщение о пропадании связи с modbus-rtu сервером
+
+				  } else {
+						Client[client_id].stat.errors++;
+						func_res_err(req_adu[TCPADU_FUNCTION], &Client[client_id].stat);
+						stage_to_stat((MBCOM_REQ<<16) | (MBCOM_RTU_SEND<<8) | status, &Client[client_id].stat);
+				    }
 				continue;
 		  	break;
+
 		  default:;
 		  };
 
-    /// kazhetsya net zaschity ot perepolneniya bufera priema "serial_adu[]"
-	  status = mb_serial_receive_adu(fd, &tmpstat, serial_adu, &serial_adu_len, &tcp_adu[MB_TCP_ADU_HEADER_LEN], inputDATA->serial.timeout, inputDATA->serial.ch_interval_timeout);
-
-///---------- специальный случай при подаче команд на СКС-7 Диоген, обрабатываем
-///--- убираем третий с конца байт в полученном ответе на запрос
-if((exceptions&EXPT_ACT_SKS07_DIOGEN)!=0)					
-		if(serial_adu[RTUADU_FUNCTION]==0x06)
-		if((except_prm[0]&(1 << port_id))!=0) {
-			serial_adu[serial_adu_len-3]=serial_adu[serial_adu_len-2];
-			serial_adu[serial_adu_len-2]=serial_adu[serial_adu_len-1];
-			serial_adu_len--;
-			//if(status==MB_SERIAL_PDU_ERR) status=0;
-			status=0;
-			}
-///-----------------------------------------------------------------------------
+	  status = mbcom_rtu_recv_rsp(rtu_master->serial.fd,
+	  														&rsp_adu[TCPADU_ADDRESS],
+	  														&rsp_adu_len,
+	  														rtu_master->serial.timeout,
+	  														rtu_master->serial.ch_interval_timeout);
 
 		if(Security.show_data_flow==1)
-			show_traffic(TRAFFIC_RTU_RECV, port_id, i, serial_adu, serial_adu_len);
-
-//		printf("status: %d\n", status);
+			show_traffic(TRAFFIC_RTU_RECV, port_id, client_id, &rsp_adu[6], rsp_adu_len);
 
 		switch(status) {
 		  case 0:
@@ -373,160 +160,53 @@ if((exceptions&EXPT_ACT_SKS07_DIOGEN)!=0)
 		  case MB_SERIAL_CRC_ERROR:
 		  case MB_SERIAL_PDU_ERR:
 		  case MB_SERIAL_READ_FAILURE:
-		  	tmpstat.errors++;
-				func_res_err(tcp_adu[TCPADU_FUNCTION], &tmpstat);
-  			// POLLING: RTU RECV
-			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|port_id, 182, (unsigned) status, i, 0, 0);
-//				update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
-				update_stat(&IfaceRTU[port_id].stat, &tmpstat);
 
-//				if(status==MB_SERIAL_READ_FAILURE) goto EndRun; ///!!!
-		///!!! Место-положение этого бита находится в области памяти 4x шлюза
-		//gate502.wData4x[PQuery[i].status_register]&=(~PQuery[i].status_bit);
-				PQuery[i].err_counter++;
-				if(i!=MAX_QUERY_ENTRIES)
-					if(PQuery[i].err_counter >= PQuery[i].critical)
-						PQuery[i].status_bit=0;  ///!!! добавить сообщение о пропадании связи с modbus-rtu сервером
+				rtu_master->stat.errors++;
+				func_res_err(rsp_adu[TCPADU_FUNCTION], &rtu_master->stat);
+				stage_to_stat((MBCOM_RSP<<16) | (MBCOM_RTU_RECV<<8) | status, &rtu_master->stat);
+
+			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|port_id, POLL_RTU_RECV, (unsigned) status, client_id, 0, 0);
+
+				if(client_id==GW_CLIENT_MOXAGATE) {
+					rtu_master->Security.stat.errors++;
+					func_res_err(rsp_adu[TCPADU_FUNCTION], &rtu_master->Security.stat);
+					stage_to_stat((MBCOM_RSP<<16) | (MBCOM_RTU_RECV<<8) | status, &rtu_master->Security.stat);
+
+					PQuery[Q].err_counter++;
+					if(PQuery[Q].err_counter >= PQuery[Q].critical)
+						PQuery[Q].status_bit=0;  ///!!! добавить сообщение о пропадании связи с modbus-rtu сервером
+				  } else {
+						Client[client_id].stat.errors++;
+						func_res_err(rsp_adu[TCPADU_FUNCTION], &Client[client_id].stat);
+						stage_to_stat((MBCOM_RSP<<16) | (MBCOM_RTU_RECV<<8) | status, &Client[client_id].stat);
+				    }
 				continue;
 		  	break;
+		  
 		  default:;
 		  };
 
 ///###-----------------------------			
-	if(i!=MAX_QUERY_ENTRIES) { // сохраняем локально полученные данные
-//		for(j=3; j<serial_adu_len-2; j++)
-//			oDATA[2*PQuery[i].offset+j-3]=serial_adu[j];
-		if((serial_adu[RTUADU_FUNCTION]&0x80)==0) {
-		switch(serial_adu[RTUADU_FUNCTION]) {
+	rsp_adu_len-=MB_SERIAL_CRC_LEN; // получаем и сохраняем длину PDU+1
 
-			case MBF_READ_HOLDING_REGISTERS:
-				mem_start=MoxaDevice.wData4x;
+	if(client_id==GW_CLIENT_MOXAGATE) { // сохраняем локально полученные данные
 
-			case MBF_READ_INPUT_REGISTERS:
-				if(serial_adu[RTUADU_FUNCTION]==MBF_READ_INPUT_REGISTERS)
-					mem_start=MoxaDevice.wData3x;
-
-				for(j=3; j<serial_adu_len-2; j+=2)
-					mem_start[PQuery[i].offset+(j-3)/2]=
-						(serial_adu[j] << 8) | serial_adu[j+1];
-
-				break;
-
-			case MBF_READ_COILS:
-				m_start=MoxaDevice.wData1x;
-
-			case MBF_READ_DECRETE_INPUTS:
-				if(serial_adu[RTUADU_FUNCTION]==MBF_READ_DECRETE_INPUTS)
-					m_start=MoxaDevice.wData2x;
-
-				for(j=3; j<serial_adu_len-2; j++)
-					for(n=0; n<8; n++) {
-
-						mask_src = 0x01 << n; 								// битовая маска в исходном байте
-						mask_dst = 0x01 << (PQuery[i].offset + n + (j-3)*8) % 8;	// битовая маска в байте назначения
-						status = (PQuery[i].offset + n + (j-3)*8) / 8;						// индекс байта назначения в массиве
-
-						m_start[status]= serial_adu[j] & mask_src ?\
-							m_start[status] | mask_dst:\
-							m_start[status] & (~mask_dst);
-
-						}
-
-				break;
-
-			default:;
-			}
-		///!!! Место-положение этого бита находится в области памяти 4x шлюза
-		//gate502.wData4x[PQuery[i].status_register]|=PQuery[i].status_bit;
-		PQuery[i].status_bit=1;
-		PQuery[i].err_counter=0;
-
-  	tmpstat.sended++;
-		func_res_ok(serial_adu[RTUADU_FUNCTION], &tmpstat);
-		} else { // получено исключение
-			func_res_err(serial_adu[RTUADU_FUNCTION], &tmpstat);
-			
-			PQuery[i].err_counter++;
-			if(PQuery[i].err_counter >= PQuery[i].critical)
-				PQuery[i].status_bit=0;
-		  }
-
-		///!!! статистику обновляем централизованно в функции int refresh_shm(void *arg) или подобной
-		//gate502.wData4x[gate502.status_info+3*port_id+1]++;
+		process_proxy_response(Q, rsp_adu, rsp_adu_len+MB_TCP_ADU_HEADER_LEN-1);
+		rtu_master->stat.sended++;
+		rtu_master->Security.stat.sended++;
+		func_res_ok(rsp_adu[TCPADU_FUNCTION], &rtu_master->stat);
+		func_res_ok(rsp_adu[TCPADU_FUNCTION], &rtu_master->Security.stat);
 
 		} else { //отправляем результат запроса непосредственно клиенту
 
-			serial_adu[RTUADU_ADDRESS]=MoxaDevice.modbus_address;
-			j=(((serial_adu[RTUADU_START_HI]<<8) | serial_adu[RTUADU_START_LO])&0xffff)+
-				PQuery[device_id].offset-
-				PQuery[device_id].start;
-			serial_adu[RTUADU_START_HI]=(j>>8)&0xff;
-			serial_adu[RTUADU_START_LO]=j&0xff;
+			// функция преобразования ответа в соответствии с контекстом
+			prepare_response(device_id, rsp_adu, rsp_adu_len);
 
-			/// определяем тип клиента и соответственно функцию, используемую для отправки ответа
-			if(Client[client_id].iface<=GATEWAY_P8)
-			if(	(IfaceRTU[Client[client_id].iface].modbus_mode==BRIDGE_PROXY) &&
-					(Client[client_id].status==GW_CLIENT_RTU_SLV)) {
-						
-				if(Security.show_data_flow==1)
-					show_traffic(TRAFFIC_RTU_SEND, Client[client_id].iface, client_id, serial_adu, serial_adu_len-2);
-				///!!! необходимо сделать мьютексы для синхронизации работы нескольких потоков с одним портом
-				status = mb_serial_send_adu(IfaceRTU[Client[client_id].iface].serial.fd, &tmpstat, serial_adu, serial_adu_len-2, tcp_adu, &tcp_adu_len);
-		
-				switch(status) {
-				  case 0:
-				  	tmpstat.sended++;
-//				  	if(exception_adu_len==0) tmpstat.sended++;
-//				  	  else {
-//					  		tmpstat.errors_serial_adu++;
-//						  	tmpstat.errors++;
-//				  	    }
-				  	break;
-				  case MB_SERIAL_WRITE_ERR:
-				  	tmpstat.errors++;
-		  			// POLLING: RTU SEND
-					 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|GATEWAY_SECURITY, 183, (unsigned) status, client_id, 0, 0);
-						update_stat(&Client[client_id].stat, &tmpstat);
-						update_stat(&IfaceRTU[Client[client_id].iface].stat, &tmpstat);
-						continue;
-				  	break;
-				  default:;
-				  };
-						
-				} else {
-	
-				if(Security.show_data_flow==1)
-					show_traffic(TRAFFIC_TCP_SEND, port_id, client_id, serial_adu, serial_adu_len-2);
-	//			status = mb_tcp_send_adu(tcsd, &tmpstat, serial_adu, serial_adu_len-2, tcp_adu, &tcp_adu_len);
-				status = mb_tcp_send_adu(Client[client_id].csd,
-																	&tmpstat, serial_adu, serial_adu_len-2, tcp_adu, &tcp_adu_len);
-	
-				switch(status) {
-				  case 0:
-				  	tmpstat.sended++;
-						func_res_ok(serial_adu[RTUADU_FUNCTION], &tmpstat);
-				  	break;
-				  case TCP_COM_ERR_SEND:
-				  	tmpstat.errors++;
-						func_res_err(serial_adu[RTUADU_FUNCTION], &tmpstat);
-		  			// POLLING: TCP SEND
-					 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|port_id, 185, (unsigned) status, client_id, 0, 0);
-				  	break;
-				  default:;
-				  };
-				}
-	
-			/// при отсутствии записей в очереди переходим к обработке следующей записи из таблицы опроса
-			i=device_id;
+			forward_response(port_id, client_id, req_adu, req_adu_len, rsp_adu, rsp_adu_len);
 			}
 
-//	update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
-	update_stat(&IfaceRTU[port_id].stat, &tmpstat);
-
-	gettimeofday(&tv2, &tz);
-	inputDATA->stat.request_time=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
-		///!!! статистику обновляем централизованно в функции int refresh_shm(void *arg) или подобной
-	//gate502.wData4x[gate502.status_info+3*port_id+2]=inputDATA->stat.request_time_average;
+//	gettimeofday(&tv2, &tz);
+//	rtu_master->stat.request_time=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
 	}
 	EndRun: ;
 	// THREAD STOPPED

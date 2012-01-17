@@ -19,17 +19,16 @@ Public Const SETTLAN1AddressRow As Integer = 8
 Public Const SETTLAN2AddressRow As Integer = 9
 Public Const SETTVersionNumberRow As Integer = 10
 Public Const SETTVersionTimeRow As Integer = 11
-Public Const SETTModelRow As Integer = 12
-' ПАРАМЕТРЫ РАБОТЫ ПРОГРАММЫ
-Public Const SETTTCPPortRow As Integer = 15
-'Public Const SETTMBAddressRow As Integer = 16
+' ШЛЮЗ MODBUS
+Public Const SETTModelRow As Integer = 15
+Public Const SETTTCPPortRow As Integer = 16
 Public Const SETTStatusInfoBlockRow As Integer = 17
 Public Const SETTShowSysMessagesRow As Integer = 18
-Public Const SETTMap2Xto4XRow As Integer = 19
-' ОПЦИИ
-Public Const SETTWatchdogTimerRow As Integer = 23
-Public Const SETTShowDataFlowRow As Integer = 24
-Public Const SETTBuzzerRow As Integer = 25
+Public Const SETTShowDataFlowRow As Integer = 19
+Public Const SETTMap4Xto2XRow As Integer = 20
+Public Const SETTMap3Xto4XRow As Integer = 21
+Public Const SETTWatchdogTimerRow As Integer = 22
+Public Const SETTBuzzerRow As Integer = 23
 
 ' ЛИСТ "SERIAL-интерфейсы"
 Public Const SLGWPortColumn As Integer = 1
@@ -47,9 +46,10 @@ Public Const LANTCPIPColumn As Integer = 2
 Public Const LANTCPTCPColumn As Integer = 3
 Public Const LANTCPUnitIDColumn As Integer = 4
 Public Const LANTCPOffsetColumn As Integer = 5
-Public Const LANTCPIP2Column As Integer = 6
-Public Const LANTCPTCP2Column As Integer = 7
-Public Const LANTCPCommentColumn As Integer = 8
+Public Const LANTCPTimeoutColumn As Integer = 6
+Public Const LANTCPIP2Column As Integer = 7
+Public Const LANTCPTCP2Column As Integer = 8
+Public Const LANTCPCommentColumn As Integer = 9
 
 ' ЛИСТ "Таблица опроса"
 Public Const PTIfaceColumn As Integer = 2
@@ -81,7 +81,7 @@ Public Const EXCPPrm3Column As Integer = 6
 Public Const EXCPPrm4Column As Integer = 7
 Public Const EXCPCommentColumn As Integer = 8
 
-' ЛИСТ "Назначение регистров"
+' ЛИСТ "Карта адресов"
 Public Const ATMFirstRow As Integer = 3
 Public Const ATMRowsAmount As Integer = 32
 Public Const ATMFirstColumn As Integer = 2
@@ -121,8 +121,14 @@ Set ws = Worksheets("ШЛЮЗ")
 'ws.Activate
 
 ' инкрементируем номер версии, получаем текущее время
-ws.Cells(SETTVersionNumberRow, 2).Value = CStr("1.") + CStr(CDec(Mid(ws.Cells(SETTVersionNumberRow, 2).Value, 3)) + 1)
-ws.Cells(SETTVersionTimeRow, 2).Value = CStr(Date) + " " + CStr(Time)
+ws.Cells(SETTVersionNumberRow, 2).Value = CStr(Mid(ws.Cells(SETTVersionNumberRow, 2).Value, 1, 2)) + CStr(CDec(Mid(ws.Cells(SETTVersionNumberRow, 2).Value, 3)) + 1)
+
+If Mid(CStr(Time), 2, 1) = ":" Then
+  ws.Cells(SETTVersionTimeRow, 2).Value = CStr(Date) + " 0" + CStr(Time)
+Else
+  ws.Cells(SETTVersionTimeRow, 2).Value = CStr(Date) + " " + CStr(Time)
+End If
+
 
 Print #1, "#! /bin/sh"
 Print #1, "#"
@@ -204,7 +210,7 @@ If ws.Cells(SETTShowSysMessagesRow, 2).Value = "Да" Then
     Print #1, "--show_sys_messages \"
 End If
 
-If ws.Cells(SETTMap2Xto4XRow, 2).Value = "Да" Then
+If ws.Cells(SETTMap4Xto2XRow, 2).Value = "Да" Then
     Print #1, "--map2Xto4X \"
 End If
 
@@ -223,7 +229,7 @@ End If
 
 '**** ЗАПИСЬ ПАРАМЕТРОВ КОНФИГУРАЦИИ ПОСЛЕДОВАТЕЛЬНЫХ ИНТЕРФЕЙСОВ ****
 
-Set ws = Worksheets("SERIAL-интерфейсы")
+Set ws = Worksheets("Последовательные интерфейсы")
 'ws.Activate
 
 For i = 2 To 9
@@ -255,7 +261,7 @@ Next i
 
 '**** ЗАПИСЬ ПАРАМЕТРОВ КОНФИГУРАЦИИ ЛОГИЧЕСКИХ TCP-ИНТЕРФЕЙСОВ ****
 
-Set ws = Worksheets("LANTCP-интерфейсы")
+Set ws = Worksheets("Ethernet интерфейсы")
 'ws.Activate
 
 For i = 2 To 33
@@ -274,6 +280,7 @@ res = (ws.Cells(i, LANTCPIPColumn).Value <> "")
         str = str + CStr(ws.Cells(i, LANTCPTCPColumn).Value) + " "
         str = str + CStr(ws.Cells(i, LANTCPUnitIDColumn).Value) + " "
         str = str + CStr(ws.Cells(i, LANTCPOffsetColumn).Value) + " "
+        str = str + CStr(ws.Cells(i, LANTCPTimeoutColumn).Value) + " "
         
         If ws.Cells(i, LANTCPIP2Column).Value <> "" Then
           str = str + CStr(ws.Cells(i, LANTCPIP2Column).Value) + ":"
@@ -299,7 +306,7 @@ Next i
 
 '**** ЗАПИСЬ ТАБЛИЦЫ НАЗНАЧЕНИЯ АДРЕСОВ ***
 
-Set ws = Worksheets("Назначение адресов")
+Set ws = Worksheets("Карта адресов")
 'ws.Activate
 
 For ATMIfaceColumn = ATMFirstColumn To 3 * ATMColumnsAmount - 1 Step 3
@@ -342,7 +349,7 @@ Next ATMIfaceColumn
 
 '**** ЗАПИСЬ ТАБЛИЦЫ ВИРТУАЛЬНЫХ УСТРОЙСТВ ****
 
-Set ws = Worksheets("Назначение регистров")
+Set ws = Worksheets("Виртуальные устройства")
 'ws.Activate
 
 For i = 2 To 129

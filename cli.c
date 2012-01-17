@@ -40,7 +40,7 @@ MOXA7GATE V1.2\n\
 Modbus gateway\n\
      software\n\
 SEM-ENGINEERING\n\
-+7(4832)41-88-23\n\
++7(4832)41-95-28\n\
 www.semgroup.ru\n\
    Bryansk 2010\n\
 ");
@@ -315,6 +315,7 @@ int parse_Security(int 	argc, char	*argv[])
       j=2;
 			}
 
+		///!!! собственный адрес шлюза задается в таблице трансляции адресов
 		if(strcmp(argv[id_key_argc[i]],"--modbus_address")==0) {
       if(id_key_valset[10]==1) return SECURITY_CONF_DUPLICATE;
 			MoxaDevice.modbus_address=atoi(argv[id_key_argc[i]+1]);
@@ -507,9 +508,15 @@ int parse_IfacesTCP(int 	argc, char	*argv[])
 		arg=argv[id_t_argc[i]+3];
     IfaceTCP[t_num].ethernet.offset = atoi(arg);
 
-		// LAN2Address, TCP
+		// timeout
 		arg=argv[id_t_argc[i]+4];
+		IfaceTCP[t_num].ethernet.timeout = atoi(arg);
+		IfaceTCP[t_num].ethernet.timeout*=1000;
+
+		// LAN2Address, TCP
+		arg=argv[id_t_argc[i]+5];
 		get_ip_from_string(arg, &IfaceTCP[t_num].ethernet.ip2, &IfaceTCP[t_num].ethernet.port2);
+		if(IfaceTCP[t_num].ethernet.ip2==0) IfaceTCP[t_num].ethernet.status2=TCPMSTCON_NOTUSED;
 
 		if(IfaceTCP[t_num].modbus_mode!=IFACE_OFF) 
       return ((t_num + GATEWAY_T01) << 8) | IFACE_CONF_TCPDUPLICATE; // считаем есть дубликаты
@@ -518,11 +525,11 @@ int parse_IfacesTCP(int 	argc, char	*argv[])
 		shift_counter=0;
 
 		/// Описание шлейфа (сети ModBus)
-    if(argc > id_t_argc[i]+5+shift_counter+1) {
-		  arg=argv[id_t_argc[i]+5+shift_counter];
+    if(argc > id_t_argc[i]+6+shift_counter+1) {
+		  arg=argv[id_t_argc[i]+6+shift_counter];
 		  if(strcmp(arg, "--desc")==0) {
 			  shift_counter++;
-			  arg=argv[id_t_argc[i]+5+shift_counter];
+			  arg=argv[id_t_argc[i]+6+shift_counter];
 			  if(strlen(arg)>=(DEVICE_NAME_LENGTH-1))
 				  arg[DEVICE_NAME_LENGTH-1]=0;
 			  strcpy(IfaceTCP[t_num].description, arg);
@@ -840,14 +847,19 @@ int check_GatewayTCPPorts()
   int i, j;
 
   for(i=GATEWAY_P1; i<=GATEWAY_P8; i++) {
+
+		if(IfaceRTU[i].modbus_mode!=IFACE_TCPSERVER) continue;
+
     for(j=GATEWAY_P1; j<=GATEWAY_P8; j++)
-      if((j!=i) && (IfaceRTU[j].Security.tcp_port == IfaceRTU[i].Security.tcp_port)) break;
+      if(	(j!=i) && (IfaceRTU[j].modbus_mode==IFACE_TCPSERVER) &&
+      		(IfaceRTU[j].Security.tcp_port == IfaceRTU[i].Security.tcp_port)) break;
+      
+    if(j!=GATEWAY_P8+1) return (j<<8)|i;
+
     if(IfaceRTU[i].Security.tcp_port == Security.tcp_port) break;
     }
 
-  if(i!=GATEWAY_P8+1)
-    if(j!=GATEWAY_P8+1) return (j<<8)|i;
-      else return (i<<8)|GATEWAY_SECURITY;
+  if(i!=GATEWAY_P8+1) return (i<<8)|GATEWAY_SECURITY;
 
   return 0;
   }
@@ -860,8 +872,11 @@ int check_GatewayAddressMap()
 
   for(j=MODBUS_ADDRESS_MIN; j<=MODBUS_ADDRESS_MAX; j++) {
     if((AddressMap[j].iface>=GATEWAY_T01) && (AddressMap[j].iface<=GATEWAY_T32))
-      lantcp[AddressMap[j].iface & GATEWAY_IFACE]++;
-    if(AddressMap[j].iface==GATEWAY_MOXAGATE) m7g++;
+      lantcp[AddressMap[j].iface - GATEWAY_T01]++;
+    if(AddressMap[j].iface==GATEWAY_MOXAGATE) {
+			m7g++;
+			MoxaDevice.modbus_address=j;
+    	}
     }
 
   if(m7g!=1) return (m7g << 8) | GATEWAY_MOXAGATE;
@@ -874,7 +889,7 @@ int check_GatewayAddressMap()
 ///----------------------------------------------------------------------------
 int check_GatewayIfaces_ex()
   {
-  int i, j, k, if_type[4], res, index, itcp=0;
+  int i, j, k, if_type[4], res, index, itcp=0, itcpsrv=0;
   GW_Iface *iface;
 												 
   if_type[0]=IFACE_TCPSERVER;
@@ -888,13 +903,14 @@ int check_GatewayIfaces_ex()
         (j > GATEWAY_T32)
       ) continue;
 
-    iface= j<GATEWAY_P8 ? &IfaceRTU[j] : &IfaceTCP[j-GATEWAY_T01];
+    iface= j<=GATEWAY_P8 ? &IfaceRTU[j] : &IfaceTCP[j-GATEWAY_T01];
 
-    if(iface->modbus_mode == if_type[i]) switch(if_type[i]) {
+		if(iface->modbus_mode == if_type[i]) switch(if_type[i]) {
 
       // проверка не требуется
       case IFACE_TCPSERVER: 
-       break;
+        Security.TCPSRVIndex[itcpsrv++]=j;
+        break;
 
       // должен быть активирован один из трех механизмов перенаправления
       case IFACE_RTUMASTER:
@@ -920,7 +936,7 @@ int check_GatewayIfaces_ex()
         iface->PQueryIndex[MAX_QUERY_ENTRIES]=index;
 
         if(res==0) return 0x100 | j;
-        Security.TCPIndex[itcp++]=j-GATEWAY_T01;
+				if(j >= GATEWAY_T01) Security.TCPIndex[itcp++]=j-GATEWAY_T01;
         break;
 
       // для этого типа интерфейса должен существовать хотя бы один корректно сконфигурированный
@@ -935,14 +951,14 @@ int check_GatewayIfaces_ex()
               (k > GATEWAY_T32)
             ) continue;
 
-          if(k<GATEWAY_P8) {
+          if(k<=GATEWAY_P8) {
             if(IfaceRTU[k].modbus_mode==IFACE_RTUMASTER) res++;
             } else {
-              if(IfaceTCP[k&GATEWAY_IFACE].modbus_mode==IFACE_TCPMASTER) res++;
+              if(IfaceTCP[k-GATEWAY_T01].modbus_mode==IFACE_TCPMASTER) res++;
               }
           }
 
-       if(res==0) return 0x100 | k;
+       if(res==0) return 0x100 | j;
     
        break;
 
@@ -952,6 +968,7 @@ int check_GatewayIfaces_ex()
     }
 
   Security.TCPIndex[MAX_TCP_SERVERS]=itcp;
+  Security.TCPSRVIndex[MAX_MOXA_PORTS]=itcpsrv;
 
   return 0;
   }
@@ -960,7 +977,7 @@ int check_GatewayIfaces_ex()
 int check_GatewayConf()
   {
   int k, res=0;
-	 
+	
   // для нормальной работы программы как минимум должен быть сконфигурирован один из интерфейсов
   for(k=GATEWAY_P1; k<GATEWAY_ASSETS; k++) {
 
@@ -968,7 +985,7 @@ int check_GatewayConf()
         (k > GATEWAY_T32)
       ) continue;
 
-    if(k<GATEWAY_P8) {
+    if(k<=GATEWAY_P8) {
       if(IfaceRTU[k].modbus_mode!=IFACE_OFF) res++;
       } else {
         if(IfaceTCP[k-GATEWAY_T01].modbus_mode!=IFACE_OFF) res++;
@@ -981,6 +998,7 @@ int check_GatewayConf()
   }
 
 ///----------------------------------------------------------------------------
+// запись таблицы назначения адресов должна содержать интерфейсы в режиме RTU_MASTER либо TCP_MASTER
 int check_IntegrityAddressMap()
   {
   int j;
@@ -988,10 +1006,10 @@ int check_IntegrityAddressMap()
 
   for(j=MODBUS_ADDRESS_MIN; j<=MODBUS_ADDRESS_MAX; j++) {
 
-    if((AddressMap[j].iface!=GATEWAY_NONE)&&(AddressMap[j].iface!=GATEWAY_MOXAGATE))
-    if((AddressMap[j].iface&IFACETCP_MASK)!=0)
-      iface=&IfaceTCP[AddressMap[j].iface & GATEWAY_IFACE];
-      else iface=&IfaceRTU[AddressMap[j].iface];
+    if((AddressMap[j].iface!=GATEWAY_NONE)&&(AddressMap[j].iface!=GATEWAY_MOXAGATE)) {
+	    if((AddressMap[j].iface&IFACETCP_MASK)!=0)
+	      iface=&IfaceTCP[AddressMap[j].iface - GATEWAY_T01];
+	      else iface=&IfaceRTU[AddressMap[j].iface]; } else continue;
 
     if(!(
        (iface->modbus_mode==IFACE_TCPMASTER) ||
@@ -1014,13 +1032,13 @@ int check_IntegrityVSlaves()
     if(VSlave[j].iface==GATEWAY_NONE) continue;
 
     if((VSlave[j].iface&IFACETCP_MASK)!=0)
-      iface=&IfaceTCP[VSlave[j].iface & GATEWAY_IFACE];
+      iface=&IfaceTCP[VSlave[j].iface - GATEWAY_T01];
       else iface=&IfaceRTU[VSlave[j].iface];
 
     if(!(
        (iface->modbus_mode==IFACE_TCPMASTER) ||
        (iface->modbus_mode==IFACE_RTUMASTER)
-       )) return 0x100|j;
+       )) return (CONFIG_VSLAVES_INTEGRITY_IFACE<<16) | j;
     }
 
   // проверяем, что диапазоны виртуальных устройств не пересекаются,
@@ -1037,7 +1055,7 @@ int check_IntegrityVSlaves()
 
     // очередное виртуальное устройство сравниваем со всеми, кроме самого себя, на
     // предмет пересечений занимаемого диапазона регистров
-    for(i==0; i<MAX_VIRTUAL_SLAVES; i++) {
+    for(i=0; i<MAX_VIRTUAL_SLAVES; i++) {
       if((i==j) || (VSlave[i].modbus_table==MB_TABLE_NONE)) continue;
 
       begreg1=VSlave[j].start;
@@ -1048,9 +1066,10 @@ int check_IntegrityVSlaves()
       first_low_significant = endreg1 <= begreg2 ? 1 : 0 ;
       first_high_significant= begreg1 >= endreg2 ? 1 : 0 ;
       
-      if( (first_low_significant !=1) &&
-          (first_high_significant!=1)
-        ) return (i<<8)|j;
+      if(!(
+      	((first_low_significant==0) && (first_high_significant==1)) ||
+      	((first_low_significant==1) && (first_high_significant==0))
+        )) return (CONFIG_VSLAVES_INTEGRITY_DIAP<<16) | (i<<8) | j;
       }
 
     // очередное виртуальное устройство учитываем в области памяти виртуальных устройств
@@ -1114,18 +1133,19 @@ int check_IntegrityPQueries()
   int j;
   GW_Iface *iface;
 
+  // проверяем, что поле iface ссылается на соответсвующим образом настроенные интерфейсы
   for(j=0; j<MAX_QUERY_ENTRIES; j++) {
 
     if(PQuery[j].iface==GATEWAY_NONE) continue;
 
     if((PQuery[j].iface&IFACETCP_MASK)!=0)
-      iface=&IfaceTCP[PQuery[j].iface & GATEWAY_IFACE];
+      iface=&IfaceTCP[PQuery[j].iface - GATEWAY_T01];
       else iface=&IfaceRTU[PQuery[j].iface];
 
     if(!(
        (iface->modbus_mode==IFACE_TCPMASTER) ||
        (iface->modbus_mode==IFACE_RTUMASTER)
-       )) return 0x100|j;
+       )) return (CONFIG_PQUERIES_INTEGRITY_IFACE<<16) | j;
     }
 
   // проверяем, что блоки данных из таблицы опроса не пересекаются,
@@ -1141,12 +1161,13 @@ int check_IntegrityPQueries()
 
   for(j=0; j<MAX_QUERY_ENTRIES; j++) {
 
-    if(PQuery[j].mbf=MB_FUNC_NONE) continue;
+    if(PQuery[j].mbf==MB_FUNC_NONE) continue;
 
     // очередной блок данных опроса сравниваем со всеми, кроме самого себя, на
     // предмет пересечений занимаемого диапазона регистров в собственной памяти шлюза
-    for(i==0; i<MAX_QUERY_ENTRIES; i++) {
-      if((i==j) || (PQuery[i].mbf=MB_FUNC_NONE)) continue;
+    for(i=0; i<MAX_QUERY_ENTRIES; i++) {
+
+      if((i==j) || (PQuery[i].mbf==MB_FUNC_NONE)) continue;
 
       begreg1=PQuery[j].offset;
       begreg2=PQuery[i].offset;
@@ -1156,9 +1177,10 @@ int check_IntegrityPQueries()
       first_low_significant = endreg1 <= begreg2 ? 1 : 0 ;
       first_high_significant= begreg1 >= endreg2 ? 1 : 0 ;
       
-      if( (first_low_significant !=1) &&
-          (first_high_significant!=1)
-        ) return (i<<8)|j;
+      if(!(
+      	((first_low_significant==0) && (first_high_significant==1)) ||
+      	((first_low_significant==1) && (first_high_significant==0))
+        )) return (CONFIG_PQUERIES_INTEGRITY_DIAP<<16) | (i<<8) | j;
       }
 
     // очередной блок данных из таблицы опроса учитываем при определении области памяти шлюза

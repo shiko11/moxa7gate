@@ -38,19 +38,40 @@
 #define MOXAGATE_MBADDR 8
 #define MOXAGATE_STATINFO 9
 
+#define MOXAGATE_STATINFO_OVERLAPS 86
+#define MOXAGATE_MBTABLES_OVERLAPS 87
+
+/// коды ошибок инициализации
+#define MOXAGATE_MBTABLE_ALLOCATED 88
+
+#define TCPCON_INITIALIZED 90
+#define TCPCON_ACCEPTED 91
+#define TCPCON_REJECTED 92
+
+#define TCPCON_CLOSED_LINK	105
+#define TCPCON_CLOSED_TIME	106
+#define TCPCON_CLOSED_KPALV 122
+#define TCPCON_CLOSED_REMSD 123
+#define TCPCON_CLOSED_TMOUT 124
+#define TCPCON_ESTABLISHED	120
+#define TCPCON_FAILED				121
+
+#define CLIENT_NOTAVAIL 101
+
 /*--- Всего возможны 4 различных типа клиентов шлюза:
 	1. Клиент на стороне TCP, подключенный к порту IFACE_TCPSERVER;
 	2. Клиент на стороне TCP, подключенный к шлюзу через основной TCP порт (обычно 502);
 	3. Клиент на стороне RTU, подключенный к порту IFACE_RTUSLAVE;
-	4. HMI клиент (выдает управляющие команды на изменение конфигурации);
+	4. HMI клиент (пользователь, выдает управляющие команды на изменение конфигурации);
 */
 
 // состояние клиентского соединения
-#define GW_CLIENT_CLOSED			1
+#define GW_CLIENT_IDLE				1
 #define GW_CLIENT_ERROR				2
 #define GW_CLIENT_TCP_GWS			3
 #define GW_CLIENT_TCP_502			4
 #define GW_CLIENT_RTU_SLV			5
+#define GW_CLIENT_MOXAGATE		6 // используется при обработке PROXY-запросов
 
 // параметры, предназначенные для контроля и управления шлюзом
 typedef struct {
@@ -75,7 +96,7 @@ typedef struct {
   ///!!!
 	time_t timestamp;  // время последнего обновления данных для web-интерфейса
  	unsigned char halt; // флаг принудительного останова программы по команде
-  unsigned int back_light;
+  unsigned int back_light; // флаг включения подсветки дисплея устройства MOXA UC-7410
 
   unsigned int tcp_port;	// номер TCP-порта для приема входящих клиентских соединений
 
@@ -83,8 +104,15 @@ typedef struct {
   unsigned int current_connections_number;
   unsigned int rejected_connections_number;
 
+  GW_StaticData stat; // подсчет статистики при приеме и перенаправлении от клиентов GW_CLIENT_TCP_502
+
   // массив индексов сконфигурированных TCP-интерфейсов
   unsigned char TCPIndex[MAX_TCP_SERVERS+1];
+  // массив индексов сконфигурированных интерфейсов типа IFACE_TCPSERVER
+  unsigned char TCPSRVIndex[MAX_MOXA_PORTS+1];
+
+	// счетчик циклов сканирования главного потока
+	unsigned int scan_counter;
 
 	} GW_Security;
 

@@ -14,8 +14,8 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#include "clients.h"
 #include "interfaces.h"
+#include "clients.h"
 #include "moxagate.h"
 #include "messages.h"
 #include "hmi_web.h"
@@ -44,9 +44,11 @@ int init_clients()
 	memset(Client, 0, sizeof(Client));
 
 	for(j=0; j<MOXAGATE_CLIENTS_NUMBER; j++) {
+		Client[j].iface=GATEWAY_NONE;
 		Client[j].rc=1;
 		Client[j].csd=-1;
-		Client[j].status=GW_CLIENT_CLOSED;
+		Client[j].status=GW_CLIENT_IDLE;
+		clear_stat(&Client[j].stat);
 	  }
 								 
   // Security
@@ -78,10 +80,18 @@ int init_clients()
   Security.accepted_connections_number=0;
   Security.current_connections_number=0;
   Security.rejected_connections_number=0;
+  
+  clear_stat(&Security.stat);
+  
+  Security.scan_counter=0;
 
   for(j=0; j<MAX_TCP_SERVERS; j++)
     Security.TCPIndex[j]=GATEWAY_NONE;
   Security.TCPIndex[MAX_TCP_SERVERS]=0;
+
+  for(j=0; j<MAX_MOXA_PORTS; j++)
+    Security.TCPSRVIndex[j]=GATEWAY_NONE;
+  Security.TCPSRVIndex[MAX_MOXA_PORTS]=0;
 
   // private variables
 	ssd=-1;
@@ -98,6 +108,8 @@ int close_clients()
 
 	for(i=0; i<MOXAGATE_CLIENTS_NUMBER; i++)
     clear_client(i);
+
+	//fcntl(ssd, F_SETFL, fcntl(ssd, F_GETFL, 0) & (~O_NONBLOCK));
 	shutdown(ssd, SHUT_RDWR);
 	close(ssd);
 
@@ -140,15 +152,14 @@ int clear_client(int client)
 
   switch(Client[client].status) {
 
-    case GW_CLIENT_CLOSED: break;
+    case GW_CLIENT_IDLE: break;
     case GW_CLIENT_ERROR: break;
 
     case GW_CLIENT_TCP_GWS:
 		  close(Client[client].csd);
 			Client[client].csd=-1;
-			Client[client].status=GW_CLIENT_CLOSED;
+			Client[client].status=GW_CLIENT_IDLE;
 
-		  Security.current_connections_number--;
 		  IfaceRTU[Client[client].iface].Security.current_connections_number--;
 
 			time(&Client[client].disconnection_time);
@@ -161,7 +172,7 @@ int clear_client(int client)
 
 		  close(Client[client].csd);
 		  Client[client].csd=-1;
-		  Client[client].status=GW_CLIENT_CLOSED;
+		  Client[client].status=GW_CLIENT_IDLE;
 
 			Security.current_connections_number--;
 
@@ -178,13 +189,12 @@ int clear_client(int client)
 int init_main_socket()
   {																																							 
 	struct sockaddr_in	addr;
-//	int csd;
 
 	// SOCKET INITIALIZED
 	ssd = socket(AF_INET, SOCK_STREAM, 0);
 	if (ssd < 0) {
 		perror("csdet");
-		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SECURITY, 65, 1, MOXAGATE_CLIENTS_NUMBER, 0, 0);
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SECURITY, TCPCON_INITIALIZED, 1, 0, 0, 0);
 		return 1;
 		}
 	
@@ -195,14 +205,14 @@ int init_main_socket()
 	if (bind(ssd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		perror("bind");
 		close(ssd);
-		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SECURITY, 65, 2, MOXAGATE_CLIENTS_NUMBER, 0, 0);
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SECURITY, TCPCON_INITIALIZED, 2, 0, 0, 0);
 		return 2;
 		}
 
 	listen(ssd, MOXAGATE_CLIENTS_NUMBER);
 	fcntl(ssd, F_SETFL, fcntl(ssd, F_GETFL, 0) | O_NONBLOCK);
 
-	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SECURITY, 65, 3, MOXAGATE_CLIENTS_NUMBER, 0, 0);
+	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SECURITY, TCPCON_INITIALIZED, 3, 0, 0, 0);
 
   return 0;
   }
@@ -216,7 +226,7 @@ int get_current_client()
   // в буфере для обеспечения возможности накопления информации об истории подключений
 
   for(j=0; j<MOXAGATE_CLIENTS_NUMBER; j++)
-    if(Client[j].status==GW_CLIENT_CLOSED) break;
+    if(Client[j].status==GW_CLIENT_IDLE) break;
 //    if(Client[j].rc!=0) break;
 //    if(gate502.clients[j].csd==-1) break;
 
@@ -230,48 +240,54 @@ int get_current_client()
 ///----------------------------------------------------------------------------
 int gateway_common_processing()
   {
-	struct sockaddr_in	addr; ///!!! static
-  int i, j, csd, rc; ///!!! static
+	struct sockaddr_in	addr;
+  int i, j, P, T, csd, rc;
+
+	struct timeval tv;
+	struct timezone tz;
 
 	FD_ZERO(&watchset);
 
 	while (1) {
-    // прием входящих соединений к портам в режиме GATEWAY_SIMPLE и создание клиентских потоков:
-	  for(i=0; i<MAX_MOXA_PORTS; i++) {
 
-	  	///!!! создать массив с индексами портов в этом режиме
-		  if(IfaceRTU[i].modbus_mode!=GATEWAY_SIMPLE) continue;
+		gettimeofday(&tv, &tz);
+
+    // прием входящих соединений к интерфейсам IFACE_TCPSERVER и создание клиентских потоков:
+	  for(i=0; i<Security.TCPSRVIndex[MAX_MOXA_PORTS]; i++) {
+
+		  P=Security.TCPSRVIndex[i];
+		  if(IfaceRTU[P].modbus_mode!=IFACE_TCPSERVER) continue;
 	  	
-		rc=sizeof(addr);
-		if(IfaceRTU[i].ssd>=0) csd = accept(IfaceRTU[i].ssd, (struct sockaddr *)&addr, &rc);
-		  else continue;
+		  rc=sizeof(addr);
+		  if(IfaceRTU[P].ssd>=0) csd = accept(IfaceRTU[P].ssd, (struct sockaddr *)&addr, &rc);
+		    else continue;
 			
-		if((csd<0)&&(errno==EAGAIN)) {
-				//printf("noop\n");
-				continue;
-			  }
+			// запросов на подключение от клиентов нет
+		  if((csd<0)&&(errno==EAGAIN)) continue;
 			  
 			if (csd < 0) {
 				perror("accept");
-				close(IfaceRTU[i].ssd);
-				IfaceRTU[i].ssd=-1;
-				IfaceRTU[i].modbus_mode=MODBUS_PORT_ERROR;
-	      strcpy(IfaceRTU[i].bridge_status, "ERR");
+				close(IfaceRTU[P].ssd);
+				IfaceRTU[P].ssd=-1;
+				IfaceRTU[P].modbus_mode=IFACE_ERROR;
+	      strcpy(IfaceRTU[P].bridge_status, "ERR");
 				// CONNECTION ACCEPTED
-				sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|i, 67, 0, 0, 0, 0);
+				sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|P, TCPCON_ACCEPTED, 0, 0, 0, 0);
 			  }
 
      /// ищем свободный слот для нового соединения
 		 current_client=get_current_client();
 
-	   if((IfaceRTU[i].Security.current_connections_number==MAX_TCP_CLIENTS_PER_PORT) ||
+	   if((IfaceRTU[P].Security.current_connections_number==MAX_TCP_CLIENTS_PER_PORT) ||
 	      (current_client==MOXAGATE_CLIENTS_NUMBER)) {
 
-			 Security.rejected_connections_number++;
-			 IfaceRTU[i].Security.rejected_connections_number++;
+			 IfaceRTU[P].Security.rejected_connections_number++;
 			 
 			 // CONNECTION REJECTED
-			 sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|i, 70, addr.sin_addr.s_addr, 0, 0, 0);
+			 if(current_client==MOXAGATE_CLIENTS_NUMBER)
+			   sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|P, CLIENT_NOTAVAIL, addr.sin_addr.s_addr, 0, 0, 0);
+			   else
+			   sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|P, TCPCON_REJECTED, addr.sin_addr.s_addr, 0, 0, 0);
 			 
 			 close(csd);
 	   	 continue;
@@ -287,48 +303,81 @@ int gateway_common_processing()
 		sprintf(Client[current_client].device_name, "%d.%d.%d.%d", \
 			addr.sin_addr.s_addr >> 24, (addr.sin_addr.s_addr >> 16) & 0xff, \
 			(addr.sin_addr.s_addr >> 8) & 0xff, addr.sin_addr.s_addr & 0xff);
-    Client[current_client].iface=i;
+    Client[current_client].iface=P;
 
 		//printf("ip%X\n", addr.sin_addr.s_addr);
 			
-		  Security.accepted_connections_number++;
-		  Security.current_connections_number++;
-		  IfaceRTU[i].Security.accepted_connections_number++;
-		  IfaceRTU[i].Security.current_connections_number++;
+		  IfaceRTU[P].Security.accepted_connections_number++;
+		  IfaceRTU[P].Security.current_connections_number++;
 
 			// CONNECTION ACCEPTED
-			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|i, 67, addr.sin_addr.s_addr, current_client, 0, 0);
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|P, TCPCON_ACCEPTED, addr.sin_addr.s_addr, current_client, 0, 0);
 			
-			int arg=(i<<8)|(current_client&0xff);
+			int arg=(P<<8)|(current_client&0xff);
 			Client[current_client].rc = pthread_create(
 				&Client[current_client].tid_srvr,
 				NULL,
-				iface_rtu_gws,
+				iface_tcp_server,
 				(void *) arg);
 			
 			if(Client[current_client].rc!=0) {
-				close(IfaceRTU[i].ssd);
-				IfaceRTU[i].ssd=-1;
-				IfaceRTU[i].modbus_mode=MODBUS_PORT_ERROR;
-	      strcpy(IfaceRTU[i].bridge_status, "ERR");
+				close(IfaceRTU[P].ssd);
+				IfaceRTU[P].ssd=-1;
+				IfaceRTU[P].modbus_mode=IFACE_ERROR;
+	      strcpy(IfaceRTU[P].bridge_status, "ERR");
 
 				clear_client(current_client);
 				Client[current_client].status=GW_CLIENT_ERROR;
 
 	      // THREAD INITIALIZED
-				sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|i, 41, Client[current_client].rc, 0, 0, 0);
+				sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|P, IFACE_THREAD_INIT, Client[current_client].rc, 0, 0, 0);
 			  }
 	    }
 
-	  ///usleep(750000); ///!!!
+		/// обслуживание TCP-соединений TCP MASTER интерфейсов
+	  for(i=0; i<Security.TCPIndex[MAX_TCP_SERVERS]; i++) {
+	
+		  T=Security.TCPIndex[i];
+		  if(IfaceTCP[T].modbus_mode!=IFACE_TCPMASTER) continue;
+	
+			if( // перенести в модуль HMI_WEB
+			  ((IfaceTCP[T].ethernet.status==TCPMSTCON_ESTABLISHED)&&(IfaceTCP[T].ethernet.status2==TCPMSTCON_ESTABLISHED))||
+			  ((IfaceTCP[T].ethernet.status==TCPMSTCON_ESTABLISHED)&&(IfaceTCP[T].ethernet.status2==TCPMSTCON_NOTUSED))
+			  ) strcpy(IfaceTCP[T].bridge_status, " OK");
+			  
+			// с установленной периодичностью проверяем состояние сетевых соединений
+	    if( (	(tv.tv_sec-IfaceTCP[T].ethernet.tv.tv_sec)*1000000+
+	    			(tv.tv_usec-IfaceTCP[T].ethernet.tv.tv_usec) ) >= TCP_RECONN_INTVL) {
+
+				if(IfaceTCP[T].ethernet.status!=TCPMSTCON_ESTABLISHED) {
+				  strcpy(IfaceTCP[T].bridge_status, "MRG");
+				  reset_tcpmaster_conn(&IfaceTCP[T], 1);
+				  }
+				  
+				if( (IfaceTCP[T].ethernet.status2!=TCPMSTCON_ESTABLISHED) &&
+				    (IfaceTCP[T].ethernet.status2!=TCPMSTCON_NOTUSED)     ){
+				  strcpy(IfaceTCP[T].bridge_status, "MRG");
+				  reset_tcpmaster_conn(&IfaceTCP[T], 2);
+				  }
+
+			  gettimeofday(&IfaceTCP[T].ethernet.tv, &tz);
+
+				}
+			}
 
 		/// обработка входящих соединений на порт 502
 		gateway_single_port_processing();
-		/// механизм трансляции запросов
+		/// трансляция запросов от клиентов GW_CLIENT_TCP_502
 		query_translating();
 	  
 		// останов программы по внешней команде
 		if(Security.halt==1) break;
+
+		// инкрементируем значение счетчика циклов сканирования главного потока программы
+		Security.scan_counter++;
+		
+		// выполняем сброс watch-dog таймера
+		if(Security.watchdog_timer==1) mxwdg_refresh(MoxaDevice.mxwdt_handle);
 		}
 
   // usleep(4000000); /// перед выходом из программы ожидаем, пока cgi-скрипт освободит разделяемую память
@@ -338,8 +387,8 @@ int gateway_common_processing()
 	//pthread_join(csd, NULL);
 int gateway_single_port_processing()
 	{
-	struct sockaddr_in	addr; ///!!! static
-  int i, j, k, csd, rc; ///!!! static
+	struct sockaddr_in	addr;
+  int i, j, k, csd, rc;
 
 			/// блок обработки входящих TCP-соединений
 
@@ -352,7 +401,7 @@ int gateway_single_port_processing()
 			if (csd < 0) {
 				perror("accept");
 				// CONNECTION ACCEPTED
-				sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SECURITY, 67, 0, 0, 0, 0);
+				sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SECURITY, TCPCON_ACCEPTED, 0, 0, 0, 0);
 			} else {
 
 		 /// ищем свободный слот для нового соединения
@@ -362,7 +411,7 @@ int gateway_single_port_processing()
 
 			 Security.rejected_connections_number++;
 			 // CONNECTION REJECTED
-			 sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_SECURITY, 70, addr.sin_addr.s_addr, 0, 0, 0);
+			 sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_SECURITY, CLIENT_NOTAVAIL, addr.sin_addr.s_addr, 0, 0, 0);
 			 close(csd);
 
 	     } else {
@@ -370,7 +419,7 @@ int gateway_single_port_processing()
 				  FD_SET(Client[current_client].csd, &watchset);
 	  	
 				 // CONNECTION ACCEPTED
-				 sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SECURITY, 67, addr.sin_addr.s_addr, current_client, 0, 0);
+				 sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SECURITY, TCPCON_ACCEPTED, addr.sin_addr.s_addr, current_client, 0, 0);
 			
 				 time(&Client[current_client].connection_time);
 				 Client[current_client].disconnection_time=0;
@@ -390,9 +439,6 @@ int gateway_single_port_processing()
 				}
 		  }
 
-
-	  //usleep(500000); // proverit' zaderzhku na obrabotku vseh klientov v rezhime MASTER
-
 	return 0;
 	}
 ///-----------------------------------------------------------------------------------------------------------------
@@ -410,8 +456,7 @@ int query_translating()
 
 		u8			tcp_adu[MB_TCP_MAX_ADU_LENGTH];// TCP ADU
 		u16			tcp_adu_len;
-		GW_StaticData tmpstat;
-		int port_id, device_id;
+
 		int status;
 
 		unsigned temp;
@@ -432,15 +477,13 @@ int query_translating()
 	    		if(diff>=MAX_CLIENT_ACTIVITY_TIMEOUT) {
             clear_client(i);
 			 			// CONNECTION CLOSED (TIMEOUT)
-			 			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_SECURITY, 72, i, 0, 0, 0);
+			 			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_SECURITY, TCPCON_CLOSED_TIME, i, 0, 0, 0);
 						};
       }
 
 	    if(maxfd<Client[i].csd) maxfd=Client[i].csd;
 	    }
 
-			clear_stat(&tmpstat);
-			
 			inset=watchset;
 
 			if((temp=select(maxfd+1, &inset, NULL, NULL, &stv))<0) {
@@ -453,9 +496,14 @@ int query_translating()
 			if (Client[i].status==GW_CLIENT_TCP_502)
 			if (FD_ISSET(Client[i].csd, &inset)) {
 	  	
-			status = mb_tcp_receive_adu(Client[i].csd, &tmpstat, tcp_adu, &tcp_adu_len);
+			status = mbcom_tcp_recv(Client[i].csd,
+															tcp_adu,
+															&tcp_adu_len);
+
+			Security.stat.accepted++;
+			Client[i].stat.accepted++;
 	
-			if(Security.show_data_flow==1)
+		if(Security.show_data_flow==1)
 				show_traffic(TRAFFIC_TCP_RECV, GATEWAY_SECURITY, i, tcp_adu, tcp_adu_len);
 
 			switch(status) {
@@ -468,115 +516,68 @@ int query_translating()
 			  case TCP_ADU_ERR_LEN:
 			  case TCP_ADU_ERR_UID:
 			  case TCP_PDU_ERR:
-			  	//tmpstat.errors++;
-	  			// POLLING: TCP RECV
-				 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|GATEWAY_SECURITY, 184, (unsigned) status, i, 0, 0);
 
-					//update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
-					//update_stat(&IfaceRTU[port_id].stat, &tmpstat);
+					Security.stat.errors++;
+					Client[i].stat.errors++;
+					func_res_err(tcp_adu[TCPADU_FUNCTION], &Security.stat);
+					func_res_err(tcp_adu[TCPADU_FUNCTION], &Client[i].stat);
+					stage_to_stat((MBCOM_REQ<<16) | (MBCOM_TCP_RECV<<8) | status, &Security.stat);
+					stage_to_stat((MBCOM_REQ<<16) | (MBCOM_TCP_RECV<<8) | status, &Client[i].stat);
+
+				 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|GATEWAY_SECURITY, POLL_TCP_RECV, (unsigned) status, i, 0, 0);
+
 				  if(status==TCP_COM_ERR_NULL) {
 						clear_client(i);
 			 			// CONNECTION CLOSED (LINK DOWN)
-			 			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_SECURITY, 071, i, 0, 0, 0);
+			 			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_SECURITY, TCPCON_CLOSED_LINK, i, 0, 0, 0);
 						}
-					return 0;
+
+					continue;
 			  	break;
-			  default:; ///!!! continue;
-			  };
+
+			  default:;
+			  }
 
 			time(&Client[i].last_activity_time);
 
+			status=forward_query(i, tcp_adu, tcp_adu_len);
 
-/* разбор входящего запроса происходит в несколько этапов:
-	- проверяем modbus адрес, указанный в запросе;
-	- проверяем диапазон регистров, указанный в запросе;
-	- если и адрес и диапазон принадлежат устройству Moxa, ставим запрос в очередь внутренних запросов;
-	- если только адрес принадлежит устройству Moxa, ставим запрос в очередь одного из портов режима RTM;
-	- если адрес не принадлежит устройству Moxa, ставим запрос в очередь одного из портов режима ATM.
- */
+			if((status & FRWD_RESULT_MASK)!=FRWD_RESULT_OK ) { // запрос завершился ошибкой
 
-			k=tcp_adu[TCPADU_ADDRESS]==MoxaDevice.modbus_address?GATEWAY_SIMPLE:GATEWAY_ATM;
+				Security.stat.errors++;
+				Client[i].stat.errors++;
+				func_res_err(tcp_adu[TCPADU_FUNCTION], &Security.stat);
+				func_res_err(tcp_adu[TCPADU_FUNCTION], &Client[i].stat);
+				stage_to_stat((MBCOM_REQ<<16) | (MBCOM_FRWD_REQ<<8) | status, &Security.stat);
+				stage_to_stat((MBCOM_REQ<<16) | (MBCOM_FRWD_REQ<<8) | status, &Client[i].stat);
 
-			switch(tcp_adu[TCPADU_FUNCTION]) { 	// определяем диапазон регистров, требуемых в запросе,
-																					// а также фильтруем входящие запросы по функциям ModBus
-				case MBF_READ_COILS:
-				case MBF_READ_DECRETE_INPUTS:
-				case MBF_READ_HOLDING_REGISTERS:
-				case MBF_READ_INPUT_REGISTERS:
-		
-				case MBF_WRITE_MULTIPLE_COILS:
-				case MBF_WRITE_MULTIPLE_REGISTERS:
-		
-					j=(tcp_adu[TCPADU_LEN_HI]<<8)|tcp_adu[TCPADU_LEN_LO];
+				continue;
+			  }
+			  
+			// запрос был перенаправлен
+
+			switch(status&FRWD_TYPE_MASK) {
+
+				case FRWD_TYPE_PROXY: 
+					Security.stat.frwd_p++;
+					Client[i].stat.frwd_p++;
 					break;
 
-				case MBF_WRITE_SINGLE_COIL:
-				case MBF_WRITE_SINGLE_REGISTER:
-					j=1;
+				case FRWD_TYPE_REGISTER: 
+					Security.stat.frwd_r++;
+					Client[i].stat.frwd_r++;
 					break;
-		
-				default: ///!!! функция не поддерживается шлюзом, добавить счетчик статистики
-					// POLLING: FUNC NOT SUPPORTED
-			 		sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|GATEWAY_SECURITY, 180, i, (unsigned) tcp_adu[TCPADU_FUNCTION], 0, 0);
-					continue;
+
+				case FRWD_TYPE_ADDRESS:    
+					Security.stat.frwd_a++;
+					Client[i].stat.frwd_a++;
+					break;
+
+				default:;
 				}
-	
-			if(k!=GATEWAY_ATM) {
-				switch(
-							checkDiapason(	tcp_adu[TCPADU_FUNCTION],
-															(tcp_adu[TCPADU_START_HI]<<8)|tcp_adu[TCPADU_START_LO],
-															j)) {
-	
-					case 	MOXA_DIAPASON_INSIDE:
-						k=GATEWAY_PROXY;
-						/// ставим запрос в очередь MOXA MODBUS DEVICE
-						if((status=enqueue_query_ex(&MoxaDevice.queue, i, device_id, tcp_adu, tcp_adu_len))!=0) continue;
-//						printf("GATE502 GATEWAY_PROXY\n");
-						break;
-					
-					case MOXA_DIAPASON_OUTSIDE:
-						k=GATEWAY_RTM;
-	
-						status=translateRegisters(
-							(tcp_adu[TCPADU_START_HI]<<8)|tcp_adu[TCPADU_START_LO],
-							j, &port_id, &device_id);
 
-					  if(status) {
-		  			// FRWD: REGISTERS TRANSLATION
-			 			sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|GATEWAY_SECURITY, 131, i, (unsigned) (tcp_adu[TCPADU_START_HI]<<8)|tcp_adu[TCPADU_START_LO], (unsigned) j, 0);
-							continue;
-							}
-
-						/// ставим запрос в очередь последовательного порта
-//						if((status=enqueue_query(port_id, i, device_id, tcp_adu, tcp_adu_len))!=0) continue;
-						if((status=enqueue_query_ex(&IfaceRTU[port_id].queue, i, device_id, tcp_adu, tcp_adu_len))!=0) continue;
-//						printf("GATE502 GATEWAY_RTM\n");
-						break;
-					
-					case MOXA_DIAPASON_OVERLAPPED:
-		  			// FRWD: BLOCK OVERLAPS
-			 			sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|GATEWAY_SECURITY, 129, i, (unsigned) (tcp_adu[TCPADU_START_HI]<<8)|tcp_adu[TCPADU_START_LO], (unsigned) j, 0);
-						break;
-	
-					default:;
-					}
-				} else { /// обработка запроса в режиме ATM
-
-					status=translateAddress(tcp_adu[TCPADU_ADDRESS], &port_id, &device_id);
-
-				  if(status) {
-		  			// FRWD: ADDRESS TRANSLATION
-			 			sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|GATEWAY_SECURITY, 128, i, (unsigned) tcp_adu[TCPADU_ADDRESS], 0, 0);
-						continue;
-						}
-
-					tcp_adu[TCPADU_ADDRESS]=device_id;
-
-					/// ставим запрос в очередь последовательного порта
-//printf("enqueue_query port_id=%d, client_id=%d, device_id=%d\n", port_id, i, device_id);
-//					if((status=enqueue_query(port_id, i, device_id, tcp_adu, tcp_adu_len))!=0) continue;
-						if((status=enqueue_query_ex(&IfaceRTU[port_id].queue, i, device_id, tcp_adu, tcp_adu_len))!=0) continue;
-					}
+			func_res_ok(tcp_adu[TCPADU_FUNCTION], &Security.stat);
+			//func_res_ok(tcp_adu[TCPADU_FUNCTION], &Client[i].stat); // запрос пошел дальше
 
 	    }
 

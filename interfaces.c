@@ -11,6 +11,7 @@
 
 #include "interfaces.h"
 #include "cli.h"
+#include "messages.h"
 
 ///----------------------------------------------------------------------------
 // условно конструктор
@@ -18,6 +19,7 @@ int init_interfaces_h()
   {
   unsigned int i, j;
   GW_Iface *iface;
+	struct timezone tz;
 
 	// memset(IfaceRTU,0,sizeof(IfaceRTU));
 	// memset(IfaceTCP,0,sizeof(IfaceTCP));
@@ -47,7 +49,7 @@ int init_interfaces_h()
 
     iface->Security.halt=0;
 
-    iface->Security.tcp_port=1000*i+502;
+    iface->Security.tcp_port=1000*(i+1)+502;
 
     iface->Security.accepted_connections_number=0;
     iface->Security.current_connections_number =0;
@@ -77,13 +79,20 @@ int init_interfaces_h()
     iface->ethernet.mb_slave=MODBUS_ADDRESS_BROADCAST;
     iface->ethernet.ip2     =0;
     iface->ethernet.port2   =502;
+    
+		iface->ethernet.active_connection=0;
+    iface->ethernet.status=iface->ethernet.status2=TCPMSTCON_NOTMADE;
+    iface->ethernet.csd=iface->ethernet.csd2=-1;
+    
+	  gettimeofday(&iface->ethernet.tv, &tz);
 
     // iface->queue;
-    // iface->stat;
+    clear_stat(&iface->stat); // используется для подсчета запросов из очереди интерфейса
+    clear_stat(&iface->Security.stat); // используется для подсчета запросов из таблицы опроса
 
   ///=== условно частные переменные (private members)
 
-  // переменные режима GATEWAY_SIMPLE
+  // переменные режима IFACE_TCPSERVER
     iface->ssd=-1;
     // iface->serial_mutex;
 
@@ -91,21 +100,7 @@ int init_interfaces_h()
     // iface->rc;
     // iface->tid_srvr;
 
-    // операции по инициализации очереди выполняем в специальном модуле:
-    //IfaceRTU[i].queue.port_id=i;
-    //memset(IfaceRTU[i].queue.queue_adu_len, 0, sizeof(IfaceRTU[i].queue.queue_adu_len));
-    //IfaceRTU[i].queue.queue_start = IfaceRTU[i].queue.queue_len = 0;
-    //pthread_mutex_init(&IfaceRTU[i].queue.queue_mutex, NULL);
-    //IfaceRTU[i].queue.operations[0].sem_flg=0;
-    //IfaceRTU[i].queue.operations[0].sem_num=i;
-
-    // операции по инициализации очереди выполняем в специальном модуле:
-    //IfaceTCP[i].queue.port_id=EVENT_SRC_TCPBRIDGE;
-    //memset(IfaceTCP[i].queue.queue_adu_len, 0, sizeof(IfaceTCP[i].queue.queue_adu_len));
-    //IfaceTCP[i].queue.queue_start = IfaceTCP[i].queue.queue_len = 0;
-    //pthread_mutex_init(&IfaceTCP[i].queue.queue_mutex, NULL);
-    //IfaceTCP[i].queue.operations[0].sem_flg=0;
-    //IfaceTCP[i].queue.operations[0].sem_num=MAX_MOXA_PORTS*2+i;
+		memset(iface->PQueryIndex,  0, sizeof(iface->PQueryIndex));
 
     }
 
@@ -180,10 +175,15 @@ int check_Iface(GW_Iface *iface)
 		// Offset
     // iface->ethernet.offset
 
-		// Modbus Address for ATM is not used here
+		// Modbus Address из карты адресов, вычисляемый
     //if(  (iface->ethernet.mb_slave < MODBUS_ADDRESS_MIN) ||
     //     (iface->ethernet.mb_slave > MODBUS_ADDRESS_MAX)
     //  ) return IFACE_TCPMBADDR;
+
+		// timeout
+    if( (iface->ethernet.timeout < TIMEOUT_MIN) ||
+        (iface->ethernet.timeout > TIMEOUT_MAX)
+      ) return IFACE_TCPTIMEOUT;
 
 		// LAN2Address, TCP
     // допускаем ноль для резервного адреса:
@@ -203,4 +203,103 @@ int check_Iface(GW_Iface *iface)
  	return 0;
   }
 
+///-----------------------------------------------------------------------------
+int forward_response(int port_id, int client_id, u8 *req_adu, u16 req_adu_len, u8 *rsp_adu, u16 rsp_adu_len)
+  {
+	int status;
+  GW_Iface *iface;
+
+  if(port_id<=GATEWAY_P8) {
+    iface=&IfaceRTU[port_id];
+    } else if((port_id>=GATEWAY_T01)&&(port_id<=GATEWAY_T32)) {
+      iface=&IfaceTCP[port_id - GATEWAY_T01];
+      } else return 1;
+
+	/// определяем тип клиента и соответственно функцию, используемую для отправки ответа
+	if(Client[client_id].iface<=GATEWAY_P8) {
+				
+		status = crc(&rsp_adu[TCPADU_ADDRESS], 0, rsp_adu_len);
+		rsp_adu[TCPADU_ADDRESS+rsp_adu_len+0] = status >> 8;
+		rsp_adu[TCPADU_ADDRESS+rsp_adu_len+1] = status & 0x00FF;
+		rsp_adu_len+=MB_SERIAL_CRC_LEN;
+
+		if(Security.show_data_flow==1)
+			show_traffic(TRAFFIC_RTU_SEND, port_id, client_id, &rsp_adu[TCPADU_ADDRESS], rsp_adu_len);
+
+		///!!! необходимо сделать мьютексы для синхронизации работы нескольких потоков с одним портом
+
+		status = mbcom_rtu_send(IfaceRTU[Client[client_id].iface].serial.fd,
+														&rsp_adu[TCPADU_ADDRESS],
+														rsp_adu_len);
+
+		switch(status) {
+		  case 0:
+				iface->stat.sended++;
+				Client[client_id].stat.sended++;
+				func_res_ok(rsp_adu[TCPADU_FUNCTION], &iface->stat);
+				func_res_ok(rsp_adu[TCPADU_FUNCTION], &Client[client_id].stat);
+		  	break;
+
+		  case MB_SERIAL_WRITE_ERR:
+				iface->stat.errors++;
+				Client[client_id].stat.errors++;
+				func_res_err(rsp_adu[TCPADU_FUNCTION], &iface->stat);
+				func_res_err(rsp_adu[TCPADU_FUNCTION], &Client[client_id].stat);
+				stage_to_stat((MBCOM_RSP<<16) | (MBCOM_RTU_SEND<<8) | status, &iface->stat);
+				stage_to_stat((MBCOM_RSP<<16) | (MBCOM_RTU_SEND<<8) | status, &Client[client_id].stat);
+
+			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|port_id, POLL_RTU_SEND, (unsigned) status, client_id, 0, 0);
+
+				return status;
+		  	break;
+
+		  default:;
+		  }
+				
+		} else {
+
+		// приводим в соответствие поля заголовка TCP-пакета
+		rsp_adu[TCPADU_TRANS_HI]=req_adu[TCPADU_TRANS_HI];
+		rsp_adu[TCPADU_TRANS_LO]=req_adu[TCPADU_TRANS_LO];
+		rsp_adu[TCPADU_PROTO_HI]=req_adu[TCPADU_PROTO_HI];
+		rsp_adu[TCPADU_PROTO_LO]=req_adu[TCPADU_PROTO_LO];
+		rsp_adu[TCPADU_SIZE_HI] =((rsp_adu_len)>>8)&0xff;
+		rsp_adu[TCPADU_SIZE_LO] = (rsp_adu_len)    &0xff;
+
+		rsp_adu_len += MB_TCP_ADU_HEADER_LEN-1;
+
+		if(Security.show_data_flow==1)
+			show_traffic(TRAFFIC_TCP_SEND, port_id, client_id, rsp_adu, rsp_adu_len);
+
+		status = mbcom_tcp_send(Client[client_id].csd,
+														rsp_adu,
+														rsp_adu_len);
+
+		switch(status) {
+		  case 0:
+				iface->stat.sended++;
+				Client[client_id].stat.sended++;
+				func_res_ok(rsp_adu[TCPADU_FUNCTION], &iface->stat);
+				func_res_ok(rsp_adu[TCPADU_FUNCTION], &Client[client_id].stat);
+		  	break;
+
+		  case TCP_COM_ERR_SEND:
+				iface->stat.errors++;
+				Client[client_id].stat.errors++;
+				func_res_err(rsp_adu[TCPADU_FUNCTION], &iface->stat);
+				func_res_err(rsp_adu[TCPADU_FUNCTION], &Client[client_id].stat);
+				stage_to_stat((MBCOM_RSP<<16) | (MBCOM_TCP_SEND<<8) | status, &iface->stat);
+				stage_to_stat((MBCOM_RSP<<16) | (MBCOM_TCP_SEND<<8) | status, &Client[client_id].stat);
+
+			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|port_id, POLL_TCP_SEND, (unsigned) status, client_id, 0, 0);
+
+				return status;
+		  	break;
+
+		  default:;
+		  };
+		}
+
+	return status;
+  }
 ///-----------------------------------------------------------------------------

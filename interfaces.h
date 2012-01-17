@@ -14,48 +14,14 @@
 #ifndef INTERFACES_H
 #define INTERFACES_H
 
+#define   MAX_MOXA_PORTS 8
+
 #include "forwarding.h"
 #include "clients.h"
 
 ///=== INTERFACES_H constants
 
 // конфигурационные константы времени компиляции
-
-#define   MAX_MOXA_PORTS 8
-
-/*//!!! Глобальные идентификаторы объектов moxa7gate:
-
-ИНТЕРФЕЙСОВ
-  - 9 физических последовательных, возможны 3 режима работы:
-     - IFACE_GATEWAY_SIMPLE
-     - IFACE_RTU_MASTER
-     - IFACE_RTU_SLAVE
-  - 2 физических сетевых Ethernet
-  - 32 логических IFACE_TCP_MASTER
-
-МОДУЛЕЙ
-
-  - CLI_H
-  - MODBUS_H
-  - MAIN_H
-
-  - CLIENTS_H
-  - FRWD_QUEUE_H
-  - INTERFACES_H
-  - MOXAGATE_H
-
-  - MESSAGES_H
-  - STATISTICS_H
-  - HMI_KEYPAD_LCM_H
-  - HMI_WEB_H
-
-КЛИЕНТОВ
-  - 32 логических клиента шлюза, возможны следующие варианты:
-    - GW_CLIENT_TCP_GWS
-    - GW_CLIENT_TCP_502
-    - GW_CLIENT_RTU_SLV
-
-*/
 
 /// MOXA7GATE ASSETS
 
@@ -117,7 +83,6 @@
 
 #define GATEWAY_NONE 63
 
-#define GATEWAY_IFACE 0x0F
 #define IFACETCP_MASK 0x30
 
 /// коды ошибок верификации конфигурации
@@ -133,51 +98,50 @@
 #define IFACE_TCPPORT1 21
 #define IFACE_TCPUNITID 22
 #define IFACE_TCPOFFSET 23
-#define IFACE_TCPMBADDR 24
+//#define IFACE_TCPMBADDR 24
+#define IFACE_TCPTIMEOUT 24
 #define IFACE_TCPIP2 25
 #define IFACE_TCPPORT2 26
 #define IFACE_TCPIPEQUAL 27
 
-// режим применим только для serial-интерфейса шлюза
-// ввиду его простоты и надежности он остается прежним
-#define GATEWAY_SIMPLE				6
-#define IFACE_TCPSERVER 6
+/// коды ошибок инициализации
 
-///!!! эти определения режимов портов устарели, они сохраняют свой смысл для реализации механизма перенаправления
-#define GATEWAY_ATM					7
-#define GATEWAY_RTM					8
-#define GATEWAY_PROXY				9
-// вместо трех предыдущих добавляем один:
+#define IFACE_TTYINIT 89
+#define IFACE_THREAD_INIT 93
+#define IFACE_THREAD_STARTED 94
+#define IFACE_THREAD_STOPPED 95
+#define PROGRAM_TERMINATED 96
+
+// интерфейсы шлюза
+
+#define IFACE_TCPSERVER			6
 #define IFACE_RTUMASTER			13
-
-// на уровне ATM процесса перенаправления находится устройство MOXA
-// оно предназначено для реализации в первую очередь HMI-функций шлюза
-// то есть взаимодействия с человеком
-#define IFACE_MOXAGATE			0x0A
-//#define EVENT_SRC_MOXAMB	0x0A
-// это число исп. также для идентификации семафора!
-#define   MOXA_MB_DEVICE		0x0A
-
-///!!! эти определения режимов портов устарели
-#define BRIDGE_TCP					11
-#define BRIDGE_PROXY				12
-// вместо двух предыдущих добавляем один:
 #define IFACE_RTUSLAVE			14
 
-// добавляем также новый тип интерфейса шлюза: TCP-интерфейс
+// значение связано с семафором
+#define IFACE_MOXAGATE			0x0A
+
 #define IFACE_TCPMASTER			15
 
 // возможные другие состояния интерфейсов шлюза
-#define MODBUS_PORT_ERROR		4
-#define MODBUS_PORT_OFF			5
 #define IFACE_ERROR					16
 #define IFACE_OFF						17
+#define IFACE_MARGINAL			18
 
 #define   NAME_MOXA_PORT           "PORT"
 #define   NAME_MOXA_PORT_DEV  "/dev/ttyM"
 
 #define TIMEOUT_MIN 100000
 #define TIMEOUT_MAX 10000000
+
+/// клиентское соединение шлюза и устройства TCP MASTER
+
+#define TCP_RECONN_INTVL 4000000
+
+#define TCPMSTCON_NOTMADE			0
+#define TCPMSTCON_ESTABLISHED	1
+#define TCPMSTCON_INPROGRESS	2
+#define TCPMSTCON_NOTUSED			3
 
 ///=== INTERFACES_H data types
 
@@ -191,7 +155,7 @@ typedef struct {
 	char speed[12];   // скорость обмена
 	char parity[12];  // контроль четности
 
-	int timeout;      // таймаут связи
+	unsigned int timeout;      // таймаут связи
 	unsigned int ch_interval_timeout; ///!!!
 	} GW_SerialIface;
 
@@ -204,8 +168,26 @@ typedef struct {
 	unsigned unit_id;  // адрес на который отвечает целевое устройство
 	unsigned short offset;  /// стартовый регистр внутри целевого устройства
 	unsigned mb_slave; // адрес modbus-устройства для перенаправления запросов (ATM) (вычисляемый)
+	unsigned int timeout;      // таймаут связи
 	unsigned int ip2;       // резервный сетевой адрес
 	unsigned int port2;     // резервный номер TCP-порта
+
+	int active_connection;
+	int status;	// состояние клиентского соединения
+	int status2;	// состояние клиентского соединения
+
+	time_t	connection_time;		// время подключения
+	time_t	connection_time2;
+	time_t	disconnection_time;		// время отключения
+	time_t	disconnection_time2;
+	time_t	last_activity_time;		// время последнего запроса
+	time_t	last_activity_time2;
+
+	int csd;
+	int csd2;
+
+	struct timeval tv; // время последней попытки подключения
+
 	} GW_TCPIface;
 
 // параметры интерфейса шлюза (условно наследник GW_SerialIface и GW_SerialIface)
@@ -250,10 +232,14 @@ int init_interfaces_h(); // условно конструктор
 
 int check_Iface(GW_Iface *iface);
 
-void *iface_rtu_gws(void *arg); /// Потоковая функция режима GATEWAY_SIMPLE
-void *srvr_tcp_child2(void *arg); ///!!! Потоковая функция режимов GATEWAY_ATM, GATEWAY_RTM
+void *iface_tcp_server(void *arg); /// Потоковая функция режима GATEWAY_SIMPLE
 void *iface_tcp_master(void *arg); /// Потоковая функция режима IFACE_TCPMASTER
 void *iface_rtu_master(void *arg); /// Потоковая функция режима IFACE_RTUMASTER
 void *iface_rtu_slave(void *arg); /// Потоковая функция режима IFACE_RTUSLAVE
+
+int forward_response(int port_id, int client_id, u8 *req_adu, u16 req_adu_len, u8 *rsp_adu, u16 rsp_adu_len);
+
+int reset_tcpmaster_conn(GW_Iface *tcp_master, int connum);
+int check_tcpmaster_conn(GW_Iface *tcp_master, int connum);
 
 #endif  /* INTERFACES_H */

@@ -45,8 +45,8 @@ char *pointer;
 
 // статические данные
 GW_AddressMap_Entry *addrmap;
-RT_Table_Entry *vslave;
-Query_Table_Entry *pquery;
+GW_VSlave_Entry *vslave;
+GW_ProxyQuery_Entry *pquery;
 GW_Exception *exception;
 
 // динамически обновляемые данные
@@ -84,8 +84,8 @@ int main(int argc, char *argv[])
 
 	unsigned int mem_size_ttl =
 		sizeof(GW_AddressMap_Entry)*(MODBUS_ADDRESS_MAX+1)+
-		sizeof(RT_Table_Entry)*MAX_VIRTUAL_SLAVES+
-		sizeof(Query_Table_Entry)*MAX_QUERY_ENTRIES+
+		sizeof(GW_VSlave_Entry)*MAX_VIRTUAL_SLAVES+
+		sizeof(GW_ProxyQuery_Entry)*MAX_QUERY_ENTRIES+
 		sizeof(GW_Exception)*MOXAGATE_EXCEPTIONS_NUMBER+
 		sizeof(GW_Security)+
 		sizeof(GW_MoxaDevice)+
@@ -129,13 +129,13 @@ Modbus-шлюз не отвечает на этом компьютере MOXA. Код ошибки: %s\
 
   k+= sizeof(GW_AddressMap_Entry)*(MODBUS_ADDRESS_MAX+1);
 
-	vslave=(RT_Table_Entry *) (pointer+k);
+	vslave=(GW_VSlave_Entry *) (pointer+k);
 
-  k+= sizeof(RT_Table_Entry)*MAX_VIRTUAL_SLAVES;
+  k+= sizeof(GW_VSlave_Entry)*MAX_VIRTUAL_SLAVES;
 
-	pquery=(Query_Table_Entry *) (pointer+k);
+	pquery=(GW_ProxyQuery_Entry *) (pointer+k);
 
-  k+= sizeof(Query_Table_Entry)*MAX_QUERY_ENTRIES;
+  k+= sizeof(GW_ProxyQuery_Entry)*MAX_QUERY_ENTRIES;
 
 	exception=(GW_Exception *) (pointer+k);
 

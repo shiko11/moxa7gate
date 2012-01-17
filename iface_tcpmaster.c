@@ -13,6 +13,10 @@
 #include <pthread.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <netinet/tcp.h>
+
+#include <fcntl.h>
+#include <errno.h>
 
 #include "interfaces.h"
 #include "moxagate.h"
@@ -20,451 +24,433 @@
 #include "modbus.h"
 
 ///-----------------------------------------------------------------------------------------------------------------
-void *iface_tcp_master(void *arg) //РТЙЕН - РЕТЕДБЮБ ДБООЩИ РП Modbus TCP
+void *iface_tcp_master(void *arg)
   {
+	u8  req_adu[MB_UNIVERSAL_ADU_LEN];
+	u16 req_adu_len;
+	u8  rsp_adu[MB_UNIVERSAL_ADU_LEN];
+	u16 rsp_adu_len;
 
-	u8			tcp_adu[MB_TCP_MAX_ADU_LENGTH];// TCP ADU
-	u16			tcp_adu_len;
-	u8			serial_adu[MB_SERIAL_MAX_ADU_LEN];/// SERIAL ADU
-	u16			serial_adu_len;
+  int port_id=((unsigned)arg)>>8;
+  int client_id, device_id;
 
-///!!! обработку исключений оставляем до момента, когда будет реализован унифицированный ввод/вывод для клиентов и серверов различных типов
-//	u8			exception_adu[MB_TCP_MAX_ADU_LENGTH];/// TCP ADU
-//	u16			exception_adu_len;
+	int status;
+	unsigned i, j, Q;
+	int connum, csd, active_connection=0, timeout_counter=0;
+	int trans_id;
 
-	int		status;
-	int		port_id;
-
-//  printf("port %d cliet %d\n", port_id, client_id);
-	GW_StaticData tmpstat;
+	GW_Iface	*tcp_master;
+	tcp_master = &IfaceTCP[port_id-GATEWAY_T01];
 	
-	GW_Iface	*inputDATA;
-	inputDATA = (GW_Iface	*) arg;
-	//int fd=inputDATA->serial.fd;
-  //int port_id=((unsigned)arg)>>8;
-  int client_id=0; //=inputDATA->current_client;  ///!!! надо исключить массив tcp_servers
-	int q_client, device_id;
-	
-	struct timeval tv1, tv2;
+	struct timeval tv, tvchk;
 	struct timezone tz;
 
-	u16			*mem_start;
-	u8			*m_start;
-	u8 mask_src, mask_dst;
-
-	int i, j, n;
-	//inputDATA->clients[client_id].stat.request_time_min=10000; // 10 seconds, must be "this->serial.timeout"
-	//inputDATA->clients[client_id].stat.request_time_max=0;
-	//inputDATA->clients[client_id].stat.request_time_average=0;
-	//for(i=0; i<MAX_LATENCY_HISTORY_POINTS; i++) inputDATA->clients[client_id].stat.latency_history[i]=1000; //ms
-	//inputDATA->clients[client_id].stat.clp=0;
+	//tcp_master->clients[client_id].stat.request_time_min=10000; // 10 seconds, must be "this->serial.timeout"
+	//tcp_master->clients[client_id].stat.request_time_max=0;
+	//tcp_master->clients[client_id].stat.request_time_average=0;
+	//for(i=0; i<MAX_LATENCY_HISTORY_POINTS; i++) tcp_master->clients[client_id].stat.latency_history[i]=1000; //ms
+	//tcp_master->clients[client_id].stat.clp=0;
 
 	/// semaphore
-	struct sembuf operations[1];
-	operations[0].sem_num=MAX_MOXA_PORTS*2+client_id;
-	operations[0].sem_op=-1;
-	operations[0].sem_flg=0;
-
-	semop(semaphore_id, operations, 1);
-	inputDATA->queue.operations[0].sem_flg=IPC_NOWAIT;
-
-	int queue_has_query;
-	int queue_current;
+	tcp_master->queue.operations[0].sem_op=-1;
+	semop(semaphore_id, tcp_master->queue.operations, 1);
+	tcp_master->queue.operations[0].sem_flg=IPC_NOWAIT;
 
   // THREAD STARTED
-	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_LANTCP, 42, port_id, client_id, 0, 0);
+	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_LANTCP, IFACE_THREAD_STARTED, port_id, client_id, 0, port_id);
 
-//	for(i=0; i<IfaceRTU[port_id].accepted_connections_number; i++)
-//		bridge_reset_tcp(&IfaceRTU[port_id], i);
-	bridge_reset_tcp(inputDATA);
+	//reset_tcpmaster_conn(tcp_master, 1);
+
+		gettimeofday(&tvchk, &tz);
 
 ///-----------------------------------------
 
-	while (1) for(i=0; i<=MAX_QUERY_ENTRIES; i++) {
+	int queue_has_query;
 
-		// status = semop ( semaphore_id, operations, 1);
-		status=get_query_from_queue(&inputDATA->queue, &q_client, &device_id, tcp_adu, &tcp_adu_len);
+	while (1) for(i=0; i<=tcp_master->PQueryIndex[MAX_QUERY_ENTRIES]; i++) {
 
-		//queue_has_query=(status==-1)&&(errno==EAGAIN)?0:1;
+		gettimeofday(&tv, &tz);
+
+		Q=tcp_master->PQueryIndex[i];
+		j=i;
+
+		status=get_query_from_queue(&tcp_master->queue, &client_id, &device_id, req_adu, &req_adu_len);
+
+		if(status==1) { // внутренняя ошибка в программе
+			tcp_master->stat.accepted++;
+			tcp_master->stat.errors++;
+			tcp_master->stat.frwd_queue_out++;
+		  }
+
 		queue_has_query=status==-1?0:1;
-		if(queue_has_query==1) i=MAX_QUERY_ENTRIES;
-		if((queue_has_query!=1)&&(i==MAX_QUERY_ENTRIES)) continue;
+		if(queue_has_query==1) i=tcp_master->PQueryIndex[MAX_QUERY_ENTRIES];
 
-		clear_stat(&tmpstat);
+		// с установленной периодичностью проверяем состояние сетевых соединений
+    if( (	(tv.tv_sec -tvchk.tv_sec )*1000000 +
+    			(tv.tv_usec-tvchk.tv_usec)         ) >= TCP_RECONN_INTVL) {
+    	if(tcp_master->ethernet.status ==TCPMSTCON_ESTABLISHED)
+		    check_tcpmaster_conn(tcp_master, 1);
+    	if(tcp_master->ethernet.status2==TCPMSTCON_ESTABLISHED)
+		    check_tcpmaster_conn(tcp_master, 2);
+			gettimeofday(&tvchk, &tz);
+			}
 
-	if(i!=MAX_QUERY_ENTRIES) {//формируем следующий запрос из таблицы опроса
-		if(PQuery[i].iface!=MAX_MOXA_PORTS*2+client_id) continue; ///!!! нужно реализовать массив с индексами
-    if(
-			(PQuery[i].length==0) ||
-			(PQuery[i].mbf==0) ||
-			(PQuery[i].device==0)
-			) continue; ///!!! нужно реализовать массив с индексами
+		// эта итерация цикла сканирования нужна для проверки очереди порта при пустой таблице опроса
+		if( ((queue_has_query!=1) || (status==1)) &&
+		     (i==tcp_master->PQueryIndex[MAX_QUERY_ENTRIES])) continue;
 
-		usleep(PQuery[i].delay*1000);
-		//printf("P%d, query #%d from table\n", port_id+1, i);
+	if(queue_has_query!=1) {//формируем следующий запрос из таблицы опроса
 
-		tcp_adu[TCPADU_ADDRESS]=PQuery[i].device;
-		tcp_adu[TCPADU_FUNCTION]=PQuery[i].mbf;
+		if(PQuery[Q].delay!=0) usleep(PQuery[Q].delay*1000);
 
-		tcp_adu[TCPADU_START_HI]=(PQuery[i].start>>8)&0xff;
-		tcp_adu[TCPADU_START_LO]= PQuery[i].start&0xff;
-		tcp_adu[TCPADU_LEN_HI]=(PQuery[i].length>>8)&0xff;
-		tcp_adu[TCPADU_LEN_LO]= PQuery[i].length&0xff;
-																																	
-		tcp_adu_len=12;
+		create_proxy_request(Q, req_adu, &req_adu_len);
+		client_id=GW_CLIENT_MOXAGATE;
+
+		tcp_master->Security.stat.accepted++;
 
 		} else { //обрабатываем запрос из очереди последовательного порта
 
-//			tcp_adu_len+=6;
-//			for(j=tcp_adu_len-1; j>=6; j--) tcp_adu[j]=tcp_adu[j-6];
+			i=j; // после обработки запроса из очереди будет обработан прерванный запрос из таблицы опроса
 
-			tcp_adu[TCPADU_ADDRESS]=PQuery[device_id].device;
-			j=	(((tcp_adu[TCPADU_START_HI]<<8) | tcp_adu[TCPADU_START_LO])&0xffff)-
-					PQuery[device_id].offset+
-					PQuery[device_id].start;
-			tcp_adu[TCPADU_START_HI]=(j>>8)&0xff;
-			tcp_adu[TCPADU_START_LO]=j&0xff;
+			prepare_request (device_id, req_adu, req_adu_len);
 
-//			printf("P%d query #%d from queue\n", port_id+1, queue_current);
 			}
+
+	// устанавливаем актуальный адрес modbus tcp сервера
+	req_adu[TCPADU_ADDRESS]=tcp_master->ethernet.unit_id;
+	
+	// сохраняем идентификатор транзакции
+	trans_id = (req_adu[TCPADU_TRANS_HI]<<8) | req_adu[TCPADU_TRANS_LO];
+
+	  ///---------------------
+		tcp_master->stat.accepted++;
 
 ///-----------------------------------
 //		gettimeofday(&tv2, &tz);
-//		inputDATA->clients[client_id].stat.scan_rate=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
-//		if(inputDATA->clients[client_id].stat.scan_rate>MB_SCAN_RATE_INFINITE)
-//		  inputDATA->clients[client_id].stat.scan_rate=MB_SCAN_RATE_INFINITE;
-//	inputDATA->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
-//	printf("cycle begins after %d msec\n", inputDATA->clients[client_id].stat.request_time_average);
+//		tcp_master->clients[client_id].stat.scan_rate=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
+//		if(tcp_master->clients[client_id].stat.scan_rate>MB_SCAN_RATE_INFINITE)
+//		  tcp_master->clients[client_id].stat.scan_rate=MB_SCAN_RATE_INFINITE;
+//	tcp_master->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
+//	printf("cycle begins after %d msec\n", tcp_master->clients[client_id].stat.request_time_average);
 //		gettimeofday(&tv1, &tz);
 
-//	  pthread_mutex_unlock(&inputDATA->serial_mutex);
+//	  pthread_mutex_unlock(&tcp_master->serial_mutex);
 	  
 ///###-----------------------------
 //			status = mb_tcp_make_adu(&OPC,oDATA,mb_tcp_adu);
 
-		serial_adu_len=tcp_adu_len;
-		for(j=0; j<tcp_adu_len; j++) {
-			serial_adu[j]	=tcp_adu[j];
-			tcp_adu[j]		=tcp_adu[j+6];
-			}
-		tcp_adu_len-=6;
 
-    serial_adu[0]=0x03; ///!!!
-    serial_adu[1]=0x03; 
-    serial_adu[2]=0x00;
-    serial_adu[3]=0x00; 
-    serial_adu[4]=0x00;
-    serial_adu[5]=tcp_adu_len;
-
-//    for(i=0; i<inputDATA->accepted_connections_number; i++)
-//      if(inputDATA->clients[i].mb_slave==serial_adu[0]) {
-//      	client_id=i;
-//      	break;
-//        }
-//    printf("i=%d, total=%d\n", i, inputDATA->accepted_connections_number);
-
-/*    if(i==inputDATA->accepted_connections_number) {
-  		tmpstat.errors_serial_adu++;
-	  	tmpstat.errors++;
-			update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
-			update_stat(&IfaceRTU[port_id].stat, &tmpstat);
-			exception_adu_len=9;
-			tcp_adu[7]=serial_adu[1]|0x80;
-			tcp_adu[8]=0x0a;
-      } else  */
-		if(Client[0].status!=GW_CLIENT_CLOSED) { // :$
-//				exception_adu_len=9;
-//				tcp_adu[7]=serial_adu[1]|0x80;
-//				tcp_adu[8]=0x0b;
-				usleep(4000*1000);
-				bridge_reset_tcp(inputDATA);
-				continue;
-			  }
-
-    //tcp_adu[6]=serial_adu[0]; /// MODBUS DEVICE UID
-    
-	  ///---------------------
-		gettimeofday(&tv1, &tz);
-		tmpstat.accepted++;
-		///!!! статистику обновляем централизованно в функции int refresh_shm(void *arg) или подобной
-		//gate502.wData4x[gate502.status_info+3*port_id+0]++;
-
-		//if(inputDATA->clients[0].status!=MB_CONNECTION_ESTABLISHED) pthread_exit (0);
+		// процедура выбора tcp-соединения для связи с сервером:
+		// если оба соединения установлены и активны, выбираем то из них,
+		// которое было использовано для связи последним.
 		
-		clear_stat(&tmpstat);
-//		exception_adu_len=0;
+		connum=0;
 
-//		if(exception_adu_len==0) {
+		if(tcp_master->ethernet.status2==TCPMSTCON_ESTABLISHED) connum=2;
+		if(tcp_master->ethernet.status ==TCPMSTCON_ESTABLISHED) connum=1;
+
+		if((tcp_master->ethernet.status==TCPMSTCON_ESTABLISHED)&&(tcp_master->ethernet.status2==TCPMSTCON_ESTABLISHED))
+			connum = active_connection==0? 1 : active_connection;
+
+		active_connection = tcp_master->ethernet.active_connection = connum;
+
+		switch(connum) {
+
+			case 0: // если клиентское соединение не готово, завершаем итерацию
+				//usleep(4000*1000);
+				//reset_tcpmaster_conn(tcp_master);
+				continue;
+				break;
+
+			case 1: csd=tcp_master->ethernet.csd ; break;
+			case 2: csd=tcp_master->ethernet.csd2; break;
 			
-//	  if(inputDATA->clients[client_id].address_shift!=MB_ADDRESS_NO_SHIFT) {
-//	  	status=(serial_adu[2]<<8)|serial_adu[3];
-//	  	status+=inputDATA->clients[client_id].address_shift;
-//	  	serial_adu[2]=(status>>8)&0xff;
-//	  	serial_adu[3]=status&0xff;
-//	  	}
+			default:;
+			}
+
+	  ///---------------------
+
+		make_tcp_adu(req_adu, req_adu_len-TCPADU_ADDRESS);
 
 		if(Security.show_data_flow==1)
-			show_traffic(TRAFFIC_TCP_SEND, MAX_MOXA_PORTS*2+client_id, i, serial_adu, serial_adu_len);
+			show_traffic(TRAFFIC_TCP_SEND, port_id, client_id, req_adu, req_adu_len);
 
-		status = mb_tcp_send_adu(Client[0].csd, &tmpstat, tcp_adu, tcp_adu_len, serial_adu, &serial_adu_len);
-
-//	gettimeofday(&tv2, &tz);
-//	inputDATA->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
-//	printf("tcp sended after %d msec\n", inputDATA->clients[client_id].stat.request_time_average);
+		status = mbcom_tcp_send(csd,
+														req_adu,
+														req_adu_len);
 
 		switch(status) {
 		  case 0:
 		  	break;
 		  case TCP_COM_ERR_SEND:
-		  	tmpstat.errors++;
-  			// POLLING: TCP SEND
-			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|GATEWAY_LANTCP, 185, port_id, (unsigned) status, client_id, 0);
-				shutdown(Client[0].csd, SHUT_RDWR);
-				close(Client[0].csd);
-				Client[0].csd=-1;
-				Client[0].status=GW_CLIENT_ERROR;
-//				inputDATA->current_connections_number--;
-				if(i!=MAX_QUERY_ENTRIES) PQuery[i].status_bit=0;
+
+				tcp_master->stat.errors++;
+				func_res_err(req_adu[TCPADU_FUNCTION], &tcp_master->stat);
+				stage_to_stat((MBCOM_REQ<<16) | (MBCOM_TCP_SEND<<8) | status, &tcp_master->stat);
+
+			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|port_id, POLL_TCP_SEND, (unsigned) status, client_id, 0, 0);
+
+				shutdown(csd, SHUT_RDWR);
+				close(csd);
+				if(connum==1) tcp_master->ethernet.csd =-1;
+				         else tcp_master->ethernet.csd2=-1;
+				if(connum==1) tcp_master->ethernet.status =TCPMSTCON_NOTMADE;
+				         else tcp_master->ethernet.status2=TCPMSTCON_NOTMADE;
+
+				if(client_id==GW_CLIENT_MOXAGATE) {
+
+					tcp_master->Security.stat.errors++;
+					func_res_err(req_adu[TCPADU_FUNCTION], &tcp_master->Security.stat);
+					stage_to_stat((MBCOM_REQ<<16) | (MBCOM_TCP_SEND<<8) | status, &tcp_master->Security.stat);
+
+					PQuery[Q].status_bit=0;
+				  } else {
+						Client[client_id].stat.errors++;
+						func_res_err(req_adu[TCPADU_FUNCTION], &Client[client_id].stat);
+						stage_to_stat((MBCOM_REQ<<16) | (MBCOM_TCP_SEND<<8) | status, &Client[client_id].stat);
+				    }
 				continue;
 		  	break;
+
 		  default:;
 		  };
 
-		status = mb_tcp_receive_adu(Client[0].csd, &tmpstat, tcp_adu, &tcp_adu_len);
-
+		status = mbcom_tcp_recv(csd,
+														rsp_adu,
+														&rsp_adu_len);
+		
 		if(Security.show_data_flow==1)
-			show_traffic(TRAFFIC_TCP_RECV, client_id, client_id, tcp_adu, tcp_adu_len);
+			show_traffic(TRAFFIC_TCP_RECV, port_id, client_id, rsp_adu, rsp_adu_len);
 //	gettimeofday(&tv2, &tz);
-//	inputDATA->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
-//	printf("tcp received after %d msec\n", inputDATA->clients[client_id].stat.request_time_average);
+//	tcp_master->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
+//	printf("tcp received after %d msec\n", tcp_master->clients[client_id].stat.request_time_average);
 
 		switch(status) {
 		  case 0:
 		  	break;
+
 		  case TCP_COM_ERR_NULL:
+		  case TCP_COM_ERR_TIMEOUT:
+		  	
+		  	timeout_counter++;
+		  	if((status==TCP_COM_ERR_NULL) || (timeout_counter>=4)) {
+					shutdown(csd, SHUT_RDWR);
+					close(csd);
+					if(connum==1) tcp_master->ethernet.csd =-1;
+					         else tcp_master->ethernet.csd2=-1;
+					if(connum==1) tcp_master->ethernet.status =TCPMSTCON_NOTMADE;
+					         else tcp_master->ethernet.status2=TCPMSTCON_NOTMADE;
+
+					timeout_counter=0;
+
+				  sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_LANTCP, (status==TCP_COM_ERR_NULL?TCPCON_CLOSED_REMSD:TCPCON_CLOSED_TMOUT), 
+				    (connum==1? tcp_master->ethernet.ip : tcp_master->ethernet.ip2), 0, 0, tcp_master->queue.port_id);
+
+		  	  }
+		  	
 		  case TCP_ADU_ERR_MIN:
 		  case TCP_ADU_ERR_MAX:
 		  case TCP_ADU_ERR_PROTOCOL:
 		  case TCP_ADU_ERR_LEN:
 		  case TCP_ADU_ERR_UID:
 		  case TCP_PDU_ERR:
-		  	tmpstat.errors++;
-  			// POLLING: TCP RECV ERROR
-			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|GATEWAY_LANTCP, 184, port_id, (unsigned) status, client_id, 0);
-				update_stat(&Client[0].stat, &tmpstat);
-				update_stat(&inputDATA->stat, &tmpstat);
 
-				shutdown(Client[0].csd, SHUT_RDWR);
-				close(Client[0].csd);
-				Client[0].csd=-1;
-				Client[0].status=GW_CLIENT_ERROR;
-				if(i!=MAX_QUERY_ENTRIES) PQuery[i].status_bit=0;
+				tcp_master->stat.errors++;
+				func_res_err(rsp_adu[TCPADU_FUNCTION], &tcp_master->stat);
+				stage_to_stat((MBCOM_RSP<<16) | (MBCOM_TCP_RECV<<8) | status, &tcp_master->stat);
+
+			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|port_id, POLL_TCP_RECV, (unsigned) status, client_id, 0, 0);
+
+				if(client_id==GW_CLIENT_MOXAGATE) {
+					tcp_master->Security.stat.errors++;
+					func_res_err(rsp_adu[TCPADU_FUNCTION], &tcp_master->Security.stat);
+					stage_to_stat((MBCOM_RSP<<16) | (MBCOM_TCP_RECV<<8) | status, &tcp_master->Security.stat);
+
+					PQuery[Q].status_bit=0;
+				  } else {
+						Client[client_id].stat.errors++;
+						func_res_err(rsp_adu[TCPADU_FUNCTION], &Client[client_id].stat);
+						stage_to_stat((MBCOM_RSP<<16) | (MBCOM_TCP_RECV<<8) | status, &Client[client_id].stat);
+				    }
+
 				continue;
 		  	break;
+
 		  default:;
 		  };
 		
-//		}
 			 
-		for(j=6; j<tcp_adu_len; j++)
-			serial_adu[j-6]	= tcp_adu[j];
-		serial_adu_len=tcp_adu_len-6+2;
-
 ///###-----------------------------			
-	if(i!=MAX_QUERY_ENTRIES) { // сохраняем локально полученные данные
-//		for(j=3; j<serial_adu_len-2; j++)
-//			oDATA[2*PQuery[i].offset+j-3]=serial_adu[j];
-		if((serial_adu[RTUADU_FUNCTION]&0x80)==0) {
-		switch(serial_adu[RTUADU_FUNCTION]) {
 
-			case MBF_READ_HOLDING_REGISTERS:
-				mem_start=MoxaDevice.wData4x;
+	// восстанавливаем идентификатор транзакции
+	req_adu[TCPADU_TRANS_HI]=trans_id >> 8;
+	req_adu[TCPADU_TRANS_LO]=trans_id & 0xff;
 
-			case MBF_READ_INPUT_REGISTERS:
-				if(serial_adu[RTUADU_FUNCTION]==MBF_READ_INPUT_REGISTERS)
-					mem_start=MoxaDevice.wData3x;
+	rsp_adu_len-=TCPADU_ADDRESS; // получаем и сохраняем длину PDU+1
 
-				for(j=3; j<serial_adu_len-2; j+=2)
-					mem_start[PQuery[i].offset+(j-3)/2]=
-						(serial_adu[j] << 8) | serial_adu[j+1];
+	if(client_id==GW_CLIENT_MOXAGATE) { // сохраняем локально полученные данные
 
-				break;
+		process_proxy_response(Q, rsp_adu, rsp_adu_len+MB_TCP_ADU_HEADER_LEN-1);
+		tcp_master->stat.sended++;
+		tcp_master->Security.stat.sended++;
+		func_res_ok(rsp_adu[TCPADU_FUNCTION], &tcp_master->stat);
+		func_res_ok(rsp_adu[TCPADU_FUNCTION], &tcp_master->Security.stat);
 
-			case MBF_READ_COILS:
-				m_start=MoxaDevice.wData1x;
+		} else { //отправляем результат запроса непосредственно клиенту
 
-			case MBF_READ_DECRETE_INPUTS:
-				if(serial_adu[RTUADU_FUNCTION]==MBF_READ_DECRETE_INPUTS)
-					m_start=MoxaDevice.wData2x;
+			// функция преобразования ответа в соответствии с контекстом
+			prepare_response(device_id, rsp_adu, rsp_adu_len);
 
-				for(j=3; j<serial_adu_len-2; j++)
-					for(n=0; n<8; n++) {
-
-						mask_src = 0x01 << n; 								// битовая маска в исходном байте
-						mask_dst = 0x01 << (PQuery[i].offset + n + (j-3)*8) % 8;	// битовая маска в байте назначения
-						status = (PQuery[i].offset + n + (j-3)*8) / 8;						// индекс байта назначения в массиве
-
-						m_start[status]= serial_adu[j] & mask_src ?\
-							m_start[status] | mask_dst:\
-							m_start[status] & (~mask_dst);
-
-						}
-
-				break;
-
-			default:;
+			forward_response(port_id, client_id, req_adu, req_adu_len, rsp_adu, rsp_adu_len);
 			}
-		///!!! Место-положение этого бита находится в области памяти 4x шлюза
-		//gate502.wData4x[PQuery[i].status_register]|=PQuery[i].status_bit;
-		PQuery[i].status_bit=1;
-		PQuery[i].err_counter=0;
 
-  	tmpstat.sended++;
-		func_res_ok(serial_adu[RTUADU_FUNCTION], &tmpstat);
-		} else { // получено исключение
-			func_res_err(serial_adu[RTUADU_FUNCTION], &tmpstat);
-			
-			PQuery[i].err_counter++;
-			if(PQuery[i].err_counter >= PQuery[i].critical)
-				PQuery[i].status_bit=0;
-		  }
-
+	//tcp_master->stat.proc_time=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
 		///!!! статистику обновляем централизованно в функции int refresh_shm(void *arg) или подобной
-		//gate502.wData4x[gate502.status_info+3*port_id+1]++;
+	//gate502.wData4x[gate502.status_info+3*port_id+2]=tcp_master->stat.request_time_average;
 
-		} /* else { //отправляем результат запроса непосредственно клиенту
-
-			serial_adu[RTUADU_ADDRESS]=gate502.modbus_address;
-			j=(((serial_adu[RTUADU_START_HI]<<8) | serial_adu[RTUADU_START_LO])&0xffff)+
-				PQuery[device_id].offset-
-				PQuery[device_id].start;
-			serial_adu[RTUADU_START_HI]=(j>>8)&0xff;
-			serial_adu[RTUADU_START_LO]=j&0xff;
-
-			/// определяем тип клиента и соответственно функцию, используемую для отправки ответа
-			if(gate502.clients[client_id].p_num<=SERIAL_P8)
-			if(	(IfaceRTU[gate502.clients[client_id].p_num].modbus_mode==BRIDGE_PROXY) &&
-					(gate502.clients[client_id].status==MB_CONNECTION_ESTABLISHED)) {
-						
-				if(gate502.show_data_flow==1)
-					show_traffic(TRAFFIC_RTU_SEND, gate502.clients[client_id].p_num, client_id, serial_adu, serial_adu_len-2);
-				///!!! необходимо сделать мьютексы для синхронизации работы нескольких потоков с одним портом
-				status = mb_serial_send_adu(IfaceRTU[gate502.clients[client_id].p_num].serial.fd, &tmpstat, serial_adu, serial_adu_len-2, tcp_adu, &tcp_adu_len);
-		
-				switch(status) {
-				  case 0:
-				  	tmpstat.sended++;
-//				  	if(exception_adu_len==0) tmpstat.sended++;
-//				  	  else {
-//					  		tmpstat.errors_serial_adu++;
-//						  	tmpstat.errors++;
-//				  	    }
-				  	break;
-				  case MB_SERIAL_WRITE_ERR:
-				  	tmpstat.errors++;
-		  			// POLLING: RTU SEND
-					 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|gate502.clients[client_id].p_num, 183, (unsigned) status, client_id, 0, 0);
-						update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
-						update_stat(&IfaceRTU[gate502.clients[client_id].p_num].stat, &tmpstat);
-						continue;
-				  	break;
-				  default:;
-				  };
-						
-				} else {
-	
-				if(gate502.show_data_flow==1)
-					show_traffic(TRAFFIC_TCP_SEND, port_id, client_id, serial_adu, serial_adu_len-2);
-	//			status = mb_tcp_send_adu(tcsd, &tmpstat, serial_adu, serial_adu_len-2, tcp_adu, &tcp_adu_len);
-				status = mb_tcp_send_adu(gate502.clients[client_id].csd,
-																	&tmpstat, serial_adu, serial_adu_len-2, tcp_adu, &tcp_adu_len);
-	
-				switch(status) {
-				  case 0:
-				  	tmpstat.sended++;
-						func_res_ok(serial_adu[RTUADU_FUNCTION], &tmpstat);
-				  	break;
-				  case TCP_COM_ERR_SEND:
-				  	tmpstat.errors++;
-						func_res_err(serial_adu[RTUADU_FUNCTION], &tmpstat);
-		  			// POLLING: TCP SEND
-					 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_ERR|port_id, 185, (unsigned) status, client_id, 0, 0);
-				  	break;
-				  default:;
-				  };
-				}
-	
-			/// при отсутствии записей в очереди переходим к обработке следующей записи из таблицы опроса
-			i=device_id;
-			} */
-
-//	update_stat(&inputDATA->clients[client_id].stat, &tmpstat);
-	update_stat(&inputDATA->stat, &tmpstat);
-
-	gettimeofday(&tv2, &tz);
-	inputDATA->stat.request_time=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
-		///!!! статистику обновляем централизованно в функции int refresh_shm(void *arg) или подобной
-	//gate502.wData4x[gate502.status_info+3*port_id+2]=inputDATA->stat.request_time_average;
 	}
 
 	EndRun: ;
 //	close(tcsd);
-//	inputDATA->current_connections_number--;
-	Client[0].rc=1;
+//	tcp_master->current_connections_number--;
+	tcp_master->rc=1;
 	// THREAD STOPPED
- 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_LANTCP, 43, port_id, client_id, 0, 0);
+ 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_LANTCP, IFACE_THREAD_STOPPED, port_id, client_id, 0, 0);
 	pthread_exit (0);	
 }
 
 ///-----------------------------------------------------------------------------------------------------------------
-int bridge_reset_tcp(GW_Iface *bridge)
+int reset_tcpmaster_conn(GW_Iface *tcp_master, int connum)
 	{
-	if (Client[0].csd < 0)
-	  Client[0].csd = socket(AF_INET, SOCK_STREAM, 0);
-	if (Client[0].csd < 0) {
-		perror("bridge socket");
-		//bridge->modbus_mode=MODBUS_PORT_ERROR;
-    //strcpy(bridge->bridge_status, "ERR");
-		return 1;
-		} // else printf("\nPORT2 BRIDGE #%d socket OK...\n", client);
 
+	int csd, status;
+	
+	csd=    connum==1? tcp_master->ethernet.csd :    tcp_master->ethernet.csd2;
+	status= connum==1? tcp_master->ethernet.status : tcp_master->ethernet.status2;
+	
 	struct sockaddr_in server;
-	//struct hostent *h;
-	//h = gethostbyname ("server.domain.ru");
-	//memcpy ((char *)kserver.sin_addr,h->h_addr,h->h_length);
+
 	// Определяем семейство протоколов
 	server.sin_family = AF_INET;
+
 	// определяем IP-адрес сервера
 	//server.sin_addr.s_addr = 0x0a0006f0; // 10.0.0.240
-	server.sin_addr.s_addr = IfaceTCP[0].ethernet.ip;
-  //	server.sin_addr.s_addr = 0xc00000fc; // 192.0.0.252
+  //server.sin_addr.s_addr = 0xc00000fc; // 192.0.0.252
+	server.sin_addr.s_addr = connum==1? tcp_master->ethernet.ip : tcp_master->ethernet.ip2;
+
 	// Определяем порт сервера
-	server.sin_port =  htons(IfaceTCP[0].ethernet.port);
+	server.sin_port =  connum==1? htons(tcp_master->ethernet.port) : htons(tcp_master->ethernet.port2);
 
-	struct timeval tvs, tvr;
-	int optlen=sizeof(tvs);
-	tvs.tv_sec=0; tvs.tv_usec=500000;
-	tvr.tv_sec=0; tvr.tv_usec=500000;
+	if(status==TCPMSTCON_NOTMADE) {
 
-	if(
-	(setsockopt(Client[0].csd, SOL_SOCKET, SO_SNDTIMEO, &tvs, optlen)!=0)||
-	(setsockopt(Client[0].csd, SOL_SOCKET, SO_RCVTIMEO, &tvr, optlen)!=0)) 
-	// SOCKET INITIALIZED
- 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, 65, 2, IfaceTCP[0].ethernet.ip, 0, 0);
-//	printf("for client%d send_timeout=%dms, receive_timeout=%dms\n", client, tvs.tv_sec*1000+tvs.tv_usec/1000, tvr.tv_sec*1000+tvr.tv_usec/1000);
+		csd = socket(AF_INET, SOCK_STREAM, 0);
+	
+		if(csd < 0) {
+			perror("tcp_master socket");
+			return 1;
+			}
+	
+		struct timeval tv;
+		int optlen=sizeof(tv);
+		tv.tv_sec = tcp_master->ethernet.timeout / 1000000;
+		tv.tv_usec= tcp_master->ethernet.timeout % 1000000;
+		
+		int res=0;
 
-	// Вызов функции connect()
-	if(connect(Client[0].csd, (struct sockaddr *)&server, sizeof(server))==-1) {
-		perror("bridge tcp connection");																			
-		// CONNECTION FAILED
-	 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, 69, IfaceTCP[0].ethernet.ip, 0, 0, 0);
-		return 2;
-		} else // CONNECTION ESTABLISHED
-		 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_LANTCP, 68, IfaceTCP[0].ethernet.ip, 0, 0, 0);
+		// устанавливаем значение таймаута на операции записи и чтения для сокета
+		if(setsockopt(csd, SOL_SOCKET, SO_SNDTIMEO, &tv, optlen)!=0) res++;
+		if(setsockopt(csd, SOL_SOCKET, SO_RCVTIMEO, &tv, optlen)!=0) res++;
+		
+    /* Set the KEEPALIVE option active */
+    int optval = 1;
+    optlen = sizeof(optval);
+    if(setsockopt(csd, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen)!=0) res++;
 
+    optval = 2; // the number of unacknowledged probes to send before considering the connection dead and notifying the application layer
+    if(setsockopt(csd, SOL_TCP, TCP_KEEPCNT, &optval, optlen)!=0) res++;
 
-	Client[0].status=GW_CLIENT_CLOSED; /// :)
-  //bridge->current_connections_number++;
-	time(&Client[0].connection_time);
+    optval = TCP_RECONN_INTVL/1000000; // the interval between the last data packet sent and the first keepalive probe
+    if(setsockopt(csd, SOL_TCP, TCP_KEEPIDLE, &optval, optlen)!=0) res++;
+
+    optval = TCP_RECONN_INTVL/1000000; // the interval between subsequential keepalive probes
+    if(setsockopt(csd, SOL_TCP, TCP_KEEPINTVL, &optval, optlen)!=0) res++;
+
+		if(res!=0) { // SOCKET NOT INITIALIZED
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, TCPCON_INITIALIZED, 0, 0, 0, tcp_master->queue.port_id);
+			return 3;
+		  }
+
+		// для обеспечения немедленного возврата из функции connect()
+		fcntl(csd, F_SETFL, fcntl(csd, F_GETFL, 0) | O_NONBLOCK);
+
+		status=TCPMSTCON_INPROGRESS;
+		if(connum==1) {
+			tcp_master->ethernet.csd=csd;
+			tcp_master->ethernet.status=TCPMSTCON_INPROGRESS;
+			} else {
+			tcp_master->ethernet.csd2=csd;
+			tcp_master->ethernet.status2=TCPMSTCON_INPROGRESS;
+			}
+
+	  }
+
+	if (status==TCPMSTCON_INPROGRESS) {
+		// Вызов функции connect()
+		if(connect(csd, (struct sockaddr *)&server, sizeof(server))==-1) {
+			//perror("tcp_master connection");
+			// CONNECTION FAILED
+		 	// sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, TCPCON_FAILED, server.sin_addr.s_addr, 0, 0, tcp_master->queue.port_id);
+			return 2;
+			} 
+
+		// CONNECTION ESTABLISHED
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_LANTCP, TCPCON_ESTABLISHED, server.sin_addr.s_addr, 0, 0, tcp_master->queue.port_id);
+	
+		// для обеспечения нормальной работы потоковой функции TCP-интерфейса
+		fcntl(csd, F_SETFL, fcntl(csd, F_GETFL, 0) & (~O_NONBLOCK));
+
+		if(connum==1) {
+			tcp_master->ethernet.status=TCPMSTCON_ESTABLISHED;
+			time(&tcp_master->ethernet.connection_time);
+			} else {
+			tcp_master->ethernet.status2=TCPMSTCON_ESTABLISHED;
+			time(&tcp_master->ethernet.connection_time2);
+			}
+    }
+
 	return 0;
 	}
+///-----------------------------------------------------------------------------------------------------------------
+int check_tcpmaster_conn(GW_Iface *tcp_master, int connum)
+	{
+	int csd, res, buf;
+
+	csd = connum==1? tcp_master->ethernet.csd : tcp_master->ethernet.csd2;
+	
+	res = recv(csd, &buf, 1, MSG_PEEK | MSG_DONTWAIT);
+
+  // возможны следующие ситуации при вызове функции recv в нашей ситуации:
+  // соединение установлено, данные есть:	res > 0
+  // таймаут при попытке чтения:					res==-1, errno==EAGAIN (11)
+  // соединение разорвано:								res==-1, errno==ENOTCONN (107)
+  // соединение закрыто сервером:					res==0
+
+	if( (res==0) || ((res==-1)&&(errno!=EAGAIN)) ) {
+		shutdown(csd, SHUT_RDWR);
+		close(csd);
+		if(connum==1) {
+			tcp_master->ethernet.csd=-1;
+			tcp_master->ethernet.status=TCPMSTCON_NOTMADE;
+			} else {
+				tcp_master->ethernet.csd2=-1;
+				tcp_master->ethernet.status2=TCPMSTCON_NOTMADE;
+				}
+	  sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_LANTCP, (res==0?TCPCON_CLOSED_REMSD:TCPCON_CLOSED_KPALV), 
+	    (connum==1? tcp_master->ethernet.ip : tcp_master->ethernet.ip2), 0, 0, tcp_master->queue.port_id);
+
+		return TCPMSTCON_NOTMADE;
+	  }
+	
+	return TCPMSTCON_ESTABLISHED;
+	}
+///-----------------------------------------------------------------------------------------------------------------

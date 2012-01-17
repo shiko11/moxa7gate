@@ -41,33 +41,6 @@
 
 #define EVENT_SRC_MASK        0x0F
 
-/// типы отладочных пакетов данных, выводимых в консоль сессии telnet
-#define TRAFFIC_RTU_RECV	182
-#define TRAFFIC_RTU_SEND	183
-#define TRAFFIC_TCP_RECV	184
-#define TRAFFIC_TCP_SEND	185
-#define TRAFFIC_QUEUE_IN	186
-#define TRAFFIC_QUEUE_OUT	187
-
-/// типы сообщений по комбинациям параметров
-#define EVENT_TPL_DEFAULT 0
-
-#define EVENT_TPL_000D 0x01
-#define EVENT_TPL_00DD 0x03
-#define EVENT_TPL_000S 0x10
-
-#define EVENT_TPL_D1_MASK 0x01
-#define EVENT_TPL_D2_MASK 0x02
-#define EVENT_TPL_D3_MASK 0x04
-#define EVENT_TPL_D4_MASK 0x08
-
-#define EVENT_TPL_S1_MASK 0x10
-#define EVENT_TPL_S2_MASK 0x20
-#define EVENT_TPL_S3_MASK 0x40
-#define EVENT_TPL_S4_MASK 0x80
-
-#define EVENT_TPL_NOPARAM 0x100
-		
 // отображение типа в порядковый номер
 #define EVENT_TYPE_ORD(type) (((type) >> 4)&0x03)
 
@@ -76,6 +49,44 @@
 
 // отображение массива строк фиксированной длины в массив символов
 #define A2D(str_addr) (str_addr*EVENT_MESSAGE_LENGTH)
+
+/// виды отладочных сообщений типа EVENT_CAT_DEBUG
+
+#define POLL_RTU_RECV 97
+#define POLL_TCP_RECV 99
+
+#define POLL_WRMBFUNC				107
+
+#define FRWD_TRANS_ADDRESS	108
+#define FRWD_TRANS_OVERLAP	109
+#define FRWD_TRANS_PQUERY		110
+#define FRWD_TRANS_VSLAVE		111
+
+#define POLL_QUEUE_EMPTY 103
+#define POLL_QUEUE_OVERL 104
+
+#define POLL_RTU_SEND 98
+#define POLL_TCP_SEND 100
+
+/// типы отладочных пакетов данных, выводимых в консоль сессии telnet
+#define TRAFFIC_RTU_RECV	182
+#define TRAFFIC_RTU_SEND	183
+#define TRAFFIC_TCP_RECV	184
+#define TRAFFIC_TCP_SEND	185
+#define TRAFFIC_QUEUE_IN	186
+#define TRAFFIC_QUEUE_OUT	187
+
+/// тип параметра сообщения, кодируется одним байтом
+#define EVENT_PRM_NO   0x00
+#define EVENT_PRM_DGT  0x01
+#define EVENT_PRM_STR  0x02
+#define EVENT_PRM_MASK 0x03
+
+#define EVENT_STR_IFACE  0x00
+#define EVENT_STR_CLIENT 0x04
+#define EVENT_STR_IOFUNC 0x08
+#define EVENT_STR_IPADDR 0x0C
+#define EVENT_STR_MASK   0xFC
 
 ///=== MESSAGES_H data types
 
@@ -107,9 +118,9 @@ typedef struct { // ЖУРНАЛ СОБЫТИЙ ШЛЮЗА
   // массив шаблонов сообщений, жестко связан с кодами возврата критичных функций в ПО:
   //char message_template[EVENT_TEMPLATE_AMOUNT][EVENT_MESSAGE_LENGTH];
   char *msg_tpl;
-  // массив типов шаблонов по комбинациям параметров,
+
+  // массив типов шаблонов
   // генерируется автоматически путем анализа заданных шаблонов
-  //unsigned int message_index[EVENT_TEMPLATE_AMOUNT];
   unsigned int *msg_index;
 
 	} GW_EventLog;
@@ -140,7 +151,11 @@ void make_msgstr(	unsigned char msgcode, char *str,
 /// возвращает трехсимвольное обозначение категории сообщения
 void get_msgtype_str(unsigned char msgtype, char *str);			 
 /// возвращает семисимвольное обозначение источника сообщения
-void get_msgsrc_str(unsigned char msgtype, unsigned int prm1, char *str);
+void get_msgsrc_str(unsigned char msgtype, unsigned int prm4, char *str);
+
+void iface2str(char *str, int prm);
+void iofunc2str(char *str, int prm);
+void ipaddr2str(char *str, int prm);
 
 ///*************************************************************************************
 

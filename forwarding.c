@@ -25,7 +25,6 @@ union semun {
 
 ///=== FRWD_QUEUE_H private functions
 
-int translateAddress(u8 unit_id, int *port_id, int *device_id);
 int translateRegisters(int start_address, int length, int *port_id, int *device_id);
 int translateProxyDevice(int start_address, int length, int *port_id, int *device_id);
 
@@ -285,13 +284,13 @@ int init_frwd_queue_h()
   }
 
 ///-----------------------------------------------------------------------------
-int init_queue()
+int init_sem_set()
 	{
 
 	key_t sem_key=ftok("/tmp/app", 'b');
 	
 	if((semaphore_id = semget(sem_key, GATEWAY_ASSETS, IPC_CREAT|IPC_EXCL|0666)) == -1) {
-		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, 29, 0, 0, 0, 0);
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, SEMAPHORE_SET_EXISTS, 0, 0, 0, 0);
 		return 1;
 	 	}
 	
@@ -307,95 +306,104 @@ int init_queue()
 	return 0;
 	}
 ///-----------------------------------------------------------------------------------------------------------------
-int enqueue_query_ex(GW_Queue *queue, int client_id, int device_id, u8 *adu, u16 adu_len)
+int init_queue(GW_Queue *queue, int port)
   {
+  queue->port_id=port;
 
-			  if(queue->queue_len==MAX_GATEWAY_QUEUE_LENGTH) { ///!!! modbus exception response, reset queue
-			 		// QUEUE OVERLOADED
-			 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_FRWD, 149, queue->port_id, client_id, 0, 0);
-					return 1;
-					}
-	
-		  	pthread_mutex_lock(&queue->queue_mutex);
-	
-				int j, queue_current=(queue->queue_start+queue->queue_len)%MAX_GATEWAY_QUEUE_LENGTH;
-	
-//				printf("Queue %d\n", queue->port_id+1);
-				for(j=0; j<adu_len; j++) {
-					queue->queue_adu[queue_current][j]=adu[j];
-//					printf("(%2.2X)", adu[j]);
-					}
-//				printf("\n");
-				queue->queue_adu_len[queue_current]=adu_len;
-				queue->queue_clients[queue_current]=client_id;
-				queue->queue_slaves[queue_current]=device_id; ///!!! ATM & PROXY uses this field
-	
-				queue->queue_len++;
-	
-	///$$$	struct timeval tv1, tv2;
-	///$$$	struct timezone tz;
-	//(tv2.tv_sec%10)*1000+tv2.tv_usec/1000
-	///$$$		gettimeofday(&tv2, &tz);
-	///$$$			printf("\nP%d TCP%4.4d time%d query %d begin[%d]", port_id+1, gate502.clients[i].port, (tv2.tv_sec%10)*10+tv2.tv_usec/100000, IfaceRTU[port_id].queue_len, queue_current);
-	
-	pthread_mutex_unlock(&queue->queue_mutex);
-	//printf("mutex passed\n");
+  memset(queue->queue_adu, 0, sizeof(queue->queue_adu));
+  memset(queue->queue_adu_len, 0, sizeof(queue->queue_adu_len));
 
-//	printf("query_queued %d P%d, len=%d\n", queue_current, queue->port_id+1, queue->queue_len);
-//	sysmsg_ex(EVENT_CAT_TRAFFIC|EVENT_TYPE_INF|GATEWAY_FRWD, 220, queue->port_id, client_id, queue->queue_len, 0);
+  memset(queue->queue_clients, 0, sizeof(queue->queue_clients));
+  memset(queue->queue_slaves, 0, sizeof(queue->queue_slaves));
 
-	queue->operations[0].sem_op=1;
-//	printf("semaphore inc: port=%d\n", queue->port_id+1);
-	semop(semaphore_id, queue->operations, 1);
+  queue->queue_start = queue->queue_len = 0;
+
+  pthread_mutex_init(&queue->queue_mutex, NULL);
+
+  queue->operations[0].sem_num=port;
+  queue->operations[0].sem_flg=0;
 
   return 0;
   }
 ///-----------------------------------------------------------------------------------------------------------------
-int get_query_from_queue(GW_Queue *queue, int *client_id, int *device_id, u8 *adu, u16 *adu_len)
+int enqueue_query_ex(GW_Queue *queue, int client_id, int context, u8 *adu, u16 adu_len)
   {
-	int		status;
+	struct sembuf operations[1];
 
-	queue->operations[0].sem_op=-1;
-//	printf("semaphore dec: port=%d\n", queue->port_id+1);
-	status=semop(semaphore_id, queue->operations, 1);
+  if(queue->queue_len==MAX_GATEWAY_QUEUE_LENGTH) { ///!!! modbus exception response, reset queue
+ 		sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|queue->port_id, POLL_QUEUE_OVERL, client_id, 0, 0, 0);
+		return 1;
+		}
+
+	pthread_mutex_lock(&queue->queue_mutex);
+
+	int j, queue_current=(queue->queue_start+queue->queue_len)%MAX_GATEWAY_QUEUE_LENGTH;
+
+	for(j=0; j<adu_len; j++) {
+		queue->queue_adu[queue_current][j]=adu[j];
+		}
+	queue->queue_adu_len[queue_current]=adu_len;
+	queue->queue_clients[queue_current]=client_id;
+	queue->queue_slaves[queue_current]=context;
+
+	queue->queue_len++;
+	
+	pthread_mutex_unlock(&queue->queue_mutex);
+
+//	sysmsg_ex(EVENT_CAT_TRAFFIC|EVENT_TYPE_INF|GATEWAY_FRWD, 220, queue->port_id, client_id, queue->queue_len, 0);
+
+	// структуру queue->operations нельз€ использовать здесь
+	operations[0].sem_op=1;
+	operations[0].sem_num=queue->port_id;
+	operations[0].sem_flg=queue->operations[0].sem_flg;
+	semop(semaphore_id, operations, 1);
+
+  return 0;
+  }
+///-----------------------------------------------------------------------------------------------------------------
+int get_query_from_queue(GW_Queue *queue, int *client_id, int *context, u8 *adu, u16 *adu_len)
+  {
+	int status;
+	struct sembuf operations[1];
+
+	// структуру queue->operations нельз€ использовать здесь
+	operations[0].sem_op=-1;
+	operations[0].sem_num=queue->port_id;
+	operations[0].sem_flg=queue->operations[0].sem_flg;
+	status=semop(semaphore_id, operations, 1);
 				 
-		if(status==-1) return status;
+	if(status==-1) return status;
 
-	  if(queue->queue_len==0) { /// внутренн€€ ошибка в программе
-	 		// QUEUE EMPTY
-	 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_FRWD, 148, queue->port_id, 0, 0, 0);
-			return 1;
-			}
+  if(queue->queue_len==0) { /// внутренн€€ ошибка в программе
+ 		sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|queue->port_id, POLL_QUEUE_EMPTY, 0, 0, 0, 0);
+		return 1;
+		}
 
-  	pthread_mutex_lock(&queue->queue_mutex);
+ 	pthread_mutex_lock(&queue->queue_mutex);
 
-		int j, queue_current=queue->queue_start;
+	int j, queue_current=queue->queue_start;
 
-		for(j=0; j<queue->queue_adu_len[queue_current]; j++) {
-			adu[j]=queue->queue_adu[queue_current][j];
-//			printf("(%2.2X)", adu[j]);
-			}
-		*adu_len=queue->queue_adu_len[queue_current];
-//		printf("\n");
-		*client_id=queue->queue_clients[queue_current];
-		*device_id=queue->queue_slaves[queue_current]; ///!!! ATM & PROXY uses this field
-	
+	for(j=0; j<queue->queue_adu_len[queue_current]; j++) {
+		adu[j]=queue->queue_adu[queue_current][j];
+		}
+	*adu_len=queue->queue_adu_len[queue_current];
+	*client_id=queue->queue_clients[queue_current];
+	*context=queue->queue_slaves[queue_current]; ///!!! ATM & PROXY uses this field
 
-		///$$$printf(" go[%d]", queue_current);
-		queue->queue_start=(queue->queue_start+1)%MAX_GATEWAY_QUEUE_LENGTH;
-		queue->queue_len--;
 
-  	pthread_mutex_unlock(&queue->queue_mutex);
-	
-//		printf("query_accepted P%d, len=%d\n", queue->port_id+1, queue->queue_len);
+	queue->queue_start=(queue->queue_start+1)%MAX_GATEWAY_QUEUE_LENGTH;
+	queue->queue_len--;
+
 //	sysmsg_ex(EVENT_CAT_TRAFFIC|EVENT_TYPE_INF|GATEWAY_FRWD, 221, queue->port_id, *client_id, queue->queue_len, 0);
+
+	pthread_mutex_unlock(&queue->queue_mutex);
 
   return 0;
   }
 ///-----------------------------------------------------------------------------------------------------------------
 int checkDiapason(int function, int start_address, int length)
 	{
-	static unsigned int internal_start, internal_end;
+	unsigned int internal_start, internal_end;
 
 	switch(function) {
 
@@ -427,52 +435,34 @@ int checkDiapason(int function, int start_address, int length)
 		}
 
 	if(start_address >= internal_start) {
-		if(start_address + length <= internal_end) return MOXA_DIAPASON_INSIDE;
-		if(start_address >= internal_end) return MOXA_DIAPASON_OUTSIDE;
-		return MOXA_DIAPASON_OVERLAPPED;
+		if(start_address + length <= internal_end) return FRWD_TYPE_PROXY;
+		if(start_address >= internal_end) return FRWD_TYPE_REGISTER;
+		return FRWD_RESULT_OVERLAPPED;
 		} else {
-			if(start_address + length <= internal_start) return MOXA_DIAPASON_OUTSIDE;
-			return MOXA_DIAPASON_OVERLAPPED;
+			if(start_address + length <= internal_start) return FRWD_TYPE_REGISTER;
+			return FRWD_RESULT_OVERLAPPED;
 			}
 
-	return MOXA_DIAPASON_UNDEFINED;
+	return FRWD_RESULT_UNDEFINED;
 	}
 ///-----------------------------------------------------------------------------------------------------------------
-int translateAddress(u8 unit_id, int *port_id, int *device_id)
-  {
-	if((unit_id < 1) || (unit_id > 247)) return 1;
-	*port_id = unit_id / 30;
-	if(*port_id > GATEWAY_P8) *port_id=GATEWAY_P8;
-	*device_id = unit_id - *port_id * 30;
-
-  if(IfaceRTU[*port_id].modbus_mode!=GATEWAY_ATM) return 2;
-
-  return 0;
-  }
-
 
 int translateRegisters(int start_address, int length, int *port_id, int *device_id)
   {
 	int i;
 
   for(i=0; i<MAX_VIRTUAL_SLAVES; i++) {
-    if(
-//			(VSlave[i].start==0) ||
-			(VSlave[i].length==0) ||
-//			(VSlave[i].port==SERIAL_STUB) ||
-			(VSlave[i].device==0)
-			) continue;
-
-			if((start_address>=VSlave[i].start)&&(start_address<(VSlave[i].start+VSlave[i].length))) break;
-			}
-	if(i==MAX_VIRTUAL_SLAVES) return 1;
+    if(VSlave[i].iface==GATEWAY_NONE) continue;
+		if((start_address>=VSlave[i].start)&&(start_address<(VSlave[i].start+VSlave[i].length))) break;
+		}
+	if(i==MAX_VIRTUAL_SLAVES) return FRWD_RESULT_UNDEFINED;
   //printf("%d + %d < %d + %d (i=%d)\n", VSlave[i].start, VSlave[i].length, start_address, length, i);
-  if((VSlave[i].start+VSlave[i].length)<(start_address+length)) return 2;
+  if((VSlave[i].start+VSlave[i].length)<(start_address+length)) return FRWD_RESULT_OVERLAPPED;
 
 	*port_id=VSlave[i].iface;
 	*device_id=i; // индекс блока адресов виртуального устройства
 	
-  return 0;
+  return FRWD_TYPE_REGISTER;
   }
 
 int translateProxyDevice(int start_address, int length, int *port_id, int *device_id)
@@ -480,27 +470,267 @@ int translateProxyDevice(int start_address, int length, int *port_id, int *devic
 	int i;
 
   for(i=0; i<MAX_QUERY_ENTRIES; i++) {
-    if(
-			(PQuery[i].length==0) ||
-			(PQuery[i].mbf==0) ||
-			(PQuery[i].device==0)
-			) continue;
-
-			if((start_address>=PQuery[i].offset)&&(start_address<(PQuery[i].offset+PQuery[i].length)))
-				break;
-			}
-	if(i==MAX_VIRTUAL_SLAVES) return 1;
+    if(PQuery[i].iface==GATEWAY_NONE) continue;
+		if((start_address>=PQuery[i].offset)&&(start_address<(PQuery[i].offset+PQuery[i].length))) break;
+		}
+	if(i==MAX_QUERY_ENTRIES) return FRWD_RESULT_UNDEFINED;
   //printf("%d + %d < %d + %d (i=%d)\n", VSlave[i].start, VSlave[i].length, start_address, length, i);
-  if((PQuery[i].offset+PQuery[i].length)<(start_address+length)) return 2;
+  if((PQuery[i].offset+PQuery[i].length)<(start_address+length)) return FRWD_RESULT_OVERLAPPED;
 
 	*port_id=PQuery[i].iface;
-	*device_id=i; // индекс блока адресов виртуального устройства
+	*device_id=i; // индекс записи таблицы опроса
 	
-  return 0;
+  return FRWD_TYPE_PROXY;
   }
 
+/*//-----------------------------------------------------------------------------
+   разбор вход€щего запроса происходит в несколько этапов:
+	- провер€ем modbus адрес, указанный в запросе;
+	- провер€ем диапазон регистров, указанный в запросе;
+	- если и адрес и диапазон принадлежат устройству Moxa, ставим запрос в очередь внутренних запросов;
+	- если только адрес принадлежит устройству Moxa, используем механизм трансл€ции регистров;
+	- если адрес не принадлежит устройству Moxa, используем механизм тарнсл€ции адресов.
+ */
+int forward_query(int client_id, u8 *tcp_adu, u16 tcp_adu_len)
+  {
+	int j, k;
+	int port_id, device_id;
+	int status;
+	GW_Iface *iface;
+
+	k=tcp_adu[TCPADU_ADDRESS]==MoxaDevice.modbus_address?FRWD_RESULT_UNDEFINED:FRWD_TYPE_ADDRESS;
+
+			if(k!=FRWD_TYPE_ADDRESS) {
+
+			switch(tcp_adu[TCPADU_FUNCTION]) { 	// определ€ем диапазон регистров, требуемых в запросе,
+																					// а также фильтруем вход€щие запросы по функци€м ModBus
+				case MBF_READ_COILS:
+				case MBF_READ_DECRETE_INPUTS:
+				case MBF_READ_HOLDING_REGISTERS:
+				case MBF_READ_INPUT_REGISTERS:
+		
+				case MBF_WRITE_MULTIPLE_COILS:
+				case MBF_WRITE_MULTIPLE_REGISTERS:
+		
+					j=(tcp_adu[TCPADU_LEN_HI]<<8)|tcp_adu[TCPADU_LEN_LO];
+					break;
+
+				case MBF_WRITE_SINGLE_COIL:
+				case MBF_WRITE_SINGLE_REGISTER:
+					j=1;
+					break;
+		
+				default: ///функции, не поддерживаемые шлюзом
+
+			 		sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|GATEWAY_SECURITY, POLL_WRMBFUNC, (unsigned) tcp_adu[TCPADU_FUNCTION], client_id, 0, 0);
+
+					return FRWD_RESULT_UNSUP_FUNC+FRWD_TYPE_PROXY;
+				  }
+	
+				k=checkDiapason( tcp_adu[TCPADU_FUNCTION],
+												(tcp_adu[TCPADU_START_HI]<<8)|tcp_adu[TCPADU_START_LO],
+												 j);
+				switch(k) {
+	
+					case 	FRWD_TYPE_PROXY:
+						/// ставим запрос в очередь MOXA MODBUS DEVICE, если клиентом €вл€етс€ GW_CLIENT_TCP_502
+						if(Client[client_id].status==GW_CLIENT_TCP_502) {
+						  status=enqueue_query_ex(&MoxaDevice.queue, client_id, device_id, tcp_adu, tcp_adu_len);
+						  if(status!=0) return FRWD_RESULT_QUEUE_FAIL+k;
+						  }
+						break;
+					
+					case FRWD_TYPE_REGISTER:
+	
+						status=translateRegisters(
+							(tcp_adu[TCPADU_START_HI]<<8)|tcp_adu[TCPADU_START_LO],
+							j, &port_id, &device_id);
+
+					  if(status!=FRWD_TYPE_REGISTER) {
+
+			 			  sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|GATEWAY_SECURITY, FRWD_TRANS_VSLAVE, client_id, (unsigned) (tcp_adu[TCPADU_START_HI]<<8)|tcp_adu[TCPADU_START_LO], (unsigned) j, 0);
+
+							return status+k;
+							}
+
+						/// ставим запрос в очередь MASTER-интерфейса
+						iface= port_id<=GATEWAY_P8? &IfaceRTU[port_id]: &IfaceTCP[port_id-GATEWAY_T01];
+						if((status=enqueue_query_ex(&iface->queue, client_id, (FRWD_TYPE_REGISTER<<8)|(device_id&0xff), tcp_adu, tcp_adu_len))!=0) return FRWD_RESULT_QUEUE_FAIL+k;
+						break;
+
+					case FRWD_RESULT_OVERLAPPED:
+
+			 			sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|GATEWAY_SECURITY, FRWD_TRANS_OVERLAP, client_id, (unsigned) (tcp_adu[TCPADU_START_HI]<<8)|tcp_adu[TCPADU_START_LO], (unsigned) j, 0);
+	
+					default: // FRWD_RESULT_UNDEFINED
+
+					  return k+FRWD_TYPE_PROXY;
+					}
+				} else { /// обработка запроса в режиме трансл€ции адресов
+
+					status=0;
+					iface=NULL;
+					device_id=tcp_adu[TCPADU_ADDRESS];
+					if(AddressMap[device_id].iface!=GATEWAY_NONE) {
+					  port_id=AddressMap[device_id].iface;
+					  iface= port_id<=GATEWAY_P8? &IfaceRTU[port_id]: &IfaceTCP[port_id-GATEWAY_T01];
+					  }
+						
+					if(iface!=NULL) status=
+					  (iface->modbus_mode==IFACE_RTUMASTER) ||  (iface->modbus_mode==IFACE_TCPMASTER)?
+					  1:0;
+				  		
+				  if(status==0) {
+
+			 			sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|GATEWAY_SECURITY, FRWD_TRANS_ADDRESS, (unsigned) tcp_adu[TCPADU_ADDRESS], client_id, 0, 0);
+
+						return FRWD_RESULT_UNDEFINED+k;
+						}
+
+					/// ставим запрос в очередь MASTER-интерфейса
+					if((status=enqueue_query_ex(&iface->queue, client_id, (FRWD_TYPE_ADDRESS<<8)|(device_id&0xff), tcp_adu, tcp_adu_len))!=0) return FRWD_RESULT_QUEUE_FAIL+k;
+					}
+
+	return k;
+  }
 ///-----------------------------------------------------------------------------
+void prepare_request (int context, u8 *tcp_adu, u16 tcp_adu_len)
+  {
+	int j, device_id;
+
+	device_id=context&0xff;
+
+	switch((context>>8)&0xff) {
+
+		// дл€ всех поддерживаемых функций modbus процедура подготовки
+		// запроса дл€ отправки на сервер одинакова и включает либо
+		// изменение стартового регистра, либо адреса устройства.
+
+		case FRWD_TYPE_PROXY:
+
+				tcp_adu[TCPADU_ADDRESS]=PQuery[device_id].device;
+				j=	(((tcp_adu[TCPADU_START_HI]<<8) | tcp_adu[TCPADU_START_LO])&0xffff)-
+						PQuery[device_id].offset+
+						PQuery[device_id].start;
+				tcp_adu[TCPADU_START_HI]=(j>>8)&0xff;
+				tcp_adu[TCPADU_START_LO]=j&0xff;
+
+			break;
+
+		case FRWD_TYPE_REGISTER:
+			tcp_adu[TCPADU_ADDRESS]=VSlave[device_id].device;
+			j=	(((tcp_adu[TCPADU_START_HI]<<8) | tcp_adu[TCPADU_START_LO])&0xffff)-
+					VSlave[device_id].start+
+					VSlave[device_id].offset;
+			tcp_adu[TCPADU_START_HI]=(j>>8)&0xff;
+			tcp_adu[TCPADU_START_LO]=j&0xff;
+			break;
+
+		case FRWD_TYPE_ADDRESS:
+			tcp_adu[TCPADU_ADDRESS]=AddressMap[device_id].address;
+			break;
+
+		default:;
+	  }
+
+	return;
+  }
 ///-----------------------------------------------------------------------------
+void prepare_response(int context, u8 *tcp_adu, u16 tcp_adu_len)
+  {
+	int j, device_id;
+
+	device_id=context&0xff;
+
+	switch((context>>8)&0xff) {
+
+		case FRWD_TYPE_PROXY:
+
+			switch(tcp_adu[TCPADU_FUNCTION]) {
+				
+				// ответы на функции чтени€ в режиме FRWD_TYPE_PROXY шлюз выдает
+				// самосто€тельно без перенаправлени€ на master-интерфейсы
+				case MBF_READ_COILS:
+				case MBF_READ_DECRETE_INPUTS:
+				case MBF_READ_HOLDING_REGISTERS:
+				case MBF_READ_INPUT_REGISTERS:
+
+				tcp_adu[TCPADU_ADDRESS]=MoxaDevice.modbus_address;
+
+				default : break;
+
+				case MBF_WRITE_SINGLE_COIL:
+				case MBF_WRITE_SINGLE_REGISTER:
+				case MBF_WRITE_MULTIPLE_COILS:
+				case MBF_WRITE_MULTIPLE_REGISTERS:
+
+				tcp_adu[TCPADU_ADDRESS]=MoxaDevice.modbus_address;
+
+				// исключение измен€ть не требуетс€
+				if((tcp_adu[TCPADU_FUNCTION]&0x80)!=0) break;
+
+				j=	(((tcp_adu[TCPADU_START_HI]<<8) | tcp_adu[TCPADU_START_LO])&0xffff)+
+						PQuery[device_id].offset-
+						PQuery[device_id].start;
+				tcp_adu[TCPADU_START_HI]=(j>>8)&0xff;
+				tcp_adu[TCPADU_START_LO]=j&0xff;
+				}
+
+			break;
+
+		case FRWD_TYPE_REGISTER:
+
+			switch(tcp_adu[TCPADU_FUNCTION]) {
+				case MBF_READ_COILS:
+				case MBF_READ_DECRETE_INPUTS:
+				case MBF_READ_HOLDING_REGISTERS:
+				case MBF_READ_INPUT_REGISTERS:
+
+				tcp_adu[TCPADU_ADDRESS]=MoxaDevice.modbus_address;
+
+				default : break;
+
+				case MBF_WRITE_SINGLE_COIL:
+				case MBF_WRITE_SINGLE_REGISTER:
+				case MBF_WRITE_MULTIPLE_COILS:
+				case MBF_WRITE_MULTIPLE_REGISTERS:
+
+				tcp_adu[TCPADU_ADDRESS]=MoxaDevice.modbus_address;
+
+				// исключение измен€ть не требуетс€
+				if((tcp_adu[TCPADU_FUNCTION]&0x80)!=0) break;
+
+				j=	(((tcp_adu[TCPADU_START_HI]<<8) | tcp_adu[TCPADU_START_LO])&0xffff)+
+						VSlave[device_id].start-
+						VSlave[device_id].offset;
+				tcp_adu[TCPADU_START_HI]=(j>>8)&0xff;
+				tcp_adu[TCPADU_START_LO]=j&0xff;
+				}
+
+			break;
+
+		case FRWD_TYPE_ADDRESS:
+			tcp_adu[TCPADU_ADDRESS]=device_id;
+			break;
+
+		default:;
+	  }
+
+	return;
+  }
+/*//-----------------------------------------------------------------------------
+
+///---------- специальный случай при подаче команд на — —-7 ƒиоген, обрабатываем
+///--- убираем третий с конца байт в полученном ответе на запрос
+if((exceptions&EXPT_ACT_SKS07_DIOGEN)!=0)					
+		if(serial_adu[RTUADU_FUNCTION]==0x06)
+		if((except_prm[0]&(1 << port_id))!=0) {
+			serial_adu[serial_adu_len-3]=serial_adu[serial_adu_len-2];
+			serial_adu[serial_adu_len-2]=serial_adu[serial_adu_len-1];
+			serial_adu_len--;
+			//if(status==MB_SERIAL_PDU_ERR) status=0;
+			status=0;
+			}
 ///-----------------------------------------------------------------------------
-///-----------------------------------------------------------------------------
-///-----------------------------------------------------------------------------
+
+*///-----------------------------------------------------------------------------

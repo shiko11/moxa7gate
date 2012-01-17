@@ -22,12 +22,8 @@
 
 #include "modbus.h"
 
-//#define DEBUG_MB_RTU /* uncomment to see the data sent and received */
-//#define CRC_RTU
-
-
 /****************************************************************************
-Рассчитывает контрольную сумму CRC 16
+пЮЯЯВХРШБЮЕР ЙНМРПНКЭМСЧ ЯСЛЛС CRC 16
 ****************************************************************************/
 u16 crc(u8 *buf,u16 start,u16 cnt)
 {
@@ -52,60 +48,23 @@ u16 crc(u8 *buf,u16 start,u16 cnt)
      return(temp);
 }
 
-/***********************************************************************
-Сборка пакета-запроса ADU для отправки его slave устройству
-возвращаем размер ADU в байтах
-***********************************************************************/
-/***********************************************************************
-  Посылаем готовый пакет-запрос в порт (slave устройству)
-  Возвращает кол-во реально посланных байт при удачном
-  или -1?? если ошибка
-************************************************************************/
-int mb_serial_send_adu(int ttyfd, GW_StaticData *stat, u8 *pdu, u16 pdu_len, u8 *adu, u16 *adu_len)
+///-------------------------------------------------------------------------------
+
+int mbcom_rtu_send(int ttyfd, u8 *adu, u16 adu_len)
 	{
-     int       write_stat;
-     u16       cur_pos = 0;
-     u16       temp_crc;
+	int write_stat;
 
-    int i; // copy PDU
-    for(i=0; i<pdu_len; i++)
-      adu[cur_pos++]=pdu[i];
-    *adu_len=pdu_len+2;
-
-//     adu[adu_len++]       = slave;                     //**************
-//     adu[adu_len++]       = function;                  //
-//     start -= 1;                                  //
-//     adu[adu_len++]       = start >> 8;           //   создаем PDU в ADU
-//     adu[adu_len++]       = start & 0x00ff;       //
-//     adu[adu_len++]       = count >> 8;                //
-//     adu[adu_len++]       = count &0x00ff;             //**************
-
-//     if (!(_rtu_crc_off)) {
-          temp_crc = crc(adu, 0, cur_pos);
-          adu[cur_pos++] = temp_crc >> 8;                   //********
-          adu[cur_pos++] = temp_crc & 0x00FF;               //   добавляем CRC в конец
-//     }
-
-//	if(gate502.show_data_flow==1) {
-//    for (i=0;i<cur_pos;i++) printf("[%0.2X]",adu[i]);
-//    printf("\n");
-//		}
-
-	tcflush(ttyfd,TCIOFLUSH);     /* flush the input & output streams */
-	write_stat = write(ttyfd,adu,*adu_len);
-	tcflush(ttyfd,TCIFLUSH); /* maybe not neccesary */
+	tcflush(ttyfd, TCIOFLUSH);	/* flush the input & output streams */
+	write_stat = write(ttyfd, adu, adu_len);
+	tcflush(ttyfd, TCIFLUSH);		/* maybe not neccesary */
 	
-	if(write_stat!=*adu_len) {
-		stat->errors_serial_sending++;
-		return MB_SERIAL_WRITE_ERR;
-		}
+	if(write_stat!=adu_len) return MBCOM_SEND;
 	
-  return 0;
+	return MBCOM_OK;
 	}
 
-/***********************************************************************
+///-------------------------------------------------------------------------------
 
-***********************************************************************/
 int receive_response(int ttyfd, u8 *received_string,int timeout,int ch_interval_timeout)
 {
      u8        rxchar = PORT_FAILURE;//+
@@ -133,7 +92,7 @@ int receive_response(int ttyfd, u8 *received_string,int timeout,int ch_interval_
 //     }
 
      tv.tv_sec = 0;
-	  tv.tv_usec = ch_interval_timeout;
+	  tv.tv_usec = 8*ch_interval_timeout;
 
      FD_ZERO(&rfds );
      FD_SET(ttyfd, &rfds );
@@ -168,79 +127,46 @@ int receive_response(int ttyfd, u8 *received_string,int timeout,int ch_interval_
      return (bytes_received);
 }
 
-/*********************************************************************
- Прием пакета-ответа данных из порта от slave устройства
- Проверка CRC и кода функции
- при удачной проверке - возвращается длина всех принятых байт (ADU) иначе 0
+///-------------------------------------------------------------------------------
 
-**********************************************************************/
-int mb_serial_receive_adu(int fd, GW_StaticData *stat, u8 *adu, u16 *adu_len, u8 *request, int timeout,int ch_interval_timeout)
+int mbcom_rtu_recv_rsp(int fd, u8 *adu, u16 *adu_len, int timeout, int ch_interval_timeout)
 	{
 	int mb_received_adu_len;
 	
-	u16 crc_calc = 0;
-	u16 crc_received = 0;
+	u16 crc_calc;
+	u16 crc_received;
 	u8 recv_crc_hi;
 	u8 recv_crc_lo;
-
-	mb_received_adu_len = receive_response(fd, adu, timeout, ch_interval_timeout);
+	
+	mb_received_adu_len = receive_response(	fd,
+																					adu,
+																					timeout,
+																					ch_interval_timeout);
 	*adu_len=mb_received_adu_len;
 	
-	if (mb_received_adu_len<0) {
-		stat->errors_serial_accepting++;
-		return MB_SERIAL_READ_FAILURE;
-		}
-	if (mb_received_adu_len==0) {
-		stat->timeouts++;
-		return MB_SERIAL_COM_TIMEOUT;
-		}
+	if (mb_received_adu_len<0) return MB_SERIAL_READ_FAILURE;
+	if (mb_received_adu_len==0) return MB_SERIAL_COM_TIMEOUT;
 	
-	if (mb_received_adu_len < MB_SERIAL_MIN_ADU_LEN) {
-		stat->errors_serial_adu++;
-		return MB_SERIAL_ADU_ERR_MIN;
-		}
-	if (mb_received_adu_len > MB_SERIAL_MAX_ADU_LEN) {
-		stat->errors_serial_adu++;
-		return MB_SERIAL_ADU_ERR_MAX;
-		}
+	if (mb_received_adu_len < MB_SERIAL_MIN_ADU_LEN) return MB_SERIAL_ADU_ERR_MIN;
+	if (mb_received_adu_len > MB_SERIAL_MAX_ADU_LEN) return MB_SERIAL_ADU_ERR_MAX;
 	
-//	if(gate502.show_data_flow==1) {
-//    int i;
-//    for (i=0;i<mb_received_adu_len;i++) printf("[%0.2X]",adu[i]);
-//		printf("\n");
-//	  }
+	/*********** check CRC of response ************/
+	crc_calc = crc(adu, 0, mb_received_adu_len-2);
+	recv_crc_lo = (u16) adu[mb_received_adu_len-1];
+	recv_crc_hi = (u16) adu[mb_received_adu_len-2];
+	
+	crc_received = (recv_crc_hi << 8) | recv_crc_lo;
+	
+	if (crc_calc != crc_received) return MB_SERIAL_CRC_ERROR;
+	
+//	if(mb_check_response_pdu(&adu[1], *adu_len-3, request)) {
+//		return MB_SERIAL_PDU_ERR;
+//		}
+	
+	return MBCOM_OK;
+	}
 
-    crc_calc = crc(adu, 0, mb_received_adu_len - 2);
-    recv_crc_hi = (u16) adu[mb_received_adu_len - 1];
-    recv_crc_lo = (u16) adu[mb_received_adu_len - 2];
-
-    crc_received = recv_crc_lo << 8;
-    crc_received = crc_received | recv_crc_hi;
-    
-    /*********** check CRC of response ************/
-    if (crc_calc != crc_received) {
-    	stat->crc_errors++;
-      return MB_SERIAL_CRC_ERROR;
-    	}
-
-		/********** check for exception response *****/
-//     printf("TEST1    IN(%0.2d): ", context->tcp_adu_len);
-//     for (i=0;i<context->tcp_adu_len;i++) printf("[%0.2X]",context->tcp_adu[i]);
-//		 printf("!%d\n", context->tcp_adu[MB_TCP_ADU_HEADER_LEN]);
-	if(mb_check_response_pdu(&adu[1], *adu_len-3, request)) {
-		stat->errors_serial_pdu++;
-		return MB_SERIAL_PDU_ERR;
-		}
-     
-     return 0;
-}
-
-/************************************************************************
-Чтение Holding Registers
-Формируем массив(u16) и возвращаем ЧИСЛО ПРОЧИТАННЫХ РЕГИСТРОВ!!!
-*************************************************************************/
-/************************************************************************
-*************************************************************************/
+///-------------------------------------------------------------------------------
 
 int open_comm(char *device,char *mode)
 {
@@ -283,9 +209,9 @@ int open_comm(char *device,char *mode)
 	}
 	return (ttyfd);	
 }
-/************************************************************************
 
-**************************************************************************/
+///-------------------------------------------------------------------------------
+
 int set_param_comms(int ttyfd,char *baud,char *parity)
 {
      struct termios      settings;
@@ -410,87 +336,54 @@ int set_param_comms(int ttyfd,char *baud,char *parity)
 }
 /************************************************************************/
 
-int serial_receive_adu(int fd, GW_StaticData *stat, u8 *adu, u16 *adu_len, u8 *request, int timeout,int ch_interval_timeout)
+int mbcom_rtu_recv_req(int fd, u8 *adu, u16 *adu_len)
 	{
 	int mb_received_adu_len;
+	int pdu_check;
 	
-	u16 crc_calc = 0;
-	u16 crc_received = 0;
+	u16 crc_calc;
+	u16 crc_received;
 	u8 recv_crc_hi;
 	u8 recv_crc_lo;
-///-------------------------------------------------
-//	mb_received_adu_len = receive_response(fd, adu, timeout, ch_interval_timeout);
 	
-        struct termios newtio;
-				tcgetattr(fd,&newtio);
-         
-        newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
-        newtio.c_cc[VMIN]     = 5;   /* blocking read until 5 chars received */
-        
-        tcflush(fd, TCIFLUSH);
-        tcsetattr(fd,TCSANOW,&newtio);
-        
-//        while (STOP==FALSE) {       /* loop for input */
-          mb_received_adu_len = read(fd, adu, MB_SERIAL_MAX_ADU_LEN);   /* returns after 5 chars have been input */
-//          buf[res]=0;               /* so we can printf... */
-//          printf(":%s:%d\n", buf, res);
-//          if (buf[0]=='z') STOP=TRUE;
-//        }
+	///-------------------------------------------------
+	
+	struct termios newtio;
+	tcgetattr(fd, &newtio);
+	
+	newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
+	newtio.c_cc[VMIN]     = 5;   /* blocking read until 5 chars received */
+	
+	tcflush(fd, TCIFLUSH);
+	tcsetattr(fd,TCSANOW,&newtio);
+	
+	mb_received_adu_len = read(fd, adu, MB_SERIAL_MAX_ADU_LEN);   /* returns after 5 chars have been input */
+	
+	///-------------------------------------------------
 
-///-------------------------------------------------
 	*adu_len=mb_received_adu_len;
-
-	if (mb_received_adu_len<0) {
-		stat->errors_serial_accepting++;
-		return MB_SERIAL_READ_FAILURE;
-		}
-	if (mb_received_adu_len==0) {
-		stat->timeouts++;
-		return MB_SERIAL_COM_TIMEOUT;
-		}
 	
-	if (mb_received_adu_len < MB_SERIAL_MIN_ADU_LEN) {
-		stat->errors_serial_adu++;
-		return MB_SERIAL_ADU_ERR_MIN;
-		}
-	if (mb_received_adu_len > MB_SERIAL_MAX_ADU_LEN) {
-		stat->errors_serial_adu++;
-		return MB_SERIAL_ADU_ERR_MAX;
-		}
+	if(mb_received_adu_len<0)  return MB_SERIAL_READ_FAILURE;
+	if(mb_received_adu_len==0) return MB_SERIAL_COM_TIMEOUT; // !!! МЕ ДЕИЯРБХРЕКЭМН ГДЕЯЭ
 	
-//	if(gate502.show_data_flow==1) {
-//    int i;
-//    for (i=0;i<mb_received_adu_len;i++) printf("[%0.2X]",adu[i]);
-//		printf("\n");
-//	  }
-
-    crc_calc = crc(adu, 0, mb_received_adu_len - 2);
-    recv_crc_hi = (u16) adu[mb_received_adu_len - 1];
-    recv_crc_lo = (u16) adu[mb_received_adu_len - 2];
-
-    crc_received = recv_crc_lo << 8;
-    crc_received = crc_received | recv_crc_hi;
-    
-    /*********** check CRC of response ************/
-    if (crc_calc != crc_received) {
-    	stat->crc_errors++;
-      return MB_SERIAL_CRC_ERROR;
-    	}
-
-		/********** check for exception response *****/
-//     printf("TEST1    IN(%0.2d): ", context->tcp_adu_len);
-//     for (i=0;i<context->tcp_adu_len;i++) printf("[%0.2X]",context->tcp_adu[i]);
-//		 printf("!%d\n", context->tcp_adu[MB_TCP_ADU_HEADER_LEN]);
-
-//  int test;
-//	if((test=mb_check_response_pdu(&adu[1], *adu_len-3, request))!=0) {
-//		stat->errors_serial_pdu++;
+	if(mb_received_adu_len < MB_SERIAL_MIN_ADU_LEN) return MB_SERIAL_ADU_ERR_MIN;
+	if(mb_received_adu_len > MB_SERIAL_MAX_ADU_LEN) return MB_SERIAL_ADU_ERR_MAX;
+	
+	/*********** check CRC of response ************/
+	crc_calc = crc(adu, 0, mb_received_adu_len-2);
+	recv_crc_lo = (u16) adu[mb_received_adu_len-1];
+	recv_crc_hi = (u16) adu[mb_received_adu_len-2];
+	
+	crc_received = (recv_crc_hi << 8) | recv_crc_lo;
+	
+	if (crc_calc != crc_received) return MB_SERIAL_CRC_ERROR;
+	
+	/********** check for exception response *****/
+//	if((pdu_check=mb_check_response_pdu(&adu[1], *adu_len-3, request))!=0) {
 //		return MB_SERIAL_PDU_ERR;
-//		printf("pdu_err:%d\n", test);
-//		return test;
 //		}
-     
-     return 0;
-}
-
+	
+	return MBCOM_OK;
+	}
+	
 /************************************************************************/

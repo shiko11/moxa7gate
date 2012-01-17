@@ -21,7 +21,7 @@
 
 #define MAX_COMMON_KEYS 16        // максимальное количество общих параметров конфигурации шлюза (с префиксом "--")
 #define SERIAL_PARAMETERS 6       // количество параметров конфигурации последовательного интерфейса
-#define LANTCP_PARAMETERS 5       // количество параметров конфигурации логического TCP интерфейса
+#define LANTCP_PARAMETERS 6       // количество параметров конфигурации логического TCP интерфейса
 #define ADDRESSMAP_PARAMETERS 32  // количество записей таблицы назначения адресов в конфигурационном блоке данных
 #define RTM_TABLE_PARAMETERS 7    // количество параметров конфигурации в одной записи таблицы назначения регистров
 #define PROXY_TABLE_PARAMETERS 10 // количество параметров конфигурации в одной записи таблицы опроса
@@ -63,13 +63,15 @@
 
 /// коды ошибок верификации конфигурации в целом
 
-#define CONFIG_TCPPORT_CONFLICT 55
-#define CONFIG_ADDRMAP 56
-#define CONFIG_FORWARDING 57
-#define CONFIG_GATEWAY 58
-#define CONFIG_ADDRMAP_INTEGRITY 59
-#define CONFIG_VSLAVES_INTEGRITY 60
-#define CONFIG_PQUERIES_INTEGRITY 61
+#define CONFIG_TCPPORT_CONFLICT 77
+#define CONFIG_ADDRMAP 78
+#define CONFIG_FORWARDING 79
+#define CONFIG_GATEWAY 80
+#define CONFIG_ADDRMAP_INTEGRITY 81
+#define CONFIG_VSLAVES_INTEGRITY_IFACE 82
+#define CONFIG_VSLAVES_INTEGRITY_DIAP 83
+#define CONFIG_PQUERIES_INTEGRITY_IFACE 84
+#define CONFIG_PQUERIES_INTEGRITY_DIAP 85
 
 ///=== CLI_H public variables
 

@@ -32,57 +32,87 @@
 #define STAT_RES_EXP		2
 #define STAT_RES_AMOUNT 3
 
+// типы коммуникации
+#define MBCOM_RTU_RECV	1
+#define MBCOM_RTU_SEND	2
+#define MBCOM_TCP_RECV	3
+#define MBCOM_TCP_SEND	4
+#define MBCOM_FRWD_REQ	5
+#define MBCOM_QUEUE_OUT	6
+#define MBCOM_FRWD_RSP	7
+
+// типы пересылаемых данных
+#define MBCOM_REQ	1
+#define MBCOM_RSP	2
+
 ///=== STATISTICS_H data types
 
-/// Структура для хранения статистики опроса по порту, клиенту и серверу,
+/// Структура для хранения статистики опроса по интерфейсу, клиенту и серверу,
 /// она содержит данные как о результатах запросов, так и детализацию по функциям ModBus
+
+///!!! Статистика собирается в трех разрезах:
+//	- по стадиям прохождения запроса/ответа;
+//	- по функциям Modbus;
+//	- по субъектам обмена: клиенты, интерфейсы, серверы
+
 typedef struct {
 
-	//--- информация по результатам запросов ---
-	unsigned int accepted; // количество принятых запросов
+	//--- общая информация по результатам запросов ---
 
-	unsigned int errors;
-
-		unsigned int errors_input_communication;
-		unsigned int errors_tcp_adu;
-		unsigned int errors_tcp_pdu;
-	
-		unsigned int errors_serial_sending;
-		unsigned int errors_serial_accepting;
-	
-		unsigned int timeouts;  // количество таймаутов
-	
-		unsigned int crc_errors; // количество ошибок при проверке контрольной суммы
-		unsigned int errors_serial_adu;
-		unsigned int errors_serial_pdu;
-	
-		unsigned int errors_tcp_sending;
-
-	unsigned int sended;
-																			 
-	//--- детализация по функциям ModBus ---
-	unsigned int func[STAT_FUNC_AMOUNT][STAT_RES_AMOUNT];
+	unsigned int accepted; // всего запросов принято
+	unsigned int frwd_p;   // всего запросов перенаправлено в режиме FRWD_TYPE_PROXY
+	unsigned int frwd_a;   // всего запросов перенаправлено в режиме FRWD_TYPE_ADDRESS
+	unsigned int frwd_r;   // всего запросов перенаправлено в режиме FRWD_TYPE_REGISTER
+	unsigned int errors;   // всего ответов не отправлено (запрос завершился ошибкой)
+	unsigned int sended;   // всего ответов отправлено (запрос завершился успешно)
 
 	//--- временнЫе характеристики опроса ---
-	unsigned int request_time;	// время обработки последнего запроса
-	unsigned int scan_rate;			// мгновенный период опроса
 
-	///!!!--- нужен отдельный механизм сбора истории и вычисления статистических характеристик опроса
-	/// который будет включаться отдельным ключом в конфигурационном скрипте и служить исключительно
-	/// для выявления проблем в работе оборудования (подключение БД MySQL было бы здесь интересно)
-	// кольцевой буфер результатов N последних запросов
-//	unsigned int latency_history[MAX_LATENCY_HISTORY_POINTS]; 
-//	unsigned int clp; // указатель на самое старое значение в буфере
+	// время обработки последнего запроса, мсек
+	unsigned int proc_time;
+	unsigned int proc_time_min;
+	unsigned int proc_time_max;
 	
-//	unsigned int request_time_min;			///!!!
-//	unsigned int request_time_max;			///!!!
-//	unsigned int request_time_average;	///!!!
+	// интервал между двумя последними запросами, мсек
+	unsigned int poll_time;
+	unsigned int poll_time_min;
+	unsigned int poll_time_max;
 	
-	//--- мгновенная характеристика процесса опроса ---
-	int last_query_time; // время последнего запроса
-  int last_query_res;  // результат последнего запроса
-  int last_error_time; // время последней ошибки
-  int last_error_type; // тип последней ошибки
+	//--- детализация по стадиям прохождения ---
+
+	unsigned int tcp_req_recv;	// получение запроса по TCP
+	unsigned int tcp_req_adu;		// проверка корректности ADU TCP запроса
+	unsigned int tcp_req_pdu;		// проверка корректности PDU TCP запроса
+	unsigned int rtu_req_recv;	// получение запроса по RTU
+	unsigned int rtu_req_crc;		// проверка контрольной суммы RTU запроса
+	unsigned int rtu_req_adu;		// проверка корректности ADU RTU запроса
+	unsigned int rtu_req_pdu;		// проверка корректности PDU RTU запроса
+
+	unsigned int frwd_proxy;			// перенаправление типа FRWD_TYPE_PROXY
+	unsigned int frwd_atm;				// перенаправление типа FRWD_TYPE_ADDRESS
+	unsigned int frwd_rtm;				// перенаправление типа FRWD_TYPE_REGISTER
+	unsigned int frwd_queue_in;		// постановка запроса в очередь
+	unsigned int frwd_queue_out;	// извлечение запроса из очереди
+
+	unsigned int rtu_req_send;		// отправка запроса RTU серверу
+	unsigned int rtu_rsp_recv;		// получение ответа от RTU сервера
+	unsigned int rtu_rsp_timeout;	// таймаут ожидания ответа от RTU сервера
+	unsigned int rtu_rsp_crc;			// проверка контрольной суммы RTU ответа
+	unsigned int rtu_rsp_adu;			// проверка корректности ADU RTU ответа
+	unsigned int rtu_rsp_pdu;			// проверка корректности PDU RTU ответа
+
+	unsigned int tcp_req_send;		// отправка запроса TCP серверу
+	unsigned int tcp_rsp_recv;		// получение ответа от TCP сервера
+	unsigned int tcp_rsp_timeout;	// таймаут ожидания ответа от TCP сервера
+	unsigned int tcp_rsp_adu;			// проверка корректности ADU TCP ответа
+	unsigned int tcp_rsp_pdu;			// проверка корректности PDU TCP ответа
+
+	unsigned int frwd_rsp;			// перенаправление ответа клиенту
+	unsigned int tcp_rsp_send;	// отправка ответа TCP клиенту
+	unsigned int rtu_rsp_send;	// отправка ответа RTU клиенту
+
+	//--- детализация по функциям ModBus ---
+	unsigned int func[STAT_FUNC_AMOUNT][STAT_RES_AMOUNT];
 
 	} GW_StaticData;
 
@@ -95,7 +125,10 @@ int init_statistics_h();
 void copy_stat(GW_StaticData *dst, GW_StaticData *src);
 void update_stat(GW_StaticData *dst, GW_StaticData *src);
 void clear_stat(GW_StaticData *dst);
+
 void func_res_ok(int mbf, GW_StaticData *dst);
 void func_res_err(int mbf, GW_StaticData *dst);
+
+void stage_to_stat(int mbcom, GW_StaticData *dst);
 
 #endif  /* STATISTICS_H */

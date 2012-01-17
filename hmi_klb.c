@@ -55,23 +55,16 @@ int init_hmi_klb_h()
     return HMI_KLB_INIT_BUZZER;
     }
 
-	screen.current_screen=LCM_MAIN_IFRTU1;
-	screen.prev_screen=   LCM_MAIN_IFRTU1;
+	screen.current_screen=LCM_MAIN_MOXAGATE;
+	screen.prev_screen=   LCM_MAIN_MOXAGATE;
 
   screen.main_scr_rtu = GATEWAY_P1;      // LCM_MAIN_IFRTU1, LCM_MAIN_IFRTU2
   screen.main_tcp_start=0;    // LCM_MAIN_IFTCP
   screen.main_tcp_current=0;  // LCM_MAIN_IFTCP
   screen.main_scr_eventlog=0; // LCM_MAIN_EVENTLOG
-  screen.main_scr_sett=0;     // LCM_MAIN_SETTINGS
 
-  screen.main_menu_start=0;   // LCM_MAIN_MENU
-  screen.main_menu_current=0; // LCM_MAIN_MENU
-
-  //screen.back_light=1;
-  //screen.max_tcp_clients_per_com=8;
-  screen.watch_dog_control=0;
-  screen.buzzer_control=1;
-  //screen.secr_scr_changes_was_made=0;
+  screen.back_light=1;
+  //screen.buzzer_control=1;
 
   // запускаем поток для обработки нажатий клавиш
   // и вывода на дисплей информации для мониторинга
@@ -87,17 +80,11 @@ int init_hmi_klb_h()
     return HMI_KLB_INIT_THREAD;
     }
 
-  init_menu_tpl();
-
-  ///!!! сохранение в специальном массиве исходного текста на дисплее
-
   return 0;
   }
 
 int clear_hmi_klb_h()
   {
-
-  ///!!! для эффективного управления потоками программы нужно изучить модель для них в Linux
 
   mxlcm_close(mxlcm_handle);
   keypad_close(mxkpd_handle);
@@ -112,9 +99,17 @@ int clear_hmi_klb_h()
 ///---------------------------------------------------------------
 void *mx_keypad_lcm(void *arg)
   {
-  int i;
+  int i, static_display=0;
+  unsigned int old_display;
+	struct timeval tv, tvlcm;
+	struct timezone tz;
   
+  gettimeofday(&tvlcm, &tz);
+
   while(1) {
+
+		gettimeofday(&tv, &tz);
+		old_display=screen.current_screen;
 
     if( mxlcm_handle==-1 ||
         mxkpd_handle==-1 ||
@@ -128,45 +123,56 @@ void *mx_keypad_lcm(void *arg)
 	  		screen.current_screen==LCM_MAIN_IFTCP		 ||
 	  		screen.current_screen==LCM_MAIN_MOXAGATE ||
 	  		screen.current_screen==LCM_MAIN_EVENTLOG ||
-	  		screen.current_screen==LCM_MAIN_SYSINFO  ||
-	  		screen.current_screen==LCM_MAIN_SETTINGS ||
 	  		screen.current_screen==LCM_MAIN_HELP     ||
-	  		screen.current_screen==LCM_NOT_IMPLEMENTED
+        screen.current_screen==LCM_MAIN_ABOUT    ||
+        screen.current_screen==LCM_CONFIRM_HALT
 	  		) process_key_main(i);
-    else
-    if(screen.current_screen==LCM_MAIN_MENU ||
-       screen.current_screen==LCM_MAIN_ABOUT
-      ) process_key_menu(i);
 	  else
-	  if( screen.current_screen==LCM_SETT_PORT1 ||
-        screen.current_screen==LCM_SETT_PORT2 ||
-        screen.current_screen==LCM_SETT_PORT3 ||
-        screen.current_screen==LCM_SETT_PORT4 ||
-        screen.current_screen==LCM_SETT_PORT5 ||
-        screen.current_screen==LCM_SETT_PORT6 ||
-        screen.current_screen==LCM_SETT_PORT7 ||
-        screen.current_screen==LCM_SETT_PORT8
-      ) process_key_settings(i);
+	  if( (screen.current_screen>=LCM_SETT_PORT1 && screen.current_screen<=LCM_SETT_PORT8) ||
+	      (screen.current_screen>=LCM_STAT_PORT1 && screen.current_screen<=LCM_STAT_PORT8) ||
+	      (screen.current_screen==LCM_CONFIRM_RESET_RTU)
+      ) process_key_rtu_details(i);
+	  else
+	  if( (screen.current_screen==LCM_STAT_LANTCP) ||
+	      (screen.current_screen==LCM_SETT_LANTCP) ||
+	      (screen.current_screen==LCM_CONFIRM_RESET_TCP)
+      ) process_key_tcp_details(i);
+	  else
+	  if( (screen.current_screen==LCM_STAT_MOXAGATE) ||
+	      (screen.current_screen==LCM_SETT_MOXAGATE) ||
+	      (screen.current_screen==LCM_CONFIRM_RESET_M7G)
+      ) process_key_moxagate(i);
     else
-    if(screen.current_screen==LCM_EVENTLOG_DETAILS ||
-       screen.current_screen==LCM_EVENTLOG_FILTERS
-      ) process_key_event(i);
+    if(screen.current_screen==LCM_EVENTLOG_DETAILS) process_key_event(i);
+    
+		if(Security.use_buzzer==1) mxbuzzer_beep(mxbzr_handle, 80);
     }
 
-    if(!(
-        mxlcm_handle==-1 ||
-        mxkpd_handle==-1 ||
-        mxbzr_handle==-1
-      ))
-	  if(	screen.current_screen >= LCM_MAIN_IFRTU1  &&
-	  		screen.current_screen <= LCM_NOT_IMPLEMENTED
-	  		) show_screen(screen.current_screen);
+		// с установленной периодичностью обновляем данные на экране LCM
+    if( (((tv.tv_sec-tvlcm.tv_sec)*1000000+(tv.tv_usec-tvlcm.tv_usec)) >= LCM_SCREEN_UPDATE_RATE) ||
+        (old_display!=screen.current_screen)
+      ) {
+
+			if(old_display!=screen.current_screen) static_display=0;
+
+	    if(!(
+	        mxlcm_handle==-1 ||
+	        mxkpd_handle==-1 ||
+	        mxbzr_handle==-1
+	      )) if(static_display==0) show_screen(screen.current_screen);
+	
+	    static_display= \
+				(screen.current_screen==LCM_MAIN_MOXAGATE) || \
+				(screen.current_screen>=LCM_SETT_PORT1 && screen.current_screen<=LCM_SETT_PORT8) \
+				?1:0;
+
+			gettimeofday(&tvlcm, &tz);
+      }
 
     // обновляем динамические данные для web-интерфейса
     refresh_shm();
-
-    usleep(LCM_SCREEN_UPDATE_RATE);
-
+    // обновляем динамические данные блока диагностики шлюза
+    refresh_status_info();
 	  }
 
   return;
@@ -181,14 +187,21 @@ void show_screen(int display)
 		case LCM_MAIN_IFTCP:    show_main_iftcp();    break;
 		case LCM_MAIN_MOXAGATE: show_main_moxagate(); break;
 		case LCM_MAIN_EVENTLOG: show_main_eventlog(); break;
-		case LCM_MAIN_SYSINFO:  show_system_info();   break;
-		case LCM_MAIN_SETTINGS: show_main_settings(); break;
 
 		case LCM_MAIN_HELP:     show_main_help();     break;
-		case LCM_MAIN_MENU:     show_main_menu();     break;
 		case LCM_MAIN_ABOUT:    show_about_screen();  break;
+		case LCM_CONFIRM_HALT:  show_confirm_halt();  break;
 
-    case LCM_NOT_IMPLEMENTED: show_stub_screen(); break;
+    case LCM_STAT_PORT1:
+    case LCM_STAT_PORT2:
+    case LCM_STAT_PORT3:
+    case LCM_STAT_PORT4:
+    case LCM_STAT_PORT5:
+    case LCM_STAT_PORT6:
+    case LCM_STAT_PORT7:
+    case LCM_STAT_PORT8:
+      show_ifrtu_statistics(display-LCM_STAT_PORT1);
+      break;
 
     case LCM_SETT_PORT1:
     case LCM_SETT_PORT2:
@@ -201,18 +214,23 @@ void show_screen(int display)
       show_uart_settings(display-LCM_SETT_PORT1);
       break;
 
+    case LCM_CONFIRM_RESET_RTU:
+    case LCM_CONFIRM_RESET_TCP:
+    case LCM_CONFIRM_RESET_M7G:
+    	show_confirm_reset_counters();
+    	break;
+
+    case LCM_STAT_LANTCP: show_iftcp_statistics(); break;
+    case LCM_SETT_LANTCP: show_lantcp_settings(); break;
+
+    case LCM_STAT_MOXAGATE: show_stat_moxagate(); break;
+    case LCM_SETT_MOXAGATE: show_sett_moxagate(); break;
+
     case LCM_EVENTLOG_DETAILS: show_log_event();  break;
 
 		default: return;
 	  }
 
-//	if(display==LCM_SCREEN_HELP_MAIN ||
-//	   display==LCM_CONFIRM_RESETALL ||
-//	   (display==LCM_SCREEN_MENU &&
-//	    (screen.current_screen==LCM_SCREEN_MAIN || screen.current_screen==LCM_SCREEN_MAIN2))
-//	  ) screen.prev_screen=screen.current_screen;
-
-  //screen.current_screen=display;
   return;
   }
 ///---------------------------------------------------------------
@@ -222,19 +240,14 @@ void process_key_main(int key)
   switch(key) {
 
   	case KEY_F1: // вывод контекстной справки
-      if(screen.current_screen==LCM_NOT_IMPLEMENTED) break;
+
+  	  //*((int *)(0))=1; // вызывается фатальная ошибка для проверки watch-dog таймера
+
+      if((screen.current_screen==LCM_MAIN_ABOUT)||
+         (screen.current_screen==LCM_CONFIRM_HALT)) break;
       if(screen.current_screen == LCM_MAIN_HELP) {
-
         screen.current_screen=screen.prev_screen;
-
-        screen.prev_screen=\
-          screen.prev_screen==LCM_MAIN_MENU?
-                              menu_prev:
-                              LCM_MAIN_HELP;
-
-        if(screen.prev_screen!=LCM_MAIN_HELP) 
-          show_screen(menu_prev); // заполнение фона экрана меню
-
+        screen.prev_screen=LCM_MAIN_HELP;
         } else {
           screen.prev_screen=screen.current_screen;
           screen.current_screen=LCM_MAIN_HELP;
@@ -243,29 +256,43 @@ void process_key_main(int key)
 
   	case KEY_F2: // выполняем переход к следующему экрану уровня MAIN
       if((screen.current_screen==LCM_MAIN_HELP) ||
-         (screen.current_screen==LCM_NOT_IMPLEMENTED)
+         (screen.current_screen==LCM_MAIN_ABOUT)
         ) break;
+      if(screen.current_screen==LCM_CONFIRM_HALT) {screen.current_screen=screen.prev_screen; break;}
       screen.prev_screen=screen.current_screen;
-      screen.current_screen = screen.current_screen >= LCM_MAIN_SETTINGS ?
-                              LCM_MAIN_IFRTU1 : screen.current_screen+1;
+      screen.current_screen = screen.current_screen >= LCM_MAIN_EVENTLOG ?
+                              LCM_MAIN_MOXAGATE : screen.current_screen+1;
   		break;
 
   	case KEY_F3: // выполняем переход к ассоциированному экрану уровня STAT
+      if(screen.current_screen==LCM_CONFIRM_HALT) break;
 
-      if(screen.current_screen==LCM_NOT_IMPLEMENTED) {
+      if(screen.current_screen==LCM_MAIN_HELP) {
+      	screen.current_screen=LCM_MAIN_ABOUT;
+      	break;
+        }
+
+      if(screen.current_screen==LCM_MAIN_ABOUT) {
         screen.current_screen=screen.prev_screen;
-        break;
-        }
+        screen.prev_screen=LCM_MAIN_ABOUT;
+      	break;
+      	}
 
-      if(screen.current_screen==LCM_MAIN_SETTINGS  ) {
-        screen.prev_screen=screen.current_screen;
-        screen.current_screen=LCM_NOT_IMPLEMENTED;
-        break;
-        }
-
-      if(((screen.current_screen==LCM_MAIN_IFRTU1) || (screen.prev_screen==LCM_MAIN_IFRTU2))) {
+      if((screen.current_screen==LCM_MAIN_IFRTU1) || (screen.current_screen==LCM_MAIN_IFRTU2)) {
         screen.prev_screen = screen.current_screen;
-        screen.current_screen = LCM_SETT_PORT1+screen.main_scr_rtu;
+        screen.current_screen = LCM_STAT_PORT1+screen.main_scr_rtu;
+        break;
+        }
+
+      if(screen.current_screen==LCM_MAIN_IFTCP) {
+        screen.prev_screen = screen.current_screen;
+        screen.current_screen = LCM_STAT_LANTCP;
+        break;
+        }
+
+      if(screen.current_screen==LCM_MAIN_MOXAGATE) {
+        screen.prev_screen = screen.current_screen;
+        screen.current_screen = LCM_STAT_MOXAGATE;
         break;
         }
 
@@ -274,118 +301,119 @@ void process_key_main(int key)
         screen.current_screen=LCM_EVENTLOG_DETAILS;
         screen.eventlog_current = EventLog.app_log_current_entry==0 ?
                                   EVENT_LOG_LENGTH-1 : EventLog.app_log_current_entry-1;
-       break;
+        break;
         }
 
   		break;
 
-  	case KEY_F4: // перемещаем курсор текущего экрана на одну позицию
+  	case KEY_F4: // выполняем переход к предыдущему экрану уровня MAIN
+      if((screen.current_screen==LCM_MAIN_HELP) ||
+         (screen.current_screen==LCM_MAIN_ABOUT)
+        ) break;
+      if(screen.current_screen==LCM_CONFIRM_HALT) {
+      	screen.current_screen=LCM_MAIN_ABOUT;
+      	screen.prev_screen=   LCM_MAIN_ABOUT;
+      	show_screen(screen.current_screen);
+      	Security.halt=1;
+      	break;
+      	}
+      screen.prev_screen=screen.current_screen;
+      screen.current_screen = screen.current_screen <= LCM_MAIN_MOXAGATE ?
+                              LCM_MAIN_EVENTLOG : screen.current_screen-1;
+  		break;
+
+  	case KEY_F5: // перемещаем курсор текущего экрана на одну позицию
+      if(screen.current_screen==LCM_CONFIRM_HALT) break;
       if(screen.current_screen==LCM_MAIN_IFRTU1)   screen.main_scr_rtu++;
       if(screen.current_screen==LCM_MAIN_IFRTU2)   screen.main_scr_rtu++;
       if(screen.current_screen==LCM_MAIN_IFTCP)    screen.main_tcp_current++;
       if(screen.current_screen==LCM_MAIN_EVENTLOG) screen.main_scr_eventlog++;
-      if(screen.current_screen==LCM_MAIN_SETTINGS) screen.main_scr_sett++;
-  		break;
-
-  	case KEY_F5: // выводим меню со списком действий для конкретного экрана
-      if((screen.current_screen>=LCM_MAIN_IFRTU1) &&
-         (screen.current_screen<=LCM_MAIN_SETTINGS)
-        ) {
-        screen.prev_screen=screen.current_screen;
-        screen.current_screen=LCM_MAIN_MENU;
-        screen.main_menu_action=LCM_MENU_NOACTION;
-        screen.main_menu_start = screen.main_menu_current = 0;
+      if(screen.current_screen==LCM_MAIN_MOXAGATE) {
+	      screen.prev_screen=screen.current_screen;
+	      screen.current_screen = LCM_CONFIRM_HALT;
+        }
+      if((screen.current_screen==LCM_MAIN_HELP) || (screen.current_screen==LCM_MAIN_ABOUT)) {
+				if((screen.back_light==1)) mxlcm_back_light_off(mxlcm_handle);
+				  else mxlcm_back_light_on(mxlcm_handle);
+				screen.back_light=(screen.back_light+1)%2;
         }
   		break;
 
-  	default:;    ///------------------
+  	default:;
     };
 
   return;
   }
-///---------------------------------------------------------------
-void process_key_menu(int key)
+///----------------------------------------------------------------------------
+void process_key_rtu_details(int key)
   {
-  	
+
   switch(key) {
 
-  	case KEY_F1: // выводим контекстную справку по экрану меню
-      if(screen.current_screen==LCM_MAIN_ABOUT) break;
-      menu_prev=screen.prev_screen;
-      screen.prev_screen=screen.current_screen;
-      screen.current_screen=LCM_MAIN_HELP;
+  	case KEY_F1: ///------------------
+      if(screen.current_screen == LCM_MAIN_HELP) {
+        screen.current_screen=screen.prev_screen;
+        screen.prev_screen=LCM_MAIN_HELP;
+        } else if(screen.current_screen>=LCM_STAT_PORT1 && screen.current_screen<=LCM_STAT_PORT8) {
+          screen.prev_screen=screen.current_screen;
+          screen.current_screen=LCM_MAIN_HELP;
+          }
   		break;
 
-  	case KEY_F2: // перемещаем курсор в меню на позицию вверх
-      if(screen.current_screen==LCM_MAIN_ABOUT) break;
-      screen.main_menu_action=LCM_MENU_MOVE_UP;
+  	case KEY_F2: ///------------------
+  	  if( (screen.current_screen>=LCM_SETT_PORT1 && screen.current_screen<=LCM_SETT_PORT8) ||
+  	      (screen.current_screen==LCM_CONFIRM_RESET_RTU)
+  	    ) {
+        screen.current_screen = screen.prev_screen;
+        break;
+  	    }
+
+  	  if(screen.current_screen>=LCM_STAT_PORT1 && screen.current_screen<=LCM_STAT_PORT8) {
+				if(screen.main_scr_rtu<3)
+          screen.current_screen = LCM_MAIN_IFRTU1;
+          else screen.current_screen = LCM_MAIN_IFRTU2;
+  	    }
   		break;
 
   	case KEY_F3: ///------------------
 
-      if(screen.current_screen==LCM_MAIN_ABOUT) break;
-
-      if(screen.main_menu_current==0) { // PGUP
-        screen.current_screen = screen.prev_screen == LCM_MAIN_IFRTU1 ?
-                                LCM_MAIN_SETTINGS : screen.prev_screen-1;
-        screen.prev_screen=LCM_MAIN_MENU;
-        break;
+      if(screen.current_screen==LCM_MAIN_HELP) {
+      	screen.current_screen=LCM_MAIN_ABOUT;
+      	break;
         }
 
-      if(screen.main_menu_current==1) { // HOME
-        screen.current_screen = LCM_MAIN_IFRTU1;
-        screen.prev_screen=LCM_MAIN_MENU;
-        break;
-        }
+      if(screen.current_screen==LCM_MAIN_ABOUT) {
+        screen.current_screen=screen.prev_screen;
+        screen.prev_screen=LCM_MAIN_ABOUT;
+      	break;
+      	}
 
-      if(screen.main_menu_current==3) { // ABOUT
-        screen.current_screen = LCM_MAIN_ABOUT;
+  	  if((screen.current_screen>=LCM_STAT_PORT1 && screen.current_screen<=LCM_STAT_PORT8)) {
+        screen.prev_screen = screen.current_screen;
+        screen.current_screen = LCM_SETT_PORT1 + (screen.current_screen - LCM_STAT_PORT1);
         break;
-        }
-
-      if((screen.prev_screen==LCM_MAIN_SETTINGS) &&
-         (screen.main_menu_current==2)
-        ) {
-        screen.current_screen = LCM_NOT_IMPLEMENTED;
-        break;
-        }
-
-      if((screen.prev_screen==LCM_MAIN_EVENTLOG) &&
-         (screen.main_menu_current==2)
-        ) {
-        screen.current_screen=LCM_EVENTLOG_DETAILS;
-        screen.eventlog_current = EventLog.app_log_current_entry==0 ?
-                                  EVENT_LOG_LENGTH-1 : EventLog.app_log_current_entry-1;
-        break;
-        }
-
-      if(((screen.prev_screen==LCM_MAIN_IFRTU1) || (screen.prev_screen==LCM_MAIN_IFRTU2)) &&
-         (screen.main_menu_current==4)
-        ) {
-        //screen.prev_screen = screen.current_screen;
-        screen.current_screen = LCM_SETT_PORT1+screen.main_scr_rtu;
-        break;
-        }
-
-      if((screen.prev_screen==LCM_MAIN_MOXAGATE) &&
-         (screen.main_menu_current==5)
-        ) {
-//        screen.current_screen=screen.prev_screen;
-//        screen.prev_screen=LCM_MAIN_MENU;
-        Security.halt=1;
-        break;
-        }
-
+  	    }
   		break;
 
-  	case KEY_F4: // перемещаем курсор в меню на позицию вниз
-      if(screen.current_screen==LCM_MAIN_ABOUT) break;
-      screen.main_menu_action=LCM_MENU_MOVE_DOWN;
+  	case KEY_F4: ///------------------
+  	  if((screen.current_screen>=LCM_STAT_PORT1 && screen.current_screen<=LCM_STAT_PORT8)) {
+        screen.prev_screen = screen.current_screen;
+        screen.current_screen = LCM_CONFIRM_RESET_RTU;
+        break;
+  	    }
+  	  if(screen.current_screen==LCM_CONFIRM_RESET_RTU) {
+  	  	clear_stat(&IfaceRTU[screen.prev_screen - LCM_STAT_PORT1].stat);
+        screen.current_screen = screen.prev_screen;
+        break;
+  	    }
   		break;
 
   	case KEY_F5: ///------------------
-      screen.current_screen=screen.prev_screen;
-      screen.prev_screen=LCM_MAIN_MENU;
+      if((screen.current_screen==LCM_MAIN_HELP) || (screen.current_screen==LCM_MAIN_ABOUT)) {
+				if((screen.back_light==1)) mxlcm_back_light_off(mxlcm_handle);
+				  else mxlcm_back_light_on(mxlcm_handle);
+				screen.back_light=(screen.back_light+1)%2;
+        }
   		break;
 
   	default:;    ///------------------
@@ -394,7 +422,7 @@ void process_key_menu(int key)
   return;
   }
 ///----------------------------------------------------------------------------
-void process_key_settings(int key)
+void process_key_tcp_details(int key)
   {
 
   switch(key) {
@@ -403,10 +431,59 @@ void process_key_settings(int key)
   		break;
 
   	case KEY_F2: ///------------------
-      screen.current_screen=screen.prev_screen;
+  	  if(screen.current_screen==LCM_SETT_LANTCP) {
+        screen.current_screen=LCM_STAT_LANTCP;
+        break;
+  	    }
+  	  if(screen.current_screen==LCM_STAT_LANTCP) {
+        screen.current_screen=LCM_MAIN_IFTCP;
+        break;
+  	    }
   		break;
 
   	case KEY_F3: ///------------------
+  	  if(screen.current_screen==LCM_STAT_LANTCP) {
+        screen.current_screen=LCM_SETT_LANTCP;
+        break;
+  	    }
+  		break;
+
+  	case KEY_F4: ///------------------
+  		break;
+
+  	case KEY_F5: ///------------------
+  		break;
+
+  	default:;    ///------------------
+    };
+
+  return;
+  }
+///----------------------------------------------------------------------------
+void process_key_moxagate(int key)
+  {
+
+  switch(key) {
+
+  	case KEY_F1: ///------------------
+  		break;
+
+  	case KEY_F2: ///------------------
+  	  if(screen.current_screen==LCM_SETT_MOXAGATE) {
+        screen.current_screen=LCM_STAT_MOXAGATE;
+        break;
+  	    }
+  	  if(screen.current_screen==LCM_STAT_MOXAGATE) {
+        screen.current_screen=LCM_MAIN_MOXAGATE;
+        break;
+  	    }
+  		break;
+
+  	case KEY_F3: ///------------------
+  	  if(screen.current_screen==LCM_STAT_MOXAGATE) {
+        screen.current_screen=LCM_SETT_MOXAGATE;
+        break;
+  	    }
   		break;
 
   	case KEY_F4: ///------------------
@@ -452,52 +529,5 @@ void process_key_event(int key)
     };
 
   return;
-  }
-///----------------------------------------------------------------------------
-int ctrl_reset_all_counters()
-  {
-  ctrl_reset_port_counters(GATEWAY_P1);
-  ctrl_reset_port_counters(GATEWAY_P2);
-  ctrl_reset_port_counters(GATEWAY_P3);
-  ctrl_reset_port_counters(GATEWAY_P4);
-  ctrl_reset_port_counters(GATEWAY_P5);
-  ctrl_reset_port_counters(GATEWAY_P6);
-  ctrl_reset_port_counters(GATEWAY_P7);
-  ctrl_reset_port_counters(GATEWAY_P8);
-   
-  return 0;	
-  }
-int ctrl_reset_port_counters(int port)
-  {
-  if(port<0 || port>7) return 1;
-
-  IfaceRTU[port].stat.accepted=\
-  IfaceRTU[port].stat.errors_input_communication=\
-  IfaceRTU[port].stat.errors_tcp_adu=\
-  IfaceRTU[port].stat.errors_tcp_pdu=\
-  IfaceRTU[port].stat.errors_serial_sending=\
-  IfaceRTU[port].stat.errors_serial_accepting=\
-  IfaceRTU[port].stat.timeouts=\
-  IfaceRTU[port].stat.crc_errors=\
-  IfaceRTU[port].stat.errors_serial_adu=\
-  IfaceRTU[port].stat.errors_serial_pdu=\
-  IfaceRTU[port].stat.errors_tcp_sending=\
-  IfaceRTU[port].stat.errors=\
-  IfaceRTU[port].stat.sended=0;
-
-//  IfaceRTU[port].stat.latency_history[MAX_LATENCY_HISTORY_POINTS];
-//  IfaceRTU[port].stat.clp; // current latensy point
-  int i;
-  for(i=0; i<MB_FUNCTIONS_IMPLEMENTED*2+1; i++)
-  	//IfaceRTU[port].stat.input_messages[i]=\
-  	IfaceRTU[port].stat.output_messages[i]=0;
-
-  return 0;	
-  }
-
-int ctrl_reboot_system()
-  {
-	Security.halt=1;
-  return 0;	
   }
 ///----------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 Attribute VB_Name = "moxa7gate"
-'янгдюмхе йнмтхцспюжхнммнцн яйпхорю дкъ гюосяйю ькчгю MODBUS moxa7gate б йнллсмхйюжхнммнл йнмрпнккепе MOXA UC-7410
+'гюохяэ йнмтхцспюжхнммнцн яйпхорю дкъ moxa7gate - MODBUS-ькчгю,
+'пюанрючыецн б MOXA UC-7410, UC-7410 Plus, UC-8410, Advantech UNO-2171
 
 Public Const SETTObjectRow As Integer = 4
 Public Const SETTLocationRow As Integer = 5
@@ -111,6 +112,8 @@ If ws.Cells(SETTConfUCModelRow, 2).Value = "MOXA UC-7410" Then
     Print #1, "/root/moxa7gate \"
 ElseIf ws.Cells(SETTConfUCModelRow, 2).Value = "MOXA UC-7410 Plus" Then
     Print #1, "/home/root/moxa7gate_plus \"
+ElseIf ws.Cells(SETTConfUCModelRow, 2).Value = "MOXA UC-8410" Then
+    Print #1, "/home/moxa7gate_8410 \"
 Else
     Print #1, "./moxa7gate_i386 \"
 End If

@@ -1,33 +1,31 @@
 #! /bin/sh
 #
 # MOXA7GATE MODBUS GATEWAY SOFTWARE VERSION 1.1
-# SEM-ENGINEERING, BRYANSK 2011
+# SEM-ENGINEERING, BRYANSK 2013
 #
 # THIS CONFIGURATION FILE GENERATED AUTOMATICALLY
-# AT 10:15:53 28.11.2011
+# AT 14:33:28 26.08.2013
 #
-# Object: ÍÏÑ -3
-# Location: ÓÑÎ ÖÏ A6 A10
+# Object: Òåñò UC-8410
+# Location: ÎÐÏÎ NA
 #
-# File Version: 1.1
+# File Version: 1.4
 #
-# Network Name: moxa_a6
-# Network Address: 192.0.0.13
+# Network Name: Moxa
+# Network Address: 192.168.3.127
 #
  
-/root/moxa7gate \
+/home/moxa7gate_8410 \
 --tcp_port 502 \
 --modbus_address 1 \
---status_info 2000 \
+--status_info 1 \
 --show_sys_messages \
---watchdog_timer \
---Object "ÍÏÑ -3" \
---Location "ÓÑÎ ÖÏ A6 A10" \
---confVersion "1.1" \
---NetworkName "moxa_a6" \
---NetworkAddress "192.0.0.13" \
-PORT1 RS485_2W 9600 NONE 1000 GATEWAY_PROXY --desc "PLC Schneider Momentum" \
-PROXY_TABLE 2 \
-1 28 11 P1 11 HOLDING_REGISTER 0 2 \
-1 28 39 P1 12 HOLDING_REGISTER 0 2 \
+--Object "Òåñò UC-8410" \
+--Location "ÎÐÏÎ NA" \
+--confVersion "1.4" \
+--NetworkName "Moxa" \
+--NetworkAddress "192.168.3.127" \
+PORT8 RS485_2W 9600 NONE 1000 GATEWAY_PROXY \
+PROXY_TABLE 1 \
+1 8 101 P8 1 HOLDING_REGISTER 0 2 \
 &

@@ -9,6 +9,9 @@
 
 ///=== INTERFACES_H MODULE IMPLEMENTATION
 
+#include <string.h>
+#include <stdio.h>
+
 #include "interfaces.h"
 #include "cli.h"
 #include "messages.h"
@@ -206,13 +209,14 @@ int check_Iface(GW_Iface *iface)
 ///-----------------------------------------------------------------------------
 int forward_response(int port_id, int client_id, u8 *req_adu, u16 req_adu_len, u8 *rsp_adu, u16 rsp_adu_len)
   {
-	int status;
+	int status, i;
   GW_Iface *iface;
 
   if(port_id<=GATEWAY_P8) {
     iface=&IfaceRTU[port_id];
     } else if((port_id>=GATEWAY_T01)&&(port_id<=GATEWAY_T32)) {
-      iface=&IfaceTCP[port_id - GATEWAY_T01];
+    	i = port_id - GATEWAY_T01;
+      iface=&IfaceTCP[i];
       } else return 1;
 
 	/// определяем тип клиента и соответственно функцию, используемую для отправки ответа

@@ -161,18 +161,14 @@ void *mx_keypad_lcm(void *arg)
 	        mxbzr_handle==-1
 	      )) if(static_display==0) show_screen(screen.current_screen);
 	
-	    static_display= \
-				(screen.current_screen==LCM_MAIN_MOXAGATE) || \
-				(screen.current_screen>=LCM_SETT_PORT1 && screen.current_screen<=LCM_SETT_PORT8) \
+	    static_display=
+				(screen.current_screen==LCM_MAIN_MOXAGATE) ||
+				(screen.current_screen>=LCM_SETT_PORT1 && screen.current_screen<=LCM_SETT_PORT8)
 				?1:0;
 
 			gettimeofday(&tvlcm, &tz);
       }
 
-    // обновляем динамические данные для web-интерфейса
-    refresh_shm();
-    // обновляем динамические данные блока диагностики шлюза
-    refresh_status_info();
 	  }
 
   return;
@@ -507,8 +503,8 @@ void process_key_event(int key)
   		break;
 
   	case KEY_F2: ///------------------
-      screen.eventlog_current=\
-			  screen.eventlog_current==0?\
+      screen.eventlog_current=
+			  screen.eventlog_current==0?
 			  EventLog.app_log_current_entry-1:screen.eventlog_current-1;
   		break;
 
@@ -517,8 +513,8 @@ void process_key_event(int key)
   		break;
 
   	case KEY_F4: ///------------------
-      screen.eventlog_current=\
-			  screen.eventlog_current==EventLog.app_log_current_entry-1?\
+      screen.eventlog_current=
+			  screen.eventlog_current==EventLog.app_log_current_entry-1?
 			  0:screen.eventlog_current+1;
   		break;
 

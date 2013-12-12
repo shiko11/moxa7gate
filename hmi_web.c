@@ -63,9 +63,13 @@ int init_hmi_web_h()
   {
 	struct shmid_ds shmbuffer;
 
+	unsigned int mem_size_ttl;
+
+	struct shmid_ds mds;
+
 	access_key=ftok("/tmp/app", 'a');
 												
-	unsigned int mem_size_ttl =
+	mem_size_ttl =
 		sizeof(GW_AddressMap_Entry)*(MODBUS_ADDRESS_MAX+1)+
 		sizeof(GW_VSlave_Entry)*MAX_VIRTUAL_SLAVES+
 		sizeof(GW_ProxyQuery_Entry)*MAX_QUERY_ENTRIES+
@@ -101,7 +105,6 @@ int init_hmi_web_h()
 	  }
 
   ///--- permission mode-------
-	struct shmid_ds mds;
 	mds.shm_perm.mode=438;
 	shmctl(shm_segment_id, IPC_SET, &mds);
 

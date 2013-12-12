@@ -40,11 +40,15 @@ void *iface_tcp_master(void *arg)
 	int trans_id;
 
 	GW_Iface	*tcp_master;
-	tcp_master = &IfaceTCP[port_id-GATEWAY_T01];
-	
+
 	struct timeval tv, tvchk;
 	struct timezone tz;
 
+	int queue_has_query;
+
+  connum = port_id-GATEWAY_T01;
+	tcp_master = &IfaceTCP[connum];
+	
 	//tcp_master->clients[client_id].stat.request_time_min=10000; // 10 seconds, must be "this->serial.timeout"
 	//tcp_master->clients[client_id].stat.request_time_max=0;
 	//tcp_master->clients[client_id].stat.request_time_average=0;
@@ -64,8 +68,6 @@ void *iface_tcp_master(void *arg)
 		gettimeofday(&tvchk, &tz);
 
 ///-----------------------------------------
-
-	int queue_has_query;
 
 	while (1) for(i=0; i<=tcp_master->PQueryIndex[MAX_QUERY_ENTRIES]; i++) {
 
@@ -325,18 +327,25 @@ int reset_tcpmaster_conn(GW_Iface *tcp_master, int connum)
 
 	int csd, status;
 	
+	struct sockaddr_in server;
+	
+	struct timeval tv;
+	int optlen=sizeof(tv);
+
+	int res=0;
+
+  int optval = 1;
+  
 	csd=    connum==1? tcp_master->ethernet.csd :    tcp_master->ethernet.csd2;
 	status= connum==1? tcp_master->ethernet.status : tcp_master->ethernet.status2;
 	
-	struct sockaddr_in server;
-
 	// Определяем семейство протоколов
 	server.sin_family = AF_INET;
 
 	// определяем IP-адрес сервера
-	//server.sin_addr.s_addr = 0x0a0006f0; // 10.0.0.240
+	//server.sin_addr.s_addr = 0x0a00006f; // 10.0.0.240
   //server.sin_addr.s_addr = 0xc00000fc; // 192.0.0.252
-	server.sin_addr.s_addr = connum==1? tcp_master->ethernet.ip : tcp_master->ethernet.ip2;
+	server.sin_addr.s_addr = connum==1? htonl(tcp_master->ethernet.ip) : htonl(tcp_master->ethernet.ip2);
 
 	// Определяем порт сервера
 	server.sin_port =  connum==1? htons(tcp_master->ethernet.port) : htons(tcp_master->ethernet.port2);
@@ -350,19 +359,14 @@ int reset_tcpmaster_conn(GW_Iface *tcp_master, int connum)
 			return 1;
 			}
 	
-		struct timeval tv;
-		int optlen=sizeof(tv);
 		tv.tv_sec = tcp_master->ethernet.timeout / 1000000;
 		tv.tv_usec= tcp_master->ethernet.timeout % 1000000;
 		
-		int res=0;
-
 		// устанавливаем значение таймаута на операции записи и чтения для сокета
 		if(setsockopt(csd, SOL_SOCKET, SO_SNDTIMEO, &tv, optlen)!=0) res++;
 		if(setsockopt(csd, SOL_SOCKET, SO_RCVTIMEO, &tv, optlen)!=0) res++;
 		
     /* Set the KEEPALIVE option active */
-    int optval = 1;
     optlen = sizeof(optval);
     if(setsockopt(csd, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen)!=0) res++;
 
@@ -391,13 +395,11 @@ int reset_tcpmaster_conn(GW_Iface *tcp_master, int connum)
 			tcp_master->ethernet.csd2=csd;
 			tcp_master->ethernet.status2=TCPMSTCON_INPROGRESS;
 			}
-
 	  }
 
 	if (status==TCPMSTCON_INPROGRESS) {
-		// Вызов функции connect()
 		if(connect(csd, (struct sockaddr *)&server, sizeof(server))==-1) {
-			//perror("tcp_master connection");
+			// perror("perror: ");
 			// CONNECTION FAILED
 		 	// sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, TCPCON_FAILED, server.sin_addr.s_addr, 0, 0, tcp_master->queue.port_id);
 			return 2;

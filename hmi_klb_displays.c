@@ -9,6 +9,9 @@
 
 ///=== HMI_KLB_H IMPLEMENTATION
 
+#include <string.h>
+#include <stdio.h>
+
 #include "hmi_klb.h"
 #include "interfaces.h"
 #include "moxagate.h"
@@ -711,6 +714,9 @@ void show_sett_moxagate()
   char tmp[MAX_LCM_COLS];
   int i;
   	
+  time_t moment;
+  int diff;
+  
 	strcpy(screen.text[0], " GATEWAY DEVICE ");
 	strcpy(screen.text[1], "----------------");
 
@@ -727,9 +733,8 @@ void show_sett_moxagate()
   if(MoxaDevice.map2Xto4X!=1) strcpy(screen.text[5], "map 2x:4x    off");
     else strcpy(screen.text[5], "map 2x:4x    on");
 
-  time_t moment;
   time(&moment);
-  int diff=difftime(moment, MoxaDevice.start_time);
+  diff=difftime(moment, MoxaDevice.start_time);
 	sprintf(screen.text[6], "uptime   %3.2fd", diff/86400);
 
 	strcpy(screen.text[7], "         F2-BACK");

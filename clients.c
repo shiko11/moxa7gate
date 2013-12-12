@@ -9,6 +9,9 @@
 
 ///=== CLIENTS_H MODULE IMPLEMENTATION
 
+#include <string.h>
+#include <stdio.h>
+
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <fcntl.h>
@@ -246,6 +249,8 @@ int gateway_common_processing()
 	struct timeval tv;
 	struct timezone tz;
 
+	int arg;
+
 	FD_ZERO(&watchset);
 
 	while (1) {
@@ -300,8 +305,8 @@ int gateway_common_processing()
 		Client[current_client].port=addr.sin_port;
 		Client[current_client].status=GW_CLIENT_TCP_GWS;
 		clear_stat(&Client[current_client].stat);			 
-		sprintf(Client[current_client].device_name, "%d.%d.%d.%d", \
-			addr.sin_addr.s_addr >> 24, (addr.sin_addr.s_addr >> 16) & 0xff, \
+		sprintf(Client[current_client].device_name, "%d.%d.%d.%d",
+			addr.sin_addr.s_addr >> 24, (addr.sin_addr.s_addr >> 16) & 0xff,
 			(addr.sin_addr.s_addr >> 8) & 0xff, addr.sin_addr.s_addr & 0xff);
     Client[current_client].iface=P;
 
@@ -313,7 +318,7 @@ int gateway_common_processing()
 			// CONNECTION ACCEPTED
 			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|P, TCPCON_ACCEPTED, addr.sin_addr.s_addr, current_client, 0, 0);
 			
-			int arg=(P<<8)|(current_client&0xff);
+			arg=(P<<8)|(current_client&0xff);
 			Client[current_client].rc = pthread_create(
 				&Client[current_client].tid_srvr,
 				NULL,
@@ -346,7 +351,7 @@ int gateway_common_processing()
 			  ) strcpy(IfaceTCP[T].bridge_status, " OK");
 			  
 			// с установленной периодичностью проверяем состояние сетевых соединений
-	    if( (	(tv.tv_sec-IfaceTCP[T].ethernet.tv.tv_sec)*1000000+
+	    if( (	(tv.tv_sec- IfaceTCP[T].ethernet.tv.tv_sec ) * 1000000 +
 	    			(tv.tv_usec-IfaceTCP[T].ethernet.tv.tv_usec) ) >= TCP_RECONN_INTVL) {
 
 				if(IfaceTCP[T].ethernet.status!=TCPMSTCON_ESTABLISHED) {
@@ -361,7 +366,6 @@ int gateway_common_processing()
 				  }
 
 			  gettimeofday(&IfaceTCP[T].ethernet.tv, &tz);
-
 				}
 			}
 
@@ -370,6 +374,11 @@ int gateway_common_processing()
 		/// трансляция запросов от клиентов GW_CLIENT_TCP_502
 		query_translating();
 	  
+    // обновляем динамические данные для web-интерфейса
+    refresh_shm();
+    // обновляем динамические данные блока диагностики шлюза
+    refresh_status_info();
+
 		// останов программы по внешней команде
 		if(Security.halt==1) break;
 
@@ -428,8 +437,8 @@ int gateway_single_port_processing()
 			   Client[current_client].port=addr.sin_port;
 			   Client[current_client].status=GW_CLIENT_TCP_502;
 			   clear_stat(&Client[current_client].stat);
-				 sprintf(Client[current_client].device_name, "%d.%d.%d.%d", \
-					 addr.sin_addr.s_addr >> 24, (addr.sin_addr.s_addr >> 16) & 0xff, \
+				 sprintf(Client[current_client].device_name, "%d.%d.%d.%d",
+					 addr.sin_addr.s_addr >> 24, (addr.sin_addr.s_addr >> 16) & 0xff,
 					 (addr.sin_addr.s_addr >> 8) & 0xff, addr.sin_addr.s_addr & 0xff);
 			//printf("ip%X\n", addr.sin_addr.s_addr);
          Client[current_client].iface=GATEWAY_SECURITY;
@@ -448,24 +457,27 @@ int query_translating()
 	struct sockaddr_in	addr;
 
 	struct timeval stv;
+
+  //printf("input data processing...\n");
+
+  ///### блок обработки входящих ModbusTCP запросов
+
+  u8			tcp_adu[MB_TCP_MAX_ADU_LENGTH];// TCP ADU
+  u16			tcp_adu_len;
+
+  int status;
+
+  unsigned temp;
+  int maxfd;
+
+  int diff;
+  time_t moment;
+
 	stv.tv_sec=0; stv.tv_usec=0;
 
-		//printf("input data processing...\n");
+  maxfd=0;
 
-		///### блок обработки входящих ModbusTCP запросов
-
-		u8			tcp_adu[MB_TCP_MAX_ADU_LENGTH];// TCP ADU
-		u16			tcp_adu_len;
-
-		int status;
-
-		unsigned temp;
-		int maxfd;
-		maxfd=0;
-
-    int diff;
-	  time_t moment;
-    time(&moment);
+  time(&moment);
 
 	  for(i=0; i<MOXAGATE_CLIENTS_NUMBER; i++) { // принимаем данные от клиентов
 

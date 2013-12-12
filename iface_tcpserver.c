@@ -29,11 +29,12 @@ void *iface_tcp_server(void *arg)
   int client_id=((unsigned)arg)&0xff;
 
 	GW_Iface	*tcp_server;
-	tcp_server = &IfaceRTU[port_id];
-	
+
 	struct timeval tv1, tv2;
 	struct timezone tz;
 
+	tcp_server = &IfaceRTU[port_id];
+	
 	//tcp_server->clients[client_id].stat.request_time_min=10000; // 10 seconds, must be "this->serial.timeout"
 	//tcp_server->clients[client_id].stat.request_time_max=0;
 	//tcp_server->clients[client_id].stat.request_time_average=0;

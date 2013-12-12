@@ -31,10 +31,11 @@ void *iface_rtu_slave(void *arg)
   int client_id=((unsigned)arg)&0xff;
 
 	GW_Iface	*rtu_slave;
-	rtu_slave = &IfaceRTU[port_id];
 
 	struct timeval tv1, tv2;
 	struct timezone tz;
+
+	rtu_slave = &IfaceRTU[port_id];
 
 	//rtu_slave->clients[client_id].stat.request_time_min=10000; // 10 seconds, must be "this->serial.timeout"
 	//rtu_slave->clients[client_id].stat.request_time_max=0;

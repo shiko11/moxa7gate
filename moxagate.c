@@ -11,6 +11,9 @@
 
 ///=== MOXAGATE_H IMPLEMENTATION
 
+#include <string.h>
+#include <stdlib.h>
+
 #include "interfaces.h"
 #include "moxagate.h"
 #include "modbus.h"
@@ -34,21 +37,21 @@ int init_moxagate_h()
   // MoxaDevice.moxa_mutex
 
   // начало блока внутренних регистров Moxa (смещение)
-  MoxaDevice.offset1xStatus=\
-  MoxaDevice.offset2xStatus=\
-  MoxaDevice.offset3xRegisters=\
-  MoxaDevice.offset4xRegisters=0;
+  MoxaDevice.offset1xStatus =
+  MoxaDevice.offset2xStatus =
+  MoxaDevice.offset3xRegisters =
+  MoxaDevice.offset4xRegisters = 0;
 
   // количество элементов в каждой из таблиц MODBUS
-  MoxaDevice.amount1xStatus=\
-  MoxaDevice.amount2xStatus=\
-  MoxaDevice.amount3xRegisters=\
-  MoxaDevice.amount4xRegisters=0;
+  MoxaDevice.amount1xStatus =
+  MoxaDevice.amount2xStatus =
+  MoxaDevice.amount3xRegisters =
+  MoxaDevice.amount4xRegisters = 0;
 
-  MoxaDevice.used1xStatus=\
-  MoxaDevice.used2xStatus=\
-  MoxaDevice.used3xRegisters=\
-  MoxaDevice.used4xRegisters=0;
+  MoxaDevice.used1xStatus =
+  MoxaDevice.used2xStatus =
+  MoxaDevice.used3xRegisters =
+  MoxaDevice.used4xRegisters = 0;
 
   // указатели на массивы памяти
   MoxaDevice.wData1x=(u8 *) NULL;
@@ -297,8 +300,8 @@ int process_moxamb_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu, 
 				// 16 бит, т.е. нужно отправлять сначала младшие 8 бит, затем старшие 8 бит. добавлена 1 строка:
 					if(MoxaDevice.map2Xto4X==1) status=status%2?status-1:status+1;
 
-	        memory_adu[9+n] = m_start[status] & mask_src ?\
-						memory_adu[9+n] | mask_dst:\
+	        memory_adu[9+n] = m_start[status] & mask_src ?
+						memory_adu[9+n] | mask_dst :
 						memory_adu[9+n] & (~mask_dst);
 
 					}
@@ -372,7 +375,8 @@ int process_moxamb_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu, 
 				}
 														
 			/// ставим запрос в очередь MASTER-интерфейса
-			iface= port_id<=GATEWAY_P8? &IfaceRTU[port_id]: &IfaceTCP[port_id-GATEWAY_T01];
+			i = port_id-GATEWAY_T01;
+			iface= port_id<=GATEWAY_P8? &IfaceRTU[port_id]: &IfaceTCP[i];
 
 			///!!! отправка исключения клиенту в случае запрета на запись данной области памяти внутри шлюза
 
@@ -445,8 +449,8 @@ void process_proxy_response(int index, u8 *tcp_adu, u16 tcp_adu_len)
 					mask_dst = 0x01 << (PQuery[index].offset + n + (j-9)*8) % 8;	// битовая маска в байте назначения
 					status = (PQuery[index].offset + n + (j-9)*8) / 8;						// индекс байта назначения в массиве
 
-					m_start[status]= tcp_adu[j] & mask_src ?\
-						m_start[status] | mask_dst:\
+					m_start[status]= tcp_adu[j] & mask_src ?
+						m_start[status] | mask_dst :
 						m_start[status] & (~mask_dst);
 
 					}

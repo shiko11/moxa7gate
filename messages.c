@@ -9,6 +9,9 @@
 
 ///=== MESSAGES_H IMPLEMENTATION
 
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <pthread.h>
 
 #include "messages.h"
@@ -60,6 +63,9 @@ int init_messages_h()
 ///----------------------------------------------------------------------------
 int init_message_templates()
   {
+  int i, j, msglen;
+  int d, s;
+
 	memset(EventLog.msg_tpl,         0, sizeof(char) * EVENT_TEMPLATE_AMOUNT * EVENT_MESSAGE_LENGTH);
 	memset(EventLog.msg_index,       0, sizeof(unsigned int) * EVENT_TEMPLATE_AMOUNT);
 
@@ -275,9 +281,6 @@ strcpy(&EventLog.msg_tpl[A2D(221], "CLIENT\tTRAFFIC: QUEUE OUT [%d)]");
 
   /// анализируем массив шаблонов сообщений, заполняем массив параметров сообщений
 
-  int i, j, msglen;
-  int d, s;
-
   for(i=0; i<EVENT_TEMPLATE_AMOUNT; i++) {
 								 
     msglen=strlen(&EventLog.msg_tpl[A2D(i)]);
@@ -332,8 +335,8 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 
 	// инкрементируем счетчик кольцевого буфера сообщений
 	if(EventLog.app_log!=NULL)
-		EventLog.app_log_current_entry=\
-			EventLog.app_log_current_entry==EVENT_LOG_LENGTH-1?\
+		EventLog.app_log_current_entry=
+			EventLog.app_log_current_entry==EVENT_LOG_LENGTH-1?
 			0:EventLog.app_log_current_entry+1;
 	
   EventLog. cat_msgs_amount[ EVENT_CAT_ORD(msgtype & EVENT_CAT_MASK )]++;
@@ -366,11 +369,12 @@ void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 
 void show_traffic(int traffic, int port_id, int client_id, u8 *adu, u16 adu_len)
   {
+  int i;
+	char str[8];
+
 ///	if(port_id!=SERIAL_P3) return; ///!!! фильтр по интерфейсам
   if(adu_len>MB_UNIVERSAL_ADU_LEN) return;
 
-  int i;
-	char str[8];
 	strcpy(str, "[%0.2X]");
 
 	switch(traffic) {

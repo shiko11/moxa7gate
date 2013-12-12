@@ -9,6 +9,10 @@
 
 ///=== MAIN_H IMPLEMENTATION
 
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "main.h"
 
 ///=== MAIN_H private variables
@@ -38,6 +42,18 @@ int main(int argc, char *argv[])
 
 	int k;
 
+  int i, j;
+
+	struct sembuf operations[1];
+
+	int arg, P, T;
+	int ports[MAX_MOXA_PORTS]; // этот массив служит для организации порядка инициализации портов: сначала IFACE_TCPSERVER, затем остальные
+
+  int rc;
+	pthread_t		moxaTH;
+
+	time_t curtime;
+
   init_moxagate_h();
   init_interfaces_h();
   init_frwd_queue_h();
@@ -52,9 +68,11 @@ int main(int argc, char *argv[])
   // необходимо здесь инициализировать:
   shm_segment_ok=-1;
 
+#ifndef MOXA7GATE_WITHOUT_HMI_KLB
   // вывод возможных ошибок на экран LCM
   k=init_hmi_klb_h();
   if(k!=0) exit(3);
+#endif
 
   // создание разделяемого сегмента памяти,
   // выделение памяти под журнал сообщений
@@ -169,7 +187,7 @@ int main(int argc, char *argv[])
 					(MoxaDevice.status_info >= MoxaDevice.offset4xRegisters + MoxaDevice.amount4xRegisters)) {
 		
       if(MoxaDevice.status_info >= MoxaDevice.offset4xRegisters + MoxaDevice.amount4xRegisters)
-        MoxaDevice.amount4xRegisters=\
+        MoxaDevice.amount4xRegisters =
           MoxaDevice.status_info + GATE_STATUS_BLOCK_LENGTH - MoxaDevice.offset4xRegisters;
         else {
           MoxaDevice.amount4xRegisters += (MoxaDevice.offset4xRegisters - MoxaDevice.status_info);
@@ -242,18 +260,13 @@ if(Security.watchdog_timer==1) {
 	if(init_sem_set() != 0) exit(1);
 
 /* ИНИЦИАЛИЗАЦИЯ TCP ПОРТА ШЛЮЗА, ПРИНИМАЮЩЕГО СОЕДИНЕНИЯ КО ВСЕМ ПОРТАМ, ЗА ИСКЛЮЧЕНИЕМ ПОРТОВ GATEWAY_SIMPLE */
- if(init_main_socket() !=0 ) exit(1);
-
-  int i, j;
+  if(init_main_socket() !=0 ) exit(1);
 
 /* ЗАПУСК ПОТОКОВЫХ ФУНКЦИЙ, ИНИЦИАЛИЗАЦИЯ ПОСЛЕДОВАТЕЛЬНЫХ ПОРТОВ */
 
-	struct sembuf operations[1];
 	operations[0].sem_op=1;
 	operations[0].sem_flg=0;
 
-	int arg, P, T;
-	int ports[MAX_MOXA_PORTS]; // этот массив служит для организации порядка инициализации портов: сначала IFACE_TCPSERVER, затем остальные
 	memset(ports, 0, sizeof(ports));
 
 	for(i=0; i<MAX_MOXA_PORTS; i++) {
@@ -414,8 +427,6 @@ if(Security.watchdog_timer==1) {
 
 /// ЗАПУСК ПОТОКА ДЛЯ ОБРАБОТКИ ЗАПРОСОВ НЕПОСРЕДСТВЕННО К MOXA
 
-  int rc;
-	pthread_t		moxaTH;
 	rc = pthread_create(
 		&moxaTH,
 		NULL,
@@ -441,7 +452,9 @@ gateway_common_processing();
 
   close_clients(); // условно деструктор модуля CLIETNS_H
 
+#ifndef MOXA7GATE_WITHOUT_HMI_KLB
   clear_hmi_klb_h(); // услвно деструктор модуля HMI_KEYPAD_LCM_H
+#endif
 
 	close_shm();
 	semctl(semaphore_id, MAX_MOXA_PORTS, IPC_RMID, NULL);
@@ -454,7 +467,6 @@ gateway_common_processing();
   if(Security.watchdog_timer==1) mxwdg_close(MoxaDevice.mxwdt_handle);
 
 	// PROGRAM TERMINATED
-	time_t curtime;
 	time(&curtime);
 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, PROGRAM_TERMINATED, curtime-MoxaDevice.start_time, 0, 0, 0);
 

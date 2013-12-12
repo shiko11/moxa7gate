@@ -20,6 +20,10 @@ int mbcom_tcp_recv(int sfd, u8 *adu, u16 *adu_len)
 	{
 	int		mb_received_adu_len;
 	
+	unsigned int	pi=	(adu[TCPADU_PROTO_HI]<<8) | adu[TCPADU_PROTO_LO];
+	unsigned int	len=(adu[TCPADU_SIZE_HI]<<8) | adu[TCPADU_SIZE_LO];
+	unsigned char	ui=	adu[TCPADU_ADDRESS];
+	
 	*adu_len=0;
 	
 	mb_received_adu_len = recv(sfd, adu, MB_TCP_MAX_ADU_LENGTH, 0);
@@ -31,10 +35,6 @@ int mbcom_tcp_recv(int sfd, u8 *adu, u16 *adu_len)
 	*adu_len=mb_received_adu_len;
 	if (*adu_len <  MB_TCP_ADU_HEADER_LEN)	return TCP_ADU_ERR_MIN;
 	if (*adu_len >  MB_TCP_MAX_ADU_LENGTH)	return TCP_ADU_ERR_MAX;
-	
-	unsigned int	pi=	(adu[TCPADU_PROTO_HI]<<8) | adu[TCPADU_PROTO_LO];
-	unsigned int	len=(adu[TCPADU_SIZE_HI]<<8) | adu[TCPADU_SIZE_LO];
-	unsigned char	ui=	adu[TCPADU_ADDRESS];
 	
 	if(pi!=0x0000)														return TCP_ADU_ERR_PROTOCOL;
 	if(len!=(*adu_len-MB_TCP_ADU_HEADER_LEN+1))	return TCP_ADU_ERR_LEN;
@@ -110,11 +110,10 @@ int 		mb_check_request_pdu(unsigned char *pdu, unsigned char len)
 ///-------------------------------------------------------------------------------------------------------
 int 		mb_check_response_pdu(unsigned char *pdu, unsigned char len, unsigned char *request)
   {
-  if((pdu[0]&0x7f)!=(request[0]&0x7f)) return 0xff; // function mismath
-
   int res=0;
   unsigned short i, j;
 
+  if((pdu[0]&0x7f)!=(request[0]&0x7f)) return 0xff; // function mismath
 
   switch(pdu[0]&0x7f) {
 

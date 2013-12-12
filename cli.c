@@ -9,6 +9,9 @@
 
 ///=== CLI_H MODULE IMPLEMENTATION
 
+#include <string.h>
+#include <stdio.h>
+
 #include "cli.h"
 #include "messages.h"
 
@@ -52,6 +55,10 @@ www.semgroup.ru\n\
 //обработка параметров командной строки
 int get_command_line(int argc, char *argv[])
   {
+	int i=0;
+	unsigned int j;
+	int k;
+
 	// выводим информацию о программе по умолчанию
 	if( (argc==1) ||
       ((argc>1) && (strncmp(argv[1], "/?", 2)     ==0)) ||
@@ -65,10 +72,6 @@ int get_command_line(int argc, char *argv[])
       ((argc>1) && (strncmp(argv[1], "help", 4)   ==0)) ||
       ((argc>1) && (strncmp(argv[1], "?", 1)      ==0))
       ) {help_print(); return COMMAND_LINE_INFO;}
-
-	int i=0;
-	unsigned int j;
-	int k;
 
   //**** ЧТЕНИЕ ОБЩИХ ПАРАМЕТРОВ НАСТРОЙКИ ШЛЮЗА ****
   k=parse_Security(argc, argv);
@@ -204,9 +207,13 @@ int parse_Security(int 	argc, char	*argv[])
   char *arg;
 
 	unsigned char key_cnt	= 0;
+
 	unsigned char id_key_argc[MAX_COMMON_KEYS];
-	memset(id_key_argc, 0, sizeof(id_key_argc));
+
 	unsigned char id_key_valset[MAX_COMMON_KEYS];
+
+	memset(id_key_argc, 0, sizeof(id_key_argc));
+
 	memset(id_key_valset, 0, sizeof(id_key_valset));
 
 	for(i=0; i<argc; i++)
@@ -360,11 +367,12 @@ int parse_IfacesRTU(int 	argc, char	*argv[])
   int p_num;
 	unsigned char p_cnt	= 0;
 	unsigned char id_p_argc[MAX_MOXA_PORTS];
-	memset(id_p_argc, 0, sizeof(id_p_argc));
-	
+
 	char		dest[16];
 	char		tmp[3];
 
+	memset(id_p_argc, 0, sizeof(id_p_argc));
+	
 	for(i=0; i<MAX_MOXA_PORTS; i++) {
 		memcpy(dest, NAME_MOXA_PORT, 5);
 		sprintf(tmp, "%d", i+1);
@@ -467,11 +475,12 @@ int parse_IfacesTCP(int 	argc, char	*argv[])
   int t_num;
 	unsigned char t_cnt	= 0;
 	unsigned char id_t_argc[MAX_TCP_SERVERS];
-	memset(id_t_argc, 0, sizeof(id_t_argc));
-	
+
 	char		dest[16];
 	char		tmp[3];
 
+	memset(id_t_argc, 0, sizeof(id_t_argc));
+	
 	for(i=0; i<MAX_TCP_SERVERS; i++) {
 		sprintf(tmp, "%d", i+1);
     if(i<9) strcpy(dest, "TCP0");
@@ -608,8 +617,8 @@ int parse_Vslaves(int 	argc, char	*argv[])
     if(  ((arg[0]=='P') && (arg[1]>48) && (arg[1]<57)) ||
          ((arg[0]=='T') && (arg[1]>47) && (arg[1]<52) && (arg[2]>47) && (arg[2]<58))
       )
-      VSlave[rt_current].iface=\
-      arg[0]=='P'?arg[1]-48-1:\
+      VSlave[rt_current].iface =
+      arg[0]=='P'?arg[1]-48-1 :
       10*(arg[1]-48)+(arg[2]-48)-1+GATEWAY_T01;
       else return VSLAVE_CONF_IFACE; // считаем ошибка в названии интерфейса
 	
@@ -683,9 +692,9 @@ int parse_ProxyQueries(int 	argc, char	*argv[])
     if(  ((arg[0]=='P') && (arg[1]>48) && (arg[1]<57)) ||
          ((arg[0]=='T') && (arg[1]>47) && (arg[1]<52) && (arg[2]>47) && (arg[2]<58))
       )
-      PQuery[qt_current].iface=\
-      arg[0]=='P'?arg[1]-48-1:\
-      10*(arg[1]-48)+(arg[2]-48)-1+GATEWAY_T01;
+      PQuery[qt_current].iface =
+      arg[0]=='P' ? arg[1]-48-1 :
+      10*(arg[1]-48) + (arg[2]-48) - 1 + GATEWAY_T01;
       else return PQUERY_CONF_IFACE; // считаем ошибка в названии интерфейса
 	
     // адрес устройства
@@ -867,12 +876,14 @@ int check_GatewayTCPPorts()
 ///----------------------------------------------------------------------------
 int check_GatewayAddressMap()
   {
-  int j, m7g=0, lantcp[MAX_TCP_SERVERS];
+  int j, m7g=0, lantcp[MAX_TCP_SERVERS], k;
   memset(lantcp, 0, sizeof(lantcp));
 
   for(j=MODBUS_ADDRESS_MIN; j<=MODBUS_ADDRESS_MAX; j++) {
-    if((AddressMap[j].iface>=GATEWAY_T01) && (AddressMap[j].iface<=GATEWAY_T32))
-      lantcp[AddressMap[j].iface - GATEWAY_T01]++;
+    if((AddressMap[j].iface>=GATEWAY_T01) && (AddressMap[j].iface<=GATEWAY_T32)) {
+    	k = AddressMap[j].iface - GATEWAY_T01;
+      lantcp[k]++;
+      }
     if(AddressMap[j].iface==GATEWAY_MOXAGATE) {
 			m7g++;
 			MoxaDevice.modbus_address=j;
@@ -903,7 +914,8 @@ int check_GatewayIfaces_ex()
         (j > GATEWAY_T32)
       ) continue;
 
-    iface= j<=GATEWAY_P8 ? &IfaceRTU[j] : &IfaceTCP[j-GATEWAY_T01];
+    k = j-GATEWAY_T01;
+    iface= j<=GATEWAY_P8 ? &IfaceRTU[j] : &IfaceTCP[k];
 
 		if(iface->modbus_mode == if_type[i]) switch(if_type[i]) {
 
@@ -954,7 +966,8 @@ int check_GatewayIfaces_ex()
           if(k<=GATEWAY_P8) {
             if(IfaceRTU[k].modbus_mode==IFACE_RTUMASTER) res++;
             } else {
-              if(IfaceTCP[k-GATEWAY_T01].modbus_mode==IFACE_TCPMASTER) res++;
+            	index = k-GATEWAY_T01;
+              if(IfaceTCP[index].modbus_mode==IFACE_TCPMASTER) res++;
               }
           }
 
@@ -976,7 +989,7 @@ int check_GatewayIfaces_ex()
 ///----------------------------------------------------------------------------
 int check_GatewayConf()
   {
-  int k, res=0;
+  int k, res=0, i;
 	
   // для нормальной работы программы как минимум должен быть сконфигурирован один из интерфейсов
   for(k=GATEWAY_P1; k<GATEWAY_ASSETS; k++) {
@@ -988,7 +1001,8 @@ int check_GatewayConf()
     if(k<=GATEWAY_P8) {
       if(IfaceRTU[k].modbus_mode!=IFACE_OFF) res++;
       } else {
-        if(IfaceTCP[k-GATEWAY_T01].modbus_mode!=IFACE_OFF) res++;
+      	i = k-GATEWAY_T01;
+        if(IfaceTCP[i].modbus_mode!=IFACE_OFF) res++;
         }
     }
 
@@ -1001,15 +1015,16 @@ int check_GatewayConf()
 // запись таблицы назначения адресов должна содержать интерфейсы в режиме RTU_MASTER либо TCP_MASTER
 int check_IntegrityAddressMap()
   {
-  int j;
+  int j, k;
   GW_Iface *iface;
 
   for(j=MODBUS_ADDRESS_MIN; j<=MODBUS_ADDRESS_MAX; j++) {
 
     if((AddressMap[j].iface!=GATEWAY_NONE)&&(AddressMap[j].iface!=GATEWAY_MOXAGATE)) {
-	    if((AddressMap[j].iface&IFACETCP_MASK)!=0)
-	      iface=&IfaceTCP[AddressMap[j].iface - GATEWAY_T01];
-	      else iface=&IfaceRTU[AddressMap[j].iface]; } else continue;
+	    if((AddressMap[j].iface&IFACETCP_MASK)!=0) {
+	    	k = AddressMap[j].iface - GATEWAY_T01;
+	      iface=&IfaceTCP[k];
+	      } else iface=&IfaceRTU[AddressMap[j].iface]; } else continue;
 
     if(!(
        (iface->modbus_mode==IFACE_TCPMASTER) ||
@@ -1023,17 +1038,21 @@ int check_IntegrityAddressMap()
 ///----------------------------------------------------------------------------
 int check_IntegrityVSlaves()
   {
-  int j;
+  int j, k;
   GW_Iface *iface;
+
+  unsigned int i, begreg1, endreg1, begreg2, endreg2;
+  char first_low_significant, first_high_significant;
 
   // проверяем, что поле iface ссылается на соответсвующим образом настроенные интерфейсы
   for(j=0; j<MAX_VIRTUAL_SLAVES; j++) {
 
     if(VSlave[j].iface==GATEWAY_NONE) continue;
 
-    if((VSlave[j].iface&IFACETCP_MASK)!=0)
-      iface=&IfaceTCP[VSlave[j].iface - GATEWAY_T01];
-      else iface=&IfaceRTU[VSlave[j].iface];
+    if((VSlave[j].iface&IFACETCP_MASK)!=0) {
+    	k = VSlave[j].iface - GATEWAY_T01;
+      iface=&IfaceTCP[k];
+      } else iface=&IfaceRTU[VSlave[j].iface];
 
     if(!(
        (iface->modbus_mode==IFACE_TCPMASTER) ||
@@ -1043,9 +1062,6 @@ int check_IntegrityVSlaves()
 
   // проверяем, что диапазоны виртуальных устройств не пересекаются,
   // определяем область памяти, занятую определениями виртуальных устройств
-
-  unsigned int i, begreg1, endreg1, begreg2, endreg2;
-  char first_low_significant, first_high_significant;
 
   vsmem_offset1xStatus=vsmem_offset2xStatus=vsmem_offset3xRegisters=vsmem_offset4xRegisters=0xffff;
 
@@ -1133,14 +1149,18 @@ int check_IntegrityPQueries()
   int j;
   GW_Iface *iface;
 
+  unsigned int i, begreg1, endreg1, begreg2, endreg2;
+  char first_low_significant, first_high_significant;
+
   // проверяем, что поле iface ссылается на соответсвующим образом настроенные интерфейсы
   for(j=0; j<MAX_QUERY_ENTRIES; j++) {
 
     if(PQuery[j].iface==GATEWAY_NONE) continue;
 
-    if((PQuery[j].iface&IFACETCP_MASK)!=0)
-      iface=&IfaceTCP[PQuery[j].iface - GATEWAY_T01];
-      else iface=&IfaceRTU[PQuery[j].iface];
+    i = PQuery[j].iface - GATEWAY_T01;
+    if((PQuery[j].iface&IFACETCP_MASK)==0)
+           iface=&IfaceRTU[PQuery[j].iface];
+      else iface=&IfaceTCP[i];
 
     if(!(
        (iface->modbus_mode==IFACE_TCPMASTER) ||
@@ -1150,9 +1170,6 @@ int check_IntegrityPQueries()
 
   // проверяем, что блоки данных из таблицы опроса не пересекаются,
   // определяем область памяти, занятую блоками данных из таблицы опроса
-
-  unsigned int i, begreg1, endreg1, begreg2, endreg2;
-  char first_low_significant, first_high_significant;
 
   MoxaDevice.offset1xStatus=\
   MoxaDevice.offset2xStatus=\

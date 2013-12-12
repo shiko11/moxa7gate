@@ -9,6 +9,8 @@
 
 ///=== STATISTICS_H IMPLEMENTATION
 
+#include <string.h>
+
 #include "modbus.h"
 #include "statistics.h"
 #include "forwarding.h"
@@ -23,6 +25,8 @@ int init_statistics_h()
 
 void copy_stat(GW_StaticData *dst, GW_StaticData *src)
 	{
+	int i;
+
 	dst->tcp_req_recv =	src->tcp_req_recv;
 	dst->tcp_req_adu =	src->tcp_req_adu;
 	dst->tcp_req_pdu =	src->tcp_req_pdu;
@@ -54,7 +58,6 @@ void copy_stat(GW_StaticData *dst, GW_StaticData *src)
 	dst->tcp_rsp_send =	src->tcp_rsp_send;
 	dst->rtu_rsp_send =	src->rtu_rsp_send;
 
-	int i;
 	for(i=0; i<STAT_FUNC_AMOUNT; i++) {
 		dst->func[i][STAT_RES_OK]= 	src->func[i][STAT_RES_OK];
 		dst->func[i][STAT_RES_ERR]=	src->func[i][STAT_RES_ERR];
@@ -117,45 +120,45 @@ void update_stat(GW_StaticData *dst, GW_StaticData *src)
 */
 void clear_stat(GW_StaticData *dst)
 	{
-	dst->tcp_req_recv = \
-	dst->tcp_req_adu = \
-	dst->tcp_req_pdu = \
-	dst->rtu_req_recv = \
-	dst->rtu_req_crc = \
-	dst->rtu_req_adu = \
-	dst->rtu_req_pdu = \
+	dst->tcp_req_recv =
+	dst->tcp_req_adu =
+	dst->tcp_req_pdu =
+	dst->rtu_req_recv =
+	dst->rtu_req_crc =
+	dst->rtu_req_adu =
+	dst->rtu_req_pdu =
 
-	dst->frwd_proxy = \
-	dst->frwd_atm = \
-	dst->frwd_rtm = \
-	dst->frwd_queue_in = \
-	dst->frwd_queue_out = \
+	dst->frwd_proxy =
+	dst->frwd_atm =
+	dst->frwd_rtm =
+	dst->frwd_queue_in =
+	dst->frwd_queue_out =
 
-	dst->rtu_req_send = \
-	dst->rtu_rsp_recv = \
-	dst->rtu_rsp_timeout = \
-	dst->rtu_rsp_crc = \
-	dst->rtu_rsp_adu = \
-	dst->rtu_rsp_pdu = \
+	dst->rtu_req_send =
+	dst->rtu_rsp_recv =
+	dst->rtu_rsp_timeout =
+	dst->rtu_rsp_crc =
+	dst->rtu_rsp_adu =
+	dst->rtu_rsp_pdu =
 
-	dst->tcp_req_send = \
-	dst->tcp_rsp_recv = \
-	dst->tcp_rsp_timeout = \
-	dst->tcp_rsp_adu = \
-	dst->tcp_rsp_pdu = \
+	dst->tcp_req_send =
+	dst->tcp_rsp_recv =
+	dst->tcp_rsp_timeout =
+	dst->tcp_rsp_adu =
+	dst->tcp_rsp_pdu =
 
-	dst->frwd_rsp = \
-	dst->tcp_rsp_send = \
+	dst->frwd_rsp =
+	dst->tcp_rsp_send =
 	dst->rtu_rsp_send = 0;
 
 	memset(dst->func, 0, sizeof(dst->func));
 
-	dst->proc_time =	\
-	dst->proc_time_min =	\
+	dst->proc_time =
+	dst->proc_time_min =
 	dst->proc_time_max =	0;
 	
-	dst->poll_time =	\
-	dst->poll_time_min =	\
+	dst->poll_time =
+	dst->poll_time_min =
 	dst->poll_time_max =	0;
 
   return;

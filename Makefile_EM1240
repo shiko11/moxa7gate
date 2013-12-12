@@ -1,0 +1,18 @@
+CC=arm-elf-gcc
+STRIP=file
+LDFLAGS=-Wl,-elf2flt
+ARCHNAME=EM1240
+
+moxa:
+	$(CC) -o moxa7gate_$(ARCHNAME) $(LDFLAGS) -DMOXA7GATE_WITHOUT_HMI_KLB \
+main.c cli.c moxagate.c modbus_rtu.c modbus_tcp.c forwarding.c clients.c \
+iface_tcpserver.c iface_rtumaster.c iface_rtuslave.c iface_tcpmaster.c \
+interfaces.c messages.c statistics.c hmi_web.c mxlib/mxwdg_lx.c \
+-lpthread
+# hmi_klb.c hmi_klb_displays.c \
+# mxlib/mxkeypad_lx.c mxlib/mxlcm_lx.c mxlib/mxbuzzer_lx.c \
+
+	$(STRIP) -s moxa7gate_$(ARCHNAME)
+
+clean:
+	rm -f moxa7gate

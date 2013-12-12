@@ -30,11 +30,13 @@ void *iface_rtu_master(void *arg)
 	unsigned i, j, Q;
 
 	GW_Iface	*rtu_master;
-	rtu_master = &IfaceRTU[port_id];
-	
 	struct timeval tv1, tv2;
 	struct timezone tz;
 
+	int queue_has_query;
+
+	rtu_master = &IfaceRTU[port_id];
+	
 ///!!!
 //	rtu_master->clients[client_id].stat.request_time_min=10000; // 10 seconds, must be "this->serial.timeout"
 //	rtu_master->clients[client_id].stat.request_time_max=0;
@@ -50,8 +52,6 @@ void *iface_rtu_master(void *arg)
   // THREAD STARTED
 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|port_id, IFACE_THREAD_STARTED, rtu_master->modbus_mode, 0, 0, 0);
 ///-----------------------------------------
-
-	int queue_has_query;
 
 	while (1) for(i=0; i<=rtu_master->PQueryIndex[MAX_QUERY_ENTRIES]; i++) {
 

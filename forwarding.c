@@ -9,6 +9,8 @@
 
 ///=== FRWD_QUEUE_H IMPLEMENTATION
 
+#include <string.h>
+
 #include "forwarding.h"
 #include "interfaces.h"
 #include "moxagate.h"
@@ -100,9 +102,9 @@ int check_Vslave_Entry(int index)
   if((unsigned int)(VSlave[index].offset + VSlave[index].start) > MB_ADDRESS_LAST) return VSLAVE_BEGDIAP;
 
   // конечный регистр диапазона	
-  if((unsigned int)( \
-    VSlave[index].offset + \
-    VSlave[index].start + \
+  if((unsigned int)(
+    VSlave[index].offset +
+    VSlave[index].start +
     VSlave[index].length) > MB_ADDRESS_LAST) return VSLAVE_ENDDIAP;
 
   if(VSlave[index].length==0) return VSLAVE_LENDIAP;
@@ -286,17 +288,16 @@ int init_frwd_queue_h()
 ///-----------------------------------------------------------------------------
 int init_sem_set()
 	{
-
 	key_t sem_key=ftok("/tmp/app", 'b');
 	
+	union semun sems;
+	unsigned short values[1];
+
 	if((semaphore_id = semget(sem_key, GATEWAY_ASSETS, IPC_CREAT|IPC_EXCL|0666)) == -1) {
 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_SYSTEM, SEMAPHORE_SET_EXISTS, 0, 0, 0, 0);
 		return 1;
 	 	}
 	
-	union semun sems;
-	unsigned short values[1];
-
 	values[0]=0;
 	sems.array = values;
 	/* Инициализируем все элементы одним значением */
@@ -330,14 +331,14 @@ int enqueue_query_ex(GW_Queue *queue, int client_id, int context, u8 *adu, u16 a
   {
 	struct sembuf operations[1];
 
+	int j, queue_current=(queue->queue_start+queue->queue_len)%MAX_GATEWAY_QUEUE_LENGTH;
+
   if(queue->queue_len==MAX_GATEWAY_QUEUE_LENGTH) { ///!!! modbus exception response, reset queue
  		sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|queue->port_id, POLL_QUEUE_OVERL, client_id, 0, 0, 0);
 		return 1;
 		}
 
 	pthread_mutex_lock(&queue->queue_mutex);
-
-	int j, queue_current=(queue->queue_start+queue->queue_len)%MAX_GATEWAY_QUEUE_LENGTH;
 
 	for(j=0; j<adu_len; j++) {
 		queue->queue_adu[queue_current][j]=adu[j];
@@ -366,6 +367,8 @@ int get_query_from_queue(GW_Queue *queue, int *client_id, int *context, u8 *adu,
 	int status;
 	struct sembuf operations[1];
 
+	int j, queue_current=queue->queue_start;
+
 	// структуру queue->operations нельзя использовать здесь
 	operations[0].sem_op=-1;
 	operations[0].sem_num=queue->port_id;
@@ -380,8 +383,6 @@ int get_query_from_queue(GW_Queue *queue, int *client_id, int *context, u8 *adu,
 		}
 
  	pthread_mutex_lock(&queue->queue_mutex);
-
-	int j, queue_current=queue->queue_start;
 
 	for(j=0; j<queue->queue_adu_len[queue_current]; j++) {
 		adu[j]=queue->queue_adu[queue_current][j];
@@ -493,7 +494,7 @@ int translateProxyDevice(int start_address, int length, int *port_id, int *devic
  */
 int forward_query(int client_id, u8 *tcp_adu, u16 tcp_adu_len)
   {
-	int j, k;
+	int j, k, i;
 	int port_id, device_id;
 	int status;
 	GW_Iface *iface;
@@ -554,7 +555,8 @@ int forward_query(int client_id, u8 *tcp_adu, u16 tcp_adu_len)
 							}
 
 						/// ставим запрос в очередь MASTER-интерфейса
-						iface= port_id<=GATEWAY_P8? &IfaceRTU[port_id]: &IfaceTCP[port_id-GATEWAY_T01];
+						i = port_id-GATEWAY_T01;
+						iface= port_id<=GATEWAY_P8? &IfaceRTU[port_id]: &IfaceTCP[i];
 						if((status=enqueue_query_ex(&iface->queue, client_id, (FRWD_TYPE_REGISTER<<8)|(device_id&0xff), tcp_adu, tcp_adu_len))!=0) return FRWD_RESULT_QUEUE_FAIL+k;
 						break;
 
@@ -573,7 +575,8 @@ int forward_query(int client_id, u8 *tcp_adu, u16 tcp_adu_len)
 					device_id=tcp_adu[TCPADU_ADDRESS];
 					if(AddressMap[device_id].iface!=GATEWAY_NONE) {
 					  port_id=AddressMap[device_id].iface;
-					  iface= port_id<=GATEWAY_P8? &IfaceRTU[port_id]: &IfaceTCP[port_id-GATEWAY_T01];
+					  i = port_id-GATEWAY_T01;
+					  iface= port_id<=GATEWAY_P8? &IfaceRTU[port_id]: &IfaceTCP[i];
 					  }
 						
 					if(iface!=NULL) status=

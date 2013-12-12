@@ -1,39 +1,38 @@
 #! /bin/sh
 #
 # MOXA7GATE MODBUS GATEWAY SOFTWARE VERSION 1.2
-# SEM-ENGINEERING, BRYANSK 2011
+# SEM-ENGINEERING, BRYANSK 2013
 #
-# OBJECT: БиПС СМНП Козьмино
-# LOCATION: Кроссовая 689 УСО 9.0
+# OBJECT: ПК ЛТМ
+# LOCATION: Блок-бокс
 # LABEL: A4
 #
 # THIS CONFIGURATION FILE GENERATED AUTOMATICALLY
-# AT 16.11.2011 11:26:50
-# VERSION 1.128
+# AT 29.11.2013 16:24:29
+# VERSION 3.136
 #
 # Device Model: MOXA UC-7410
-# Network Name: moxa_ms689_90a4
-# LAN1 Address: 192.168.5.126
-# LAN2 Address: 192.168.6.126
+# Network Name: EM1240
+# LAN1 Address: 192.168.5.125
+# LAN2 Address: 192.168.6.125
 #
  
-/root/moxa7gate \
---Object "БиПС СМНП Козьмино" \
---Location "Кроссовая 689 УСО 9.0" \
+/root/moxa7gate_v12 \
+--Object "ПК ЛТМ" \
+--Location "Блок-бокс" \
 --Label "A4" \
---NetworkName "moxa_ms689_90a4" \
---LAN1Address "192.168.5.126" \
---LAN2Address "192.168.6.126" \
---VersionNumber "1.128" \
---VersionTime "16.11.2011 11:26:50" \
+--NetworkName "EM1240" \
+--LAN1Address "192.168.5.125" \
+--LAN2Address "192.168.6.125" \
+--VersionNumber "3.136" \
+--VersionTime "29.11.2013 16:24:29" \
 --Model "MOXA UC-7410" \
 --tcp_port 502 \
 --status_info 1 \
---show_sys_messages \
---use_buzzer \
-PORT1 RS485_2W 9600 NONE 1000 TCP_SERVER 1502 --desc "Программа ModSim на локальном ПК" \
-PORT2 RS485_2W 9600 NONE 100 RTU_SLAVE --desc "Устройство modbus-мастер на стороне RTU" \
-PORT8 RS485_2W 9600 NONE 1000 RTU_MASTER --desc "Тестовый шлейф из восьми пожарных датчиков" \
-AT1 0 0 1844 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 \
-AT4 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2560 0 0 \
+PORT1 RS232 9600 NONE 100 RTU_SLAVE --desc "MODSCAN PC" \
+PORT2 RS232 9600 NONE 1000 RTU_MASTER --desc "MODSIM PC" \
+TCP01 192.168.5.252:502 52 0 1000 192.168.6.252:502 --desc "MODSIM на локальном ПК" \
+AT1 2560 0 0 0 0 0 0 0 0 0 0 258 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 \
+QT P2 2 HOLDING_REGISTER RW 1 40 3001 0 2 --desc "MODSIM PC" \
+QT T01 52 HOLDING_REGISTER RW 1 40 3041 100 2 --desc "MODSIM PC" \
 &

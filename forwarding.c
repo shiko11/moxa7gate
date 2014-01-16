@@ -71,6 +71,10 @@ int init_Vslave_Entry(int index)
 	VSlave[index].start=0;
 	VSlave[index].length=0;
 
+  VSlave[index].critical=0;
+  VSlave[index].err_counter=0;
+	VSlave[index].status_bit=0;
+
 	VSlave[index].device_name[0]=0;
 
   return 0;

@@ -257,6 +257,7 @@ int gateway_common_processing()
 
 		gettimeofday(&tv, &tz);
 
+#ifndef MOXA7GATE_WITHOUT_IFACE_TCPSERVER
     // прием входящих соединений к интерфейсам IFACE_TCPSERVER и создание клиентских потоков:
 	  for(i=0; i<Security.TCPSRVIndex[MAX_MOXA_PORTS]; i++) {
 
@@ -338,6 +339,7 @@ int gateway_common_processing()
 				sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|P, IFACE_THREAD_INIT, Client[current_client].rc, 0, 0, 0);
 			  }
 	    }
+#endif
 
 		/// обслуживание TCP-соединений TCP MASTER интерфейсов
 	  for(i=0; i<Security.TCPIndex[MAX_TCP_SERVERS]; i++) {

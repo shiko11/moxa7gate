@@ -1,18 +1,22 @@
 CC=arm-elf-gcc
 STRIP=file
-LDFLAGS=-Wl,-elf2flt
+LDFLAGS=-Wl,-elf2flt 
 ARCHNAME=EM1240
 
 moxa:
-	$(CC) -o moxa7gate_$(ARCHNAME) $(LDFLAGS) -DMOXA7GATE_WITHOUT_HMI_KLB \
-main.c cli.c moxagate.c modbus_rtu.c modbus_tcp.c forwarding.c clients.c \
-iface_tcpserver.c iface_rtumaster.c iface_rtuslave.c iface_tcpmaster.c \
-interfaces.c messages.c statistics.c hmi_web.c mxlib/mxwdg_lx.c \
+	$(CC) -o km400 $(LDFLAGS) \
+-DMOXA7GATE_KM400 \
+-DMOXA7GATE_WITHOUT_HMI_KLB \
+-DMOXA7GATE_WITHOUT_IFACE_TCPSERVER \
+-DMOXA7GATE_WITHOUT_IFACE_RTUSLAVE \
+main.c cli.c messages.c statistics.c hmi_web.c \
+modbus_rtu.c modbus_tcp.c forwarding.c clients.c \
+moxagate.c iface_rtumaster.c iface_tcpmaster.c interfaces.c \
+mxlib/mxwdg_lx.c kltm/kltm.c kltm/kltm_main.c IEC870_3/IEC870_3.c \
+serial/serial.c \
 -lpthread
-# hmi_klb.c hmi_klb_displays.c \
-# mxlib/mxkeypad_lx.c mxlib/mxlcm_lx.c mxlib/mxbuzzer_lx.c \
 
-	$(STRIP) -s moxa7gate_$(ARCHNAME)
+	$(STRIP) -s km400
 
 clean:
-	rm -f moxa7gate
+	rm -f km400 km400.gdb

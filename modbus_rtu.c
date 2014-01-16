@@ -137,11 +137,48 @@ int mbcom_rtu_recv_rsp(int fd, u8 *adu, u16 *adu_len, int timeout, int ch_interv
 	u16 crc_received;
 	u8 recv_crc_hi;
 	u8 recv_crc_lo;
+
+  fd_set rfds;
+  struct timeval tv;
+  int data_avail = 0;
+  int nbytes;
+  struct termios settings;
+  
+  nbytes = *adu_len;
 	
+//-------------------------------------------------------------
+  if(nbytes == 0) { // старая версия
 	mb_received_adu_len = receive_response(	fd,
 																					adu,
 																					timeout,
 																					ch_interval_timeout);
+  } else { //оптимизированная версия --------------------------
+
+	tv.tv_sec = 0;
+	tv.tv_usec = timeout;
+
+	FD_ZERO( &rfds );
+	FD_SET ( fd, &rfds );
+
+	/* wait for a response */
+	data_avail = select(FD_SETSIZE, &rfds, NULL, NULL, &tv);
+
+  tcgetattr(fd, &settings);
+  settings.c_cc[VMIN]  = nbytes;
+  tcsetattr(fd, TCSANOW, &settings);
+
+//  tv.tv_sec=0;
+//  tv.tv_usec=94000;
+//  select(0, NULL, NULL, NULL, &tv);
+
+  mb_received_adu_len = data_avail==0 ? 0 : read (fd, adu, nbytes);
+
+  settings.c_cc[VMIN]  = 0;
+  tcsetattr(fd, TCSANOW, &settings);
+
+  //printf("read: %d/%d\n", mb_received_adu_len, nbytes);
+  }
+//-------------------------------------------------------------
 	*adu_len=mb_received_adu_len;
 	
 	if (mb_received_adu_len<0) return MB_SERIAL_READ_FAILURE;
@@ -212,7 +249,7 @@ int open_comm(char *device,char *mode)
 
 ///-------------------------------------------------------------------------------
 
-int set_param_comms(int ttyfd,char *baud,char *parity)
+int set_param_comms(int ttyfd,char *baud,char *parity, int timeout)
 {
      struct termios      settings;
      speed_t             baud_rate;
@@ -325,8 +362,15 @@ int set_param_comms(int ttyfd,char *baud,char *parity)
           settings.c_lflag &=~ ECHO;
           settings.c_lflag |= IEXTEN;
 
-          settings.c_cc[VMIN] = 0;
-          settings.c_cc[VTIME] = 0;
+          settings.c_cc[VMIN] = 0; // этот параметр проверяется при каждом вызове функции чтения ответа
+
+          if(timeout<100) {
+            settings.c_cc[VTIME] = 1;
+            } else if(timeout>=25500) {
+            settings.c_cc[VTIME] = 255;
+            } else {
+            settings.c_cc[VTIME] = (timeout+50)/100;
+            }
 
           if( tcsetattr( ttyfd, TCSANOW, &settings ) < 0 ) {
                fprintf( stderr, "tcsetattr failed\n");
@@ -386,4 +430,24 @@ int mbcom_rtu_recv_req(int fd, u8 *adu, u16 *adu_len)
 	return MBCOM_OK;
 	}
 	
+/************************************************************************/
+int modbus_response_lenght(u8 *adu, u16 adu_len)
+  {
+  static int len;
+  	
+	switch(adu[TCPADU_FUNCTION]) {
+
+		case MBF_READ_HOLDING_REGISTERS:
+      len = 2*((adu[TCPADU_LEN_HI]<<8)+adu[TCPADU_LEN_LO]) + 5;
+			break;
+			
+		case MBF_WRITE_MULTIPLE_REGISTERS:
+      len = 8;
+			break;
+			
+  	default: len=0;
+    }
+  	
+  return len;
+  }
 /************************************************************************/

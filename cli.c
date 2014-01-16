@@ -636,6 +636,7 @@ int parse_Vslaves(int 	argc, char	*argv[])
 
     arg=argv[id_rt+4];
     VSlave[rt_current].offset = atoi(arg);
+    VSlave[rt_current].offset--;
 	
     arg=argv[id_rt+5];
     VSlave[rt_current].start = atoi(arg);

@@ -72,6 +72,7 @@
 #define GW_CLIENT_TCP_502			4
 #define GW_CLIENT_RTU_SLV			5
 #define GW_CLIENT_MOXAGATE		6 // используется при обработке PROXY-запросов
+#define GW_CLIENT_KM400				7
 
 // параметры, предназначенные для контроля и управления шлюзом
 typedef struct {

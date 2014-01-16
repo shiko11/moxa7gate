@@ -104,6 +104,9 @@ void *iface_rtu_master(void *arg)
 		if(Security.show_data_flow==1)
 			show_traffic(TRAFFIC_RTU_SEND, port_id, client_id, &req_adu[TCPADU_ADDRESS], req_adu_len);
 
+//  gettimeofday(&tv1, NULL);
+//  printf("send %lu; ", tv1.tv_sec*1000 + tv1.tv_usec/1000);
+
 		status = mbcom_rtu_send(rtu_master->serial.fd,
 														&req_adu[TCPADU_ADDRESS],
 														req_adu_len);
@@ -131,6 +134,12 @@ void *iface_rtu_master(void *arg)
 						PQuery[Q].status_bit=0;
 					///!!! добавить сообщение о пропадании связи с modbus-rtu сервером
 
+				  } else if(client_id==GW_CLIENT_KM400) {
+
+            VSlave[device_id&0xff].err_counter++;
+            if(VSlave[device_id&0xff].err_counter >= VSlave[device_id&0xff].critical)
+              VSlave[device_id&0xff].status_bit=0;
+
 				  } else {
 						Client[client_id].stat.errors++;
 						func_res_err(req_adu[TCPADU_FUNCTION], &Client[client_id].stat);
@@ -142,11 +151,19 @@ void *iface_rtu_master(void *arg)
 		  default:;
 		  };
 
+//  gettimeofday(&tv1, NULL);
+//  printf("recv %lu; ", tv1.tv_sec*1000 + tv1.tv_usec/1000);
+
+    rsp_adu_len=modbus_response_lenght(req_adu, req_adu_len);
+    
 	  status = mbcom_rtu_recv_rsp(rtu_master->serial.fd,
 	  														&rsp_adu[TCPADU_ADDRESS],
 	  														&rsp_adu_len,
 	  														rtu_master->serial.timeout,
 	  														rtu_master->serial.ch_interval_timeout);
+
+//  gettimeofday(&tv1, NULL);
+//  printf("proc %lu; ms\n", tv1.tv_sec*1000 + tv1.tv_usec/1000);
 
 		if(Security.show_data_flow==1)
 			show_traffic(TRAFFIC_RTU_RECV, port_id, client_id, &rsp_adu[6], rsp_adu_len);
@@ -175,6 +192,13 @@ void *iface_rtu_master(void *arg)
 					PQuery[Q].err_counter++;
 					if(PQuery[Q].err_counter >= PQuery[Q].critical)
 						PQuery[Q].status_bit=0;  ///!!! добавить сообщение о пропадании связи с modbus-rtu сервером
+
+				  } else if(client_id==GW_CLIENT_KM400) {
+
+            VSlave[device_id&0xff].err_counter++;
+            if(VSlave[device_id&0xff].err_counter >= VSlave[device_id&0xff].critical)
+              VSlave[device_id&0xff].status_bit=0;
+
 				  } else {
 						Client[client_id].stat.errors++;
 						func_res_err(rsp_adu[TCPADU_FUNCTION], &Client[client_id].stat);
@@ -191,19 +215,32 @@ void *iface_rtu_master(void *arg)
 
 	if(client_id==GW_CLIENT_MOXAGATE) { // сохраняем локально полученные данные
 
-		process_proxy_response(Q, rsp_adu, rsp_adu_len+MB_TCP_ADU_HEADER_LEN-1);
+#ifdef MOXA7GATE_KM400
+    pthread_mutex_lock(&rtu_master->serial_mutex);
+#endif
+    process_proxy_response(Q, rsp_adu, rsp_adu_len+MB_TCP_ADU_HEADER_LEN-1);
+#ifdef MOXA7GATE_KM400
+    pthread_mutex_unlock(&rtu_master->serial_mutex);
+#endif
+
 		rtu_master->stat.sended++;
 		rtu_master->Security.stat.sended++;
 		func_res_ok(rsp_adu[TCPADU_FUNCTION], &rtu_master->stat);
 		func_res_ok(rsp_adu[TCPADU_FUNCTION], &rtu_master->Security.stat);
 
-		} else { //отправляем результат запроса непосредственно клиенту
+		} else if(client_id==GW_CLIENT_RTU_SLV) { //отправляем результат запроса непосредственно клиенту
 
-			// функция преобразования ответа в соответствии с контекстом
-			prepare_response(device_id, rsp_adu, rsp_adu_len);
+		// функция преобразования ответа в соответствии с контекстом
+		prepare_response(device_id, rsp_adu, rsp_adu_len);
+		forward_response(port_id, client_id, req_adu, req_adu_len, rsp_adu, rsp_adu_len);
 
-			forward_response(port_id, client_id, req_adu, req_adu_len, rsp_adu, rsp_adu_len);
-			}
+		} else if(client_id==GW_CLIENT_KM400) {
+
+      // отдельный бит статуса связи для операции записи в КМ-400
+      VSlave[device_id&0xff].status_bit=1;
+      VSlave[device_id&0xff].err_counter=0;
+
+		}
 
 //	gettimeofday(&tv2, &tz);
 //	rtu_master->stat.request_time=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;

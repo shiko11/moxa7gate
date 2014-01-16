@@ -47,6 +47,8 @@
 #define TCPADU_LEN_HI			10
 #define TCPADU_LEN_LO			11
 
+#define TCPADU_BYTECOUNT	12
+
 #define RTUADU_ADDRESS		0
 #define RTUADU_FUNCTION		1
 #define RTUADU_START_HI		2
@@ -176,10 +178,12 @@ int mb_check_response_pdu(unsigned char *pdu, unsigned char len, unsigned char *
 ///*** modbus_rtu.c
 
 int open_comm(char *device,char *mode);
-int set_param_comms(int ttyfd,char *baud,char *parity);
+int set_param_comms(int ttyfd,char *baud,char *parity, int timeout);
 
 int receive_response(int ttyfd, u8 *received_string,int timeout,int ch_interval_timeout);
 u16 crc(u8 *buf,u16 start,u16 cnt);
+
+int modbus_response_lenght(u8 *adu, u16 adu_len);
 
 // функции ввода/вывода modbus
 int mbcom_rtu_send    (int ttyfd,       u8 *adu, u16 adu_len);

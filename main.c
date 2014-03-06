@@ -83,6 +83,8 @@ int main(int argc, char *argv[])
   init_statistics_h();
   init_clients();
 
+  kltm_port=GATEWAY_NONE;
+
   ///!!! точка останова. возможен контроль средствами HMI инициализации переменных
 
 /*** РАЗБОР ПАРАМЕТРОВ КОМАНДНОЙ СТРОКИ ***/
@@ -113,6 +115,14 @@ int main(int argc, char *argv[])
     close_shm();
 		exit(1);
     }
+
+#ifdef MOXA7GATE_KM400
+  if(kltm_port == GATEWAY_NONE) {
+  	printf("check kltm_port CLI parameter\n");
+    close_shm();
+		exit(1);
+    }
+#endif
 
   /// До этого момента все сообщения в программе должны иметь тип EVENT_CAT_MONITOR,
   /// т.к. конфигурация системы сообщений по умолчанию отсеивает все прочие сообщения
@@ -258,7 +268,6 @@ if(Security.watchdog_timer==1) {
 	//-------------------------------------------------------
 #ifdef MOXA7GATE_KM400
 /* ИНИЦИАЛИЗАЦИЯ МОДУЛЯ КМ-400 */
-  kltm_port = GATEWAY_P1; //!!! параметр должен вводиться при запуске, через командную строку
   k=init_kltm_h();
   if(k!=0) {
   	printf("init_kltm_h: error code %d. exit\n", k);
@@ -323,6 +332,13 @@ if(Security.watchdog_timer==1) {
 		switch(IfaceRTU[P].modbus_mode) {
 
 			case IFACE_RTUMASTER:
+
+#ifdef MOXA7GATE_KM400
+        if(P==GATEWAY_P1 && kltm_port!=GATEWAY_P1) continue; // порт GATEWAY_P1 зарезервирован
+        // мьютекс для синхронизации доступа к памяти, содержащей значения переменной PLC
+          else pthread_mutex_init(&IfaceRTU[P].serial_mutex, NULL);
+#endif
+
 				strcpy(IfaceRTU[P].bridge_status, "00P");
 				init_queue(&IfaceRTU[P].queue, P);
 			  arg=(P<<8)&0xff00;
@@ -338,11 +354,6 @@ if(Security.watchdog_timer==1) {
 		      // THREAD INITIALIZED
 					sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|P, 41, IfaceRTU[P].rc, 0, 0, 0);
 				  }
-
-#ifdef MOXA7GATE_KM400
-        // мьютекс для синхронизации доступа к памяти, содержащей значения переменной PLC
-        pthread_mutex_init(&IfaceRTU[P].serial_mutex, NULL);
-#endif
 
 				operations[0].sem_num=P;
   			semop(semaphore_id, operations, 1);
@@ -434,6 +445,12 @@ if(Security.watchdog_timer==1) {
 	  T=Security.TCPIndex[i];
 	  if(IfaceTCP[T].modbus_mode!=IFACE_TCPMASTER) continue;
 
+#ifdef MOXA7GATE_KM400
+        if((T+GATEWAY_T01)==GATEWAY_T01 && kltm_port!=GATEWAY_T01) continue; // порт GATEWAY_T01 зарезервирован
+        // мьютекс для синхронизации доступа к памяти, содержащей значения переменной PLC
+          else pthread_mutex_init(&IfaceTCP[T].serial_mutex, NULL);
+#endif
+
 		strcpy(IfaceTCP[T].bridge_status, "INI");
 		init_queue(&IfaceTCP[T].queue, GATEWAY_T01+T);
 		
@@ -471,11 +488,11 @@ if(Security.watchdog_timer==1) {
   time(&Client[kltm_client].last_activity_time);
   sprintf(Client[j].device_name, "KM-400 MB P%d", 1); //!!! Modbus-master интерфейс должен определяться на стадии инициализации через параметры командной строки
 
-//	Client[kltm_client].rc = pthread_create(
-//		&Client[kltm_client].tid_srvr,
-//		NULL,
-//		kltm_main,
-//		NULL);
+	Client[kltm_client].rc = pthread_create(
+		&Client[kltm_client].tid_srvr,
+		NULL,
+		kltm_main,
+		NULL);
 
 #endif
 

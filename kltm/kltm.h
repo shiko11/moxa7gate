@@ -45,13 +45,4 @@ int init_kltm_h();  // функция для проверки корректности конфигурации Modbus-инт
 int kltm_getPLC(kltm_sCom *plc); // получить от КЛТМ запрос (актуальное значение переменной PLC)
 int kltm_setCM (kltm_sCom *cm ); // записать в  КЛТМ ответ  (новое значение переменной CM)
 
-/// функции для работы с модемом (тестовая версия)
-
-int init_modem();
-int set_rts(int val);
-void show_modem_lines();
-void print_buffer(unsigned char *buf, unsigned char len);
-int get_modem_data(char *at);
-int close_modem();
-
 #endif /* KLTM_H */

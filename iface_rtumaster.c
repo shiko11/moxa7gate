@@ -130,8 +130,10 @@ void *iface_rtu_master(void *arg)
 					stage_to_stat((MBCOM_REQ<<16) | (MBCOM_RTU_SEND<<8) | status, &rtu_master->Security.stat);
 
 					PQuery[Q].err_counter++;
-					if(PQuery[Q].err_counter >= PQuery[Q].critical)
+					if(PQuery[Q].err_counter >= PQuery[Q].critical) {
 						PQuery[Q].status_bit=0;
+            VSlave[device_id&0xff].status_bit=0;
+					  }
 					///!!! добавить сообщение о пропадании связи с modbus-rtu сервером
 
 				  } else if(client_id==GW_CLIENT_KM400) {
@@ -151,11 +153,11 @@ void *iface_rtu_master(void *arg)
 		  default:;
 		  };
 
+    rsp_adu_len=modbus_response_lenght(req_adu, req_adu_len);
+    
 //  gettimeofday(&tv1, NULL);
 //  printf("recv %lu; ", tv1.tv_sec*1000 + tv1.tv_usec/1000);
 
-    rsp_adu_len=modbus_response_lenght(req_adu, req_adu_len);
-    
 	  status = mbcom_rtu_recv_rsp(rtu_master->serial.fd,
 	  														&rsp_adu[TCPADU_ADDRESS],
 	  														&rsp_adu_len,
@@ -190,8 +192,11 @@ void *iface_rtu_master(void *arg)
 					stage_to_stat((MBCOM_RSP<<16) | (MBCOM_RTU_RECV<<8) | status, &rtu_master->Security.stat);
 
 					PQuery[Q].err_counter++;
-					if(PQuery[Q].err_counter >= PQuery[Q].critical)
-						PQuery[Q].status_bit=0;  ///!!! добавить сообщение о пропадании связи с modbus-rtu сервером
+					if(PQuery[Q].err_counter >= PQuery[Q].critical) {
+						PQuery[Q].status_bit=0;
+            VSlave[device_id&0xff].status_bit=0;
+					  }
+					///!!! добавить сообщение о пропадании связи с modbus-rtu сервером
 
 				  } else if(client_id==GW_CLIENT_KM400) {
 

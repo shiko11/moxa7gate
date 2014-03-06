@@ -36,8 +36,10 @@ int mbcom_tcp_recv(int sfd, u8 *adu, u16 *adu_len)
 	if (*adu_len <  MB_TCP_ADU_HEADER_LEN)	return TCP_ADU_ERR_MIN;
 	if (*adu_len >  MB_TCP_MAX_ADU_LENGTH)	return TCP_ADU_ERR_MAX;
 	
-	if(pi!=0x0000)														return TCP_ADU_ERR_PROTOCOL;
-	if(len!=(*adu_len-MB_TCP_ADU_HEADER_LEN+1))	return TCP_ADU_ERR_LEN;
+	if(pi!=0x0000) return TCP_ADU_ERR_PROTOCOL;
+//	if( (adu[TCPADU_FUNCTION]==MBF_READ_HOLDING_REGISTERS   && len!=(*adu_len-MB_TCP_ADU_HEADER_LEN+1)) ||
+//      (adu[TCPADU_FUNCTION]==MBF_WRITE_MULTIPLE_REGISTERS && len!=(8+MB_TCP_ADU_HEADER_LEN-1))
+//	    ) return TCP_ADU_ERR_LEN;
 	if((ui<MODBUS_ADDRESS_MIN)||(ui>MODBUS_ADDRESS_MAX)) return TCP_ADU_ERR_UID;
 	
 	return MBCOM_OK;

@@ -10,7 +10,8 @@ int open_port(int port){
     #ifdef DEBUG
         printf("Открываю порт: %s\n", COM_PORTS[port]);
     #endif
-    return open(COM_PORTS[port], O_RDWR | O_NOCTTY);
+    return open(COM_PORTS[port], O_RDWR);
+    //O_NOCTTY -Если открываемый файл - терминальное устройство, не делать его управляющим терминалом процесса 
   }
 };
 /*Установка параметров обмена по данному порту*/
@@ -85,7 +86,8 @@ int set_port_options(int port, port_options_t *options){
     PENDIN - (не включено в POSIX; не поддерживается в Linux) все символы в очереди ввода повторно печатаются, когда считан последующий символ (таким образом bash "перехватывает" предваряющую печать). 
     IEXTEN - включить режим ввода, определяемый реализацией по умолчанию. Этот флаг, как и ICANON должен быть включен для обработки специальных символов EOL2, LNEXT, REPRINT, WERASE, а также для того, чтобы работал флаг IUCLC.
    */
-  
+ 
+  settings.c_line = 0;
   //Параметры приема
   //settings.c_iflag |= INPCK;  // Запускать проверку чености при входа
   //settings.c_iflag |= IGNPAR; // Игнорировать ошибки четности
@@ -96,7 +98,7 @@ int set_port_options(int port, port_options_t *options){
   settings.c_iflag &=~IXANY;  // Запрещаем заново запускать ввод по любому символу
  
   //#Параметры передачи
-  settings.c_oflag &=~OPOST;  // Отключаем режим сна
+  settings.c_oflag &= ~OPOST; // Отключаем режим сна
   settings.c_cflag |= CLOCAL; // Игнорируе управление линией с помощью модема
   settings.c_cflag |= CREAD;  // Читаем с терминала
   settings.c_cflag &=~CSTOPB; // Один стоп-бит использовать здесь будем

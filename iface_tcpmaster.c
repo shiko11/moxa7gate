@@ -41,7 +41,7 @@ void *iface_tcp_master(void *arg)
 
 	GW_Iface	*tcp_master;
 
-	struct timeval tv, tvchk;
+	struct timeval tv, tvchk, tv1;
 	struct timezone tz;
 
 	int queue_has_query;
@@ -124,9 +124,6 @@ void *iface_tcp_master(void *arg)
 	// сохраняем идентификатор транзакции
 	trans_id = (req_adu[TCPADU_TRANS_HI]<<8) | req_adu[TCPADU_TRANS_LO];
 
-	  ///---------------------
-		tcp_master->stat.accepted++;
-
 ///-----------------------------------
 //		gettimeofday(&tv2, &tz);
 //		tcp_master->clients[client_id].stat.scan_rate=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
@@ -171,11 +168,15 @@ void *iface_tcp_master(void *arg)
 			}
 
 	  ///---------------------
+		tcp_master->stat.accepted++;
 
 		make_tcp_adu(req_adu, req_adu_len-TCPADU_ADDRESS);
 
 		if(Security.show_data_flow==1)
 			show_traffic(TRAFFIC_TCP_SEND, port_id, client_id, req_adu, req_adu_len);
+
+//  gettimeofday(&tv1, NULL);
+//  printf("send %lu; ", tv1.tv_sec*1000 + tv1.tv_usec/1000);
 
 		status = mbcom_tcp_send(csd,
 														req_adu,
@@ -206,6 +207,13 @@ void *iface_tcp_master(void *arg)
 					stage_to_stat((MBCOM_REQ<<16) | (MBCOM_TCP_SEND<<8) | status, &tcp_master->Security.stat);
 
 					PQuery[Q].status_bit=0;
+          VSlave[device_id&0xff].status_bit=0;
+				  } else if(client_id==GW_CLIENT_KM400) {
+
+//            VSlave[device_id&0xff].err_counter++;
+//            if(VSlave[device_id&0xff].err_counter >= VSlave[device_id&0xff].critical)
+              VSlave[device_id&0xff].status_bit=0;
+
 				  } else {
 						Client[client_id].stat.errors++;
 						func_res_err(req_adu[TCPADU_FUNCTION], &Client[client_id].stat);
@@ -217,10 +225,16 @@ void *iface_tcp_master(void *arg)
 		  default:;
 		  };
 
+//  gettimeofday(&tv1, NULL);
+//  printf("recv %lu; ", tv1.tv_sec*1000 + tv1.tv_usec/1000);
+
 		status = mbcom_tcp_recv(csd,
 														rsp_adu,
 														&rsp_adu_len);
 		
+//  gettimeofday(&tv1, NULL);
+//  printf("proc %lu; ms\n", tv1.tv_sec*1000 + tv1.tv_usec/1000);
+
 		if(Security.show_data_flow==1)
 			show_traffic(TRAFFIC_TCP_RECV, port_id, client_id, rsp_adu, rsp_adu_len);
 //	gettimeofday(&tv2, &tz);
@@ -269,6 +283,13 @@ void *iface_tcp_master(void *arg)
 					stage_to_stat((MBCOM_RSP<<16) | (MBCOM_TCP_RECV<<8) | status, &tcp_master->Security.stat);
 
 					PQuery[Q].status_bit=0;
+          VSlave[device_id&0xff].status_bit=0;
+				  } else if(client_id==GW_CLIENT_KM400) {
+
+//            VSlave[device_id&0xff].err_counter++;
+//            if(VSlave[device_id&0xff].err_counter >= VSlave[device_id&0xff].critical)
+              VSlave[device_id&0xff].status_bit=0;
+
 				  } else {
 						Client[client_id].stat.errors++;
 						func_res_err(rsp_adu[TCPADU_FUNCTION], &Client[client_id].stat);
@@ -292,11 +313,24 @@ void *iface_tcp_master(void *arg)
 
 	if(client_id==GW_CLIENT_MOXAGATE) { // сохраняем локально полученные данные
 
+#ifdef MOXA7GATE_KM400
+    pthread_mutex_lock(&tcp_master->serial_mutex);
+#endif
 		process_proxy_response(Q, rsp_adu, rsp_adu_len+MB_TCP_ADU_HEADER_LEN-1);
+#ifdef MOXA7GATE_KM400
+    pthread_mutex_unlock(&tcp_master->serial_mutex);
+#endif
+
 		tcp_master->stat.sended++;
 		tcp_master->Security.stat.sended++;
 		func_res_ok(rsp_adu[TCPADU_FUNCTION], &tcp_master->stat);
 		func_res_ok(rsp_adu[TCPADU_FUNCTION], &tcp_master->Security.stat);
+
+		} else if(client_id==GW_CLIENT_KM400) {
+
+      // отдельный бит статуса связи для операции записи в КМ-400
+      VSlave[device_id&0xff].status_bit=1;
+      VSlave[device_id&0xff].err_counter=0;
 
 		} else { //отправляем результат запроса непосредственно клиенту
 

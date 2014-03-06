@@ -13,6 +13,8 @@
 #include "interfaces.h"
 #include "moxagate.h"
 
+#include "kltm/kltm.h"
+
 ///=== CLI_H constants
 
 // конфигурационные константы времени компил€ции
@@ -38,6 +40,7 @@
 #define SECURITY_CONF_STRUCT 5
 #define SECURITY_CONF_DUPLICATE 6
 #define SECURITY_CONF_SPELLING 7
+#define SECURITY_KLTM_CONF_IFACE 7
 
 #define IFACE_CONF_RTUDUPLICATE 10
 #define IFACE_CONF_RTUSTRUCT 11

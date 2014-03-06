@@ -509,6 +509,7 @@ int refresh_status_info()
   	MoxaDevice.wData4x[GWINF_STATE_CLIENTS + i] = Client[i].status;
 
 	// флаги статуса связи блоков таблицы опроса
+#ifndef MOXA7GATE_KM400
   for(i=0; i<MAX_QUERY_ENTRIES; i++) {
 		j = 0x01 << (i % 16);
     if(PQuery[i].status_bit==0)
@@ -516,6 +517,32 @@ int refresh_status_info()
 			else
 			MoxaDevice.wData4x[GWINF_PROXY_STATUS + (i/16)]|= j;
     }
+#else
+	j = 0x01 << (0 % 16);
+  if(PQuery[0].status_bit==0)
+		MoxaDevice.wData4x[GWINF_PROXY_STATUS]&=~j;
+		else
+		MoxaDevice.wData4x[GWINF_PROXY_STATUS]|= j;
+
+	j = 0x01 << (1 % 16);
+  if(VSlave[0].status_bit==0)
+		MoxaDevice.wData4x[GWINF_PROXY_STATUS]&=~j;
+		else
+		MoxaDevice.wData4x[GWINF_PROXY_STATUS]|= j;
+
+	j = 0x01 << (4 % 16);
+  if(PQuery[1].status_bit==0)
+		MoxaDevice.wData4x[GWINF_PROXY_STATUS]&=~j;
+		else
+		MoxaDevice.wData4x[GWINF_PROXY_STATUS]|= j;
+
+	j = 0x01 << (5 % 16);
+  if(VSlave[1].status_bit==0)
+		MoxaDevice.wData4x[GWINF_PROXY_STATUS]&=~j;
+		else
+		MoxaDevice.wData4x[GWINF_PROXY_STATUS]|= j;
+
+#endif
 
   // регистр-счетчик циклов сканирования
   MoxaDevice.wData4x[GWINF_SCAN_COUNTER] = Security.scan_counter/1000;

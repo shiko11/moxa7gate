@@ -147,7 +147,7 @@ int kltm_setCM (kltm_sCom *cm)
   
   /// ставим запрос в очередь MASTER-интерфейса
   if(enqueue_query_ex(&kltm_iface->queue,
-	                    GW_CLIENT_KM400,
+	                    kltm_client,
 	                    (FRWD_TYPE_REGISTER<<8)|(kltm_CM&0xff),
 	                    Client[kltm_client].out_adu,
 	                    Client[kltm_client].out_len)!=0) return 2;

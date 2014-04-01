@@ -8,8 +8,8 @@
 #include <stdlib.h> /* Standard library definitions */
 #include <errno.h>  /* Error definitions */
 #include <string.h>
-
-//#include "IEC870_PLC.h"
+#include <time.h>   /*Время*/
+#include <pthread.h>
 
 #ifndef _IEC870_3_H_
 #define _IEC870_3_H_
@@ -31,6 +31,11 @@ enum ERROR_CODES{ERROR = 1,
 		 ERROR_UNKNOWN_COMMAND         //неизвестная команда прешедшая в пакете переменной длины
 };
 
+/*Временные константы для тайм-аутов связи к контроллером линейной телемеханики и
+  мастором линейной телемеханики в секундах*/
+#define KLTM_TIME_OUT 10
+#define MLTM_TIME_OUT 5
+
 /*Константы для обработки сигналов*/
 #define VAR_LEN_FRAME_TYPE      0x68 //кадр переменной длины
 #define CONST_LEN_FRAME_TYPE    0x10 //кадр фиксированной длинны
@@ -38,6 +43,7 @@ enum ERROR_CODES{ERROR = 1,
 #define ACK_NEGATIVE_FRAME_TYPE 0xA2 //кадр отрицательного подтверждения
 #define END_OF_FRAME            0x16 //символ конца пакета
 
+#define PTP_MASK 0x80 //маска бита - тип протокола 1 - Элеси МЭК3  0 - Элеси МЭК4
 #define PRM_MASK 0x40 //маска бита первичного сообщения
 #define FCB_MASK 0x20 //маска бита-счетчика кадров
 #define FCV_MASK 0x10 //маска бита-действия счетчика кадров
@@ -108,7 +114,7 @@ enum ERROR_CODES{ERROR = 1,
 #define SIG_TZ_TI4_2             2
 #define SIG_TZ_TI4_3             3
 #define SIG_TZ_TI4_4             4
-#define PR_FELD                  1 //смещение сительно последнего байта значения!!!
+#define PR_FELD                  1 //смещение относительно последнего байта значения!!!
 #define ADR_OF_SIG_FEILD_SIZE    2
 #define CONTROL_FEILD_SIZE       1
 #define ADR_OF_SIG_FEILD_SIZE    2
@@ -129,7 +135,10 @@ enum ERROR_CODES{ERROR = 1,
 #define BEGIN_DATA_ADD       TYPE_FELD_SIZE + UNDEF_FELD_SIZE + ADR_FELD_SIZE 
 
 //константы для сигналов от мастера ЛТМ
-#define GENERAL_POLL         0x49 //общий опрос
+#define SET_TIME             0x0F //Установка времени 
+#define GENERAL_POLL1        0x49 //общий опрос
+#define GENERAL_POLL2        0x09 //общий опрос
+
 #define GENERAL_POLL_LEN     0x01
 #define SIGNAL_POLL          0x43  //опрос сигнала
 #define SIGNAL_POLL_LEN      0x03  
@@ -168,7 +177,7 @@ enum ERROR_CODES{ERROR = 1,
 #define MAX_KLTM_OUT_BUF_LEN     1024
 typedef struct{
   unsigned char data[MAX_KLTM_OUT_BUF_LEN];
-  unsigned int num; //количество элементов в буфера
+  unsigned int num;   //количество элементов в буфера
   unsigned int begin; //текущая позиция в буфере
   unsigned int end;   //конец буфера
 }kltm_out_buf_t;
@@ -210,6 +219,49 @@ typedef struct{
 #define KP_CFG_FLAGS_TEST_FUNC            0x20 //выполняется тестовая операция
 #define KP_CFG_FLAGS_NO_DATA              0x40 //нет данных
 
+#define MAX_IEC_SMALL_OUT_BUF_LEN   255 //максимальный возможный размер выходного буфера
+#define MIN_IEC_3_OUT_PACK_SIZE      44 //минимальный размер пердаваемого пакета по умолчанию
+#define MAX_IEC_LARGE_OUT_BUF_LEN   512 //Максимальный размер общего буфера для передоваемых данны
+#define FIST_PACK                     0 //номер первого пакета в буфере
+
+/*Для работы требуется два буфера в первом хрянятся все посылки, во втором, 
+храниться, толлько отсылаемая информация*/
+/*Тип данных для выходного буфера обощего, куда складываются все сигналы*/
+typedef struct{
+  unsigned char data[MAX_IEC_LARGE_OUT_BUF_LEN];//собственно буфер и зачем нужны такие коментарии?
+  unsigned int len[MAX_IEC_LARGE_OUT_BUF_LEN];  //размер iго элемента буфера 
+  unsigned int num;                             //количество элементов в буфера
+  unsigned int begin;                           //текущая позиция в буфере
+  unsigned int end;                             //конец буфера
+  unsigned int len_begin;                       //Да я извращенец, в структуре два кольцевых буфера
+  unsigned int len_end;                         //один хранит данные, другой их длину
+}iec3_large_out_buf_t;
+
+
+typedef struct{
+  unsigned char data[MAX_IEC_SMALL_OUT_BUF_LEN];//собственно буфер и зачем нужны такие коментарии?
+  int len; //вершина этого буфера
+}iec3_small_out_buf_t;
+
+#define CHANEL_INIT 0x80                        //флаг инициализации канала связи нужен при работе с ТЧ
+
+/*Структура для хранения конфигурации мастера*/
+typedef struct {
+  int port_number;                     // Номер порта через который нужно вести обмен
+  int port;                            // Дескриптор порта через который ведется обмен
+  int mode;                            // Режим работы порта см функцию set_port_mode (по умолчанию RS-232)
+  int type;                            // Тип канала обмена данными - последовательный: 0, или ТЧ: 1
+  unsigned int state;                  // Сотояние в котором находится данный канал 
+  unsigned int flags;                  // Флаги состояния канала связи
+  iec3_large_out_buf_t large_out_buf;  //большой накопрительный буфер для сигналов, ждущих передачи мастеру ЛТМ
+  iec3_small_out_buf_t small_out_buf;  //малый буфер куда копируются сигналы, которые должны быть переданы
+  time_t start_time;                   //время последнего успешного обмена данными с мастером
+  pthread_mutex_t mutex[2]; //Мьютексы и все тут*
+} mltm_t;
+
+#define MLTM_MAX 2      //максимальное количество мастеров телемеханики с которыми происходит работа
+#define SERIAL_TYPE 0   //тип последоветельный канал
+#define TONAL_TYPE  1   //тип тональная частота
 
 /*Тип данных для хранения параметров КП*/
 typedef struct{
@@ -229,40 +281,24 @@ typedef struct{
 
   unsigned long int  MasterPackCnt;        //Счетчик пакетов от мастера
   kltm_out_buf_t *kltm_out_buf;            //адрес буфера для хранения команд для ПЛК
-  //unsigned int asked_data[ASKED_DATA_MAX]; //масив с адресами запрошенных данных
-  //unsigned int asked_data_num;             //количество запрошенных данных
   asked_data_t asked_data;
+
+  mltm_t  mltm[MLTM_MAX];                  //Конфигурация каналов для обмена данными с мастерами линейной телемеханики
+  unsigned int mltm_max;                   //Количество мастеров телемеханики
+  char mltm_buf_in[BUF_IN_LEN];            //буфер для куда копируются данные от мастера линейной телемеханики
+  pthread_mutex_t mutex_a;
+  pthread_mutex_t mutex_b;
+  union{                                  //Объединение для хранения времени
+    unsigned long int  ti;
+    unsigned char tch[4];
+  }time;
 }kp_cfg_t;
 
-#define MAX_IEC_OUT_BUF_LEN       255 //максимальный возможный размер выходного буфера
-#define MIN_IEC_3_OUT_PACK_SIZE    44 //минимальный размер пердаваемого пакета по умолчанию
-#define MAX_IEC_OUT_ALL_BUF_LEN  1024 //Максимальный размер общего буфера для передоваемых данны
-#define FIST_PACK                   0//номер первого пакета в буфере
-
-/*Для работы требуется два буфера в первом хрянятся все посылки, во втором, храниться, толлько отс
-лаемая информация*/
-/*Тип данных для выходного буфера обощего, куда складываются все сигналы*/
-typedef struct{
-  unsigned char data[MAX_IEC_OUT_ALL_BUF_LEN];//собственно буфер и зачем нужны такие коментарии?
-  unsigned int len[MAX_IEC_OUT_ALL_BUF_LEN]; //размер iго элемента буфера 
-  unsigned int num; //количество элементов в буфера
-  unsigned int begin; //текущая позиция в буфере
-  unsigned int end;   //конец буфера
-  unsigned int len_begin; //Да я извращенец, в структуре два кольцевых буфера
-  unsigned int len_end;   //один хранит данные, другой их длину
-}iec3_buf_data_send_t;
-
-
-typedef struct{
-  unsigned char data[MAX_IEC_OUT_BUF_LEN];//собственно буфер и зачем нужны такие коментарии?
-  int len; //вершина этого буфера
-}iec3_buf_out_t;
-
 /*Функция дешифровки пакетов по МЭК3*/
-int read_iec3_data(char *in_buf, int in_len, kp_cfg_t *kp_cfg, iec3_buf_data_send_t *iec3_buf);
+int read_iec3_data(char *in_buf, int in_len, kp_cfg_t *kp_cfg, iec3_large_out_buf_t *iec3_buf);
 
 //функция разбора пакета постоянной длинны
-int  analize_const_frame(char *in_buf, int in_len, kp_cfg_t *kp_cfg, iec3_buf_data_send_t *iec3_buf);
+int  analize_const_frame(char *in_buf, int in_len, kp_cfg_t *kp_cfg, iec3_large_out_buf_t *iec3_buf);
 
 /*функция разбора пакета переменной длинны
 in_buf - ссылка на буфер с входными данными
@@ -270,36 +306,40 @@ in_len - размер данных в буфере
 out_buf - ссылка на структуру масива выходных данных
 kp_cfg - ссылка на структуру с конфигурацией КП
 pack_len - ссылка на переменную в которую будет записана длина обработанного пакета из буфера*/
-int  analize_var_frame(char *in_buf, int in_len, kp_cfg_t *kp_cfg, int *pack_len, iec3_buf_data_send_t *iec3_buf);
+int  analize_var_frame(char *in_buf, int in_len, kp_cfg_t *kp_cfg, int *pack_len, iec3_large_out_buf_t *iec3_buf);
 
 /*функция разбора поля управления
 in_buf - ссылка на контрольное поле в масиве
 code - сюда будет записан код сервисной функции*/
-int  analize_control_feld(char control_feld, kp_cfg_t *kp_cfg, iec3_buf_data_send_t *iec3_buf, int *code);
+int  analize_control_feld(char control_feld, kp_cfg_t *kp_cfg, iec3_large_out_buf_t *iec3_buf, int *code);
 
 /*Функция заталкивающая в выходной буфер подтверждающий кадр*/
-void send_ACK(kp_cfg_t *kp_cfg, iec3_buf_data_send_t *iec3_buf); 
+void send_ACK(kp_cfg_t *kp_cfg, iec3_large_out_buf_t *iec3_buf); 
+void send_long_ACK(kp_cfg_t *kp_cfg, iec3_large_out_buf_t *iec3_buf);
 
 /*Функция заталкивающая в выходной буфер отрицательного потверждения*/
-void send_NACK(kp_cfg_t *kp_cfg, iec3_buf_data_send_t *iec3_buf);
+void send_NACK(kp_cfg_t *kp_cfg, iec3_large_out_buf_t *iec3_buf);
+void send_long_NACK(kp_cfg_t *kp_cfg, iec3_large_out_buf_t *iec3_buf);
 
 /*Функция заталкивающая в выходной буфер кадр с информацией об обсутсвии данных*/
-void send_no_data(kp_cfg_t *kp_cfg, iec3_buf_data_send_t *iec3_buf);
+void send_no_data(kp_cfg_t *kp_cfg, iec3_large_out_buf_t *iec3_buf);
 
 /*Функция записи в большой буфер передачи*/
-void iec3_buf_wrt(unsigned char *data, unsigned int len, iec3_buf_data_send_t *iec3_buf);
+void iec3_buf_wrt(unsigned char *data, unsigned int len, iec3_large_out_buf_t *iec3_buf);
+/*Функция записи в большой буфер передачи в начало*/
+void iec3_buf_wrt_from_begin(unsigned char *data, unsigned int len, iec3_large_out_buf_t *iec3_buf);
 
 /*Функция "очишающая" буфер на передачу*/
 void clear_send_buf();
 
 /*Функция записывающая в буфер ответ со статусом связи*/
-void write_state_connection(kp_cfg_t *kp_cfg, iec3_buf_data_send_t *iec3_buf);
+void write_state_connection(kp_cfg_t *kp_cfg, iec3_large_out_buf_t *iec3_buf);
 
 /*Функция перекладывающая из большого буфера данных на передачу в малый*/
-void wrt_out_buf(iec3_buf_data_send_t *iec3_buf, iec3_buf_out_t *iec3_out_buf);
+void wrt_out_buf(iec3_large_out_buf_t *iec3_buf, iec3_small_out_buf_t *iec3_out_buf);
 
 /*Из название понятно что эта хрень делает, для тех кто не догадался - забивает буферы нулями*/
-void iec3_init(kp_cfg_t *kp_cfg, iec3_buf_data_send_t *iec3_buf, iec3_buf_out_t *iec3_out_buf);
+void iec3_init(kp_cfg_t *kp_cfg, iec3_large_out_buf_t *iec3_buf, iec3_small_out_buf_t *iec3_out_buf);
 
 
 //констатнты для разбора данных от ПЛК
@@ -380,14 +420,14 @@ int check_addr4resp(kp_cfg_t *kp_cfg ,unsigned int addr);
 unsigned char kltm_buf_get_data(unsigned char *dest, unsigned int max_size, kltm_out_buf_t *kltm_out_buf);
 
 /*Функция преобразующая данные из КЛТМ (ПЛК) к виду, требуемому для их передачи с записью в буфер*/
-unsigned int iec3_convert_plc2kltm(char *plc_data, unsigned int len, kp_cfg_t *kp_cfg, iec3_buf_data_send_t *iec3_buf);
+unsigned int iec3_convert_plc2kltm(char *plc_data, unsigned int len, kp_cfg_t *kp_cfg, iec3_large_out_buf_t *iec3_buf);
 
 /*Функция преобразующая данные из КЛТМ (ПЛК) к виду, требуемому для их передачи с записью в буфер*/
-unsigned int iec3_convert_plc2kltm(char *plc_data, unsigned int len,  kp_cfg_t *kp_cfg, iec3_buf_data_send_t *iec3_buf);
+unsigned int iec3_convert_plc2kltm(char *plc_data, unsigned int len,  kp_cfg_t *kp_cfg, iec3_large_out_buf_t *iec3_buf);
 
 unsigned char* write_begin_of_iec3_big_pack(kp_cfg_t *kp_cfg, unsigned char *pack, unsigned int *pack_size, unsigned char *CRC);
 
-void copy_plc_sig2iec3_sig(kp_cfg_t *kp_cfg, unsigned char *pos_plc_data, unsigned int *plc_sig_len, unsigned char *pos_temp_sign, unsigned int *temp_sig_len);
+void copy_plc_sig2iec3(kp_cfg_t *kp_cfg, unsigned char *pos_plc_data, unsigned int *plc_sig_len, unsigned char *pos_temp_sign, unsigned int *temp_sig_len);
 
 //определяем длину данных в пакете на передачу сначала идет длина а затем блок данных длиной равной длине(тафталогия мать ее)
 unsigned char get_iec3_sig_len_in_pack(unsigned char addr_higt, unsigned char len);

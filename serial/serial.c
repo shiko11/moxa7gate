@@ -297,7 +297,7 @@ void set_flow_control(struct termios *settings, int  flow){
 }
 /*Установить режим*/
 void set_port_mode(int port, int mode){
-  mode=RS232_MODE;
+  //mode=RS232_MODE;
   ioctl(port, MOXA_SET_OP_MODE, &mode);
 };
 

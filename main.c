@@ -334,9 +334,9 @@ if(Security.watchdog_timer==1) {
 			case IFACE_RTUMASTER:
 
 #ifdef MOXA7GATE_KM400
-        if(P==GATEWAY_P1 && kltm_port!=GATEWAY_P1) continue; // порт GATEWAY_P1 зарезервирован
+        if(P!=kltm_port) continue; // используем ровно один порт для связи по Modbus-RTU
         // мьютекс для синхронизации доступа к памяти, содержащей значения переменной PLC
-          else pthread_mutex_init(&IfaceRTU[P].serial_mutex, NULL);
+        pthread_mutex_init(&IfaceRTU[P].serial_mutex, NULL);
 #endif
 
 				strcpy(IfaceRTU[P].bridge_status, "00P");
@@ -446,9 +446,9 @@ if(Security.watchdog_timer==1) {
 	  if(IfaceTCP[T].modbus_mode!=IFACE_TCPMASTER) continue;
 
 #ifdef MOXA7GATE_KM400
-        if((T+GATEWAY_T01)==GATEWAY_T01 && kltm_port!=GATEWAY_T01) continue; // порт GATEWAY_T01 зарезервирован
+        if((T+GATEWAY_T01)!=kltm_port) continue;  // используем ровно один порт для связи по Modbus-TCP
         // мьютекс для синхронизации доступа к памяти, содержащей значения переменной PLC
-          else pthread_mutex_init(&IfaceTCP[T].serial_mutex, NULL);
+        pthread_mutex_init(&IfaceTCP[T].serial_mutex, NULL);
 #endif
 
 		strcpy(IfaceTCP[T].bridge_status, "INI");

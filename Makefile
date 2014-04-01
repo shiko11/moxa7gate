@@ -1,6 +1,12 @@
+#-DCMX868A_DEBUG \
+#Поленая строка с опциями для отладочных сообщений
+#DF = -Wall -Wtrigraphs -Wwrite-strings -Wcast-qual -Wbad-function-cast -Wshadow -Wundef -Wconversion
+#Рабочая строка с параметрами отладочных собщений 
+#DF = -Wall -Wtrigraphs -Wwrite-strings -Wcast-qual -Wbad-function-cast -Wshadow -Wundef
+#
 CC=arm-elf-gcc
 STRIP=file
-LDFLAGS=-Wl,-elf2flt  
+LDFLAGS=-Wl,-elf2flt  -O1 $(DF)
 ARCHNAME=EM1240
 
 moxa:

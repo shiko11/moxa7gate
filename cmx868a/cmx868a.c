@@ -154,8 +154,12 @@ int cmx868a_init()                        // инициализация переменных модуля, по
   settings.c_iflag &=~IXOFF;  // If this bit is set, start/stop control on input is enabled
   settings.c_iflag &=~IXON;   // If this bit is set, start/stop control on output is enabled
   settings.c_iflag &=~IXANY;  // Allow any character to start flow again
+  settings.c_iflag &=~INLCR;  // Map NL to CR
+  settings.c_iflag &=~IGNCR;  // Ignore CR
+  settings.c_iflag &=~ICRNL;  // Map CR to NL
   //# A bit mask specifying flags for output modes
   settings.c_oflag &=~OPOST;  // If this bit is set, output data is processed in some unspecified way
+  settings.c_oflag &=~ONLCR;  // Map NL to CR-NL
   //# A bit mask specifying flags for control modes
   settings.c_cflag |= CLOCAL; // If this bit is set, it indicates that the modem status lines should be ignored
   settings.c_cflag |= CREAD;  // If this bit is set, input can be read from the terminal. Otherwise, input is discarded when it arrives.
@@ -165,6 +169,7 @@ int cmx868a_init()                        // инициализация переменных модуля, по
   settings.c_cflag &=~CSIZE;  // This is a mask for the number of bits per character
   settings.c_cflag |= CS8;    // This specifies eight bits per byte
   settings.c_cflag |= CRTSCTS;// Enable RTS/CTS (hardware) flow control
+//settings.c_cflag |= HUPCL;// Hangup (drop DTR) on last close
   //# A bit mask specifying flags for local modes
   settings.c_lflag &=~ICANON; // This bit, if set, enables canonical input processing mode
   settings.c_lflag &=~ECHO;   // If this bit is set, echoing of input characters back to the terminal is enabled
@@ -329,7 +334,7 @@ int cmx868a_reset(unsigned char leader,   // сброс/инициализация модема, длина л
 // подключение к сети тональной частоты
 
   // строка инициализации модема
-  sprintf(modem_msg, "ATS6=0S7=2B2S25=%dS26=%dD0\r", s25, s26);
+  sprintf(modem_msg, "ATS6=0S7=2B2S13=%dS25=%dS26=%dD0\r",(unsigned char)leader*10/12, s25, s26);
   atcmd(modem_msg);
   tv.tv_sec=3; tv.tv_usec=ATCMD_PROC_TIME;
   select(0, NULL, NULL, NULL, &tv);
@@ -341,12 +346,12 @@ int cmx868a_reset(unsigned char leader,   // сброс/инициализация модема, длина л
       printf("\nprm %d: %s", i, atres[i]);
 #endif
 
-  if(j==2 &&
+  if(j>=2 &&
      atoi(atres[0])==ATRES_NORESULT &&
      atoi(atres[1])==ATRES_NOCARRIER) { // нет несущей
   	printf("\nNO CARRIER");
   	return CMX868A_NOANSW;
-    } else if(j==2 &&
+    } else if(j>=2 &&
               atoi(atres[0])==ATRES_NORESULT &&
               atoi(atres[1])==ATRES_CON1200) { // соединение установлено
   	  printf("\nCONNECT 1200");
@@ -416,7 +421,7 @@ int atrsp(char *rsp)  // чтение результата выполнения AT-команды
     j=k=0;
     for(i=0; i<len; i++) {
 
-      if(rsp[i]==0x0a) {
+      if(rsp[i]==0x0d) {
         if(k==0) continue;
         if(k<MAX_ATRES_LEN) atres[j][k  ]=0;
           else              atres[j][k-1]=0;
@@ -426,6 +431,7 @@ int atrsp(char *rsp)  // чтение результата выполнения AT-команды
         continue;
         }
 
+      if(rsp[i]==0x0a && rsp[i-1]==0x0d) continue;
       if(k<MAX_ATRES_LEN) atres[j][k++]=rsp[i];
       }
     
@@ -494,11 +500,11 @@ int cmx868a_recv_packet(unsigned char *packet,
   if(cmx868a_state != CMX868A_STATE_DATAXFER) return CMX868A_ERR_NOTRDY;
 
   *length = i = pck = rcv = timeout = errcntr = skipped = 0;
-
+  //printf("\nRECIVE FROM MLTM: ");
   while(rcv==0) { // выполнять цикл, пока не завершен прием кадра
 
     len = read(ttyfd, &byte, 1); // читаем очередной байт
-
+    //printf("%Xh ", byte);
 //    printf("\nlen=%d, byte=%2.2X", len, byte);
 
     if(len==0) { // если таймаут, 1200 мсек
@@ -508,7 +514,10 @@ int cmx868a_recv_packet(unsigned char *packet,
       pck=0;
       timeout++;
       // контроль сигнала DCD при необходимости производить в отдельной функции
-      if(timeout>=8) return CMX868A_ERR_TIMEOUT;
+      if(timeout>=8){
+	//printf("\n");
+	return CMX868A_ERR_TIMEOUT;
+      }
       }
 
     if(pck==0 && i!=0) { // прием очередного кадра завершился ошибкой
@@ -517,10 +526,14 @@ int cmx868a_recv_packet(unsigned char *packet,
 #endif
       i=0;
       errcntr++;
-      if(errcntr>=3) return CMX868A_ERR_COUNTER;
+      if(errcntr>=3) {
+	//printf("\n");
+	return CMX868A_ERR_COUNTER;
+      }
       }
       
     if(skipped>MAX_PACK_LEN) { // кадр в установленное время не принят
+      //printf("\n");
       return CMX868A_ERR_COUNTER;
       }
 
@@ -529,6 +542,7 @@ int cmx868a_recv_packet(unsigned char *packet,
     	printf("\ncmx868a_recv_packet: read error");
 #endif
       pck=0;
+      //printf("\n");
       return CMX868A_ERR_SYSFAIL;
       }
 
@@ -575,12 +589,12 @@ int cmx868a_recv_packet(unsigned char *packet,
       } // разбор
     
     } // выполнять цикл, пока не завершен прием кадра
-
+  //printf("\n");
 #ifdef CMX868A_DEBUG
   bufmark='<';
-//  print_buffer(packet, i);
+  print_buffer(packet, i);
 
-//  show_modem_lines();
+  show_modem_lines();
 #endif
 
   *length=i;
@@ -601,9 +615,9 @@ int cmx868a_send_packet(unsigned char *packet,
 
 #ifdef CMX868A_DEBUG
   bufmark='>';
-//  print_buffer(packet, length);
+  print_buffer(packet, length);
 
-//  show_modem_lines();
+  show_modem_lines();
 #endif
 
   return CMX868A_OK;

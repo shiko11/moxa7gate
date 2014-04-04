@@ -751,7 +751,9 @@ void *gateway_proxy_thread(void *arg)
 	struct timeval tv1, tv2;
 	struct timezone tz;
 
-	unsigned i, j, n;
+	unsigned i, j, n, next_entry;
+
+  int mb_exception;
 
 ///!!!
 //	inputDATA->clients[client_id].stat.request_time_min=10000; // 10 seconds, must be "this->serial.timeout"
@@ -777,6 +779,10 @@ void *gateway_proxy_thread(void *arg)
 	int queue_current;
 
 	while (1) for(i=0; i<=MAX_QUERY_ENTRIES; i++) {
+
+    next_entry = i; // для гарантированного прохода по всем записям таблицы опроса
+                    // в случае обработки запроса, пришедшего через очередь порта,
+                    // запоминаем интекс текущей записи таблицы опроса
 
 		// status = semop ( semaphore_id, operations, 1);
 		status=get_query_from_queue(&iDATA[port_id].queue, &client_id, &device_id, tcp_adu, &tcp_adu_len);
@@ -908,6 +914,8 @@ if((exceptions&EXCEPTION_DIOGEN)!=0)
 
 //		printf("status: %d\n", status);
 
+    mb_exception = 0;
+
 		switch(status) {
 		  case 0:
 		  	break;
@@ -928,10 +936,11 @@ if((exceptions&EXCEPTION_DIOGEN)!=0)
 		///!!! Место-положение этого бита находится в области памяти 4x шлюза
 		//gate502.wData4x[query_table[i].status_register]&=(~query_table[i].status_bit);
 				query_table[i].err_counter++;
-				if(i!=MAX_QUERY_ENTRIES)
+				if(i!=MAX_QUERY_ENTRIES) {
 					if(query_table[i].err_counter >= query_table[i].critical)
 						query_table[i].status_bit=0;  ///!!! добавить сообщение о пропадании связи с modbus-rtu сервером
-				continue;
+				  continue;
+					} else mb_exception = 1;
 		  	break;
 		  default:;
 		  };
@@ -1033,12 +1042,18 @@ if((exceptions & EXCEPTION_IPES)!=0)
 		} else { //отправляем результат запроса непосредственно клиенту
 
 			serial_adu[RTUADU_ADDRESS]=gate502.modbus_address;
-			j=(((serial_adu[RTUADU_START_HI]<<8) | serial_adu[RTUADU_START_LO])&0xffff)+
-				query_table[device_id].offset-
-				query_table[device_id].start;
-			serial_adu[RTUADU_START_HI]=(j>>8)&0xff;
-			serial_adu[RTUADU_START_LO]=j&0xff;
 
+			if(mb_exception==1) {
+  			serial_adu[RTUADU_FUNCTION]+=0x80; /* MODBUS EXCEPTION RESPONSE CODE */
+  			serial_adu[RTUADU_START_HI] =0x0b; /* GATEWAY TARGET DEVICE FAILED TO RESPOND */
+  			serial_adu_len=5;
+			  } else {
+  			  j=(((serial_adu[RTUADU_START_HI]<<8) | serial_adu[RTUADU_START_LO])&0xffff)+
+	  			  query_table[device_id].offset-
+		  		  query_table[device_id].start;
+  			  serial_adu[RTUADU_START_HI]=(j>>8)&0xff;
+	  		  serial_adu[RTUADU_START_LO]=j&0xff;
+			    }
 
 
 			/// определяем тип клиента и соответственно функцию, используемую для отправки ответа
@@ -1094,8 +1109,9 @@ if((exceptions & EXCEPTION_IPES)!=0)
 				  };
 				}
 	
-			/// при отсутствии записей в очереди переходим к обработке следующей записи из таблицы опроса
-			i=device_id;
+			// при отсутствии записей в очереди переходим к той записи таблицы опроса,
+      // обработка которой была прервана текущим запросом из очереди порта
+			i = next_entry==0 ? MAX_QUERY_ENTRIES : next_entry-1;
 			}
 
 //	update_stat(&inputDATA->clients[client_id].stat, &tmpstat);

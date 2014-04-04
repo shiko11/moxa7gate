@@ -4,28 +4,30 @@
 # SEM-ENGINEERING, BRYANSK 2013
 #
 # THIS CONFIGURATION FILE GENERATED AUTOMATICALLY
-# AT 14:33:28 26.08.2013
+# AT 10:29:06 09.12.2013
 #
-# Object: Тест UC-8410
-# Location: ОРПО NA
+# Object: Линейная телемеханика
+# Location: Шкаф ЛТМ №1 A10
 #
-# File Version: 1.4
+# File Version: 1.2
 #
-# Network Name: Moxa
-# Network Address: 192.168.3.127
+# Network Name: EM1240
+# Network Address: 192.168.5.125
 #
  
-/home/moxa7gate_8410 \
+/root/moxa7gate \
 --tcp_port 502 \
 --modbus_address 1 \
 --status_info 1 \
+--show_data_flow \
 --show_sys_messages \
---Object "Тест UC-8410" \
---Location "ОРПО NA" \
---confVersion "1.4" \
---NetworkName "Moxa" \
---NetworkAddress "192.168.3.127" \
-PORT8 RS485_2W 9600 NONE 1000 GATEWAY_PROXY \
+--Object "Линейная телемеханика" \
+--Location "Шкаф ЛТМ №1 A10" \
+--confVersion "1.2" \
+--NetworkName "EM1240" \
+--NetworkAddress "192.168.5.125" \
+PORT1 RS232 9600 NONE 1000 BRIDGE_PROXY --desc "MODSCAN PC" \
+PORT2 RS232 9600 NONE 1000 GATEWAY_PROXY --desc "MODSIM PC" \
 PROXY_TABLE 1 \
-1 8 101 P8 1 HOLDING_REGISTER 0 2 \
+1 4 101 P2 2 HOLDING_REGISTER 500 0 --desc "MODSIM PC" \
 &

@@ -10,6 +10,7 @@ SEM-ENGINEERING
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <string.h>
 
 char *pointer;
 

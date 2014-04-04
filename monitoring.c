@@ -1,3 +1,7 @@
+
+#include <string.h>
+#include <stdio.h>
+
 #include "global.h"
 #include "modbus_rtu.h"
 #include "modbus_tcp.h"

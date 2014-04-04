@@ -4,8 +4,11 @@ SEM-ENGINEERING
                     BRYANSK 2009
 */
 
-#include "global.h"
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
+#include "global.h"
 #include "modbus_tcp.h"
 
 #define DEBUG_oDATA

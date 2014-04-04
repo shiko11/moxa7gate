@@ -6,6 +6,8 @@ SEM-ENGINEERING
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+
 #include "global.h"
 
 #define DEBUG_CL //чисто для отладки алгоритма интерепретации командной строки

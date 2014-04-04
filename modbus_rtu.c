@@ -363,7 +363,7 @@ int set_param_comms(int ttyfd,char *baud,char *parity)
      settings.c_iflag &=~ IXOFF;
      settings.c_iflag &=~ IMAXBEL;
 
-     settings.c_oflag |= OPOST;
+     settings.c_oflag &=~ OPOST;
      settings.c_oflag &=~ OLCUC;
      settings.c_oflag &=~ ONLCR;
      settings.c_oflag &=~ OCRNL;

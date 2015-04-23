@@ -3,11 +3,11 @@ Attribute VB_Name = "moxa7gate"
 '        MODBUS GATEWAY SOFTWARE
 '                    Version 1.2
 '        SEM-ENGINEERING
-'               BRYANSK 2010
+'               BRYANSK 2015
 '***************************************/
 
 ' янгдюмхе йнмтхцспюжхнммнцн яйпхорю дкъ гюосяйю ькчгю MODBUS moxa7gate
-' б йнллсмхйюжхнммнл йнмрпнккепе MOXA UC-7410 (Plus), бепяхъ 1.2
+' б йнллсмхйюжхнммнл йнмрпнккепе MOXA UC-7410(Plus), UC-8410 бепяхъ 1.2
 
 ' кхяр "ькчг"
 ' наыюъ хмтнплюжхъ
@@ -150,15 +150,14 @@ Print #1, "# LAN2 Address: " + ws.Cells(SETTLAN2AddressRow, 2).Value
 Print #1, "#"
 Print #1, " "
 
-    If ws.Cells(SETTModelRow, 2).Value = "UC7410" Then
-      Print #1, "/root/moxa7gate_UC7410 \"
-ElseIf ws.Cells(SETTModelRow, 2).Value = "UC7410PLUS" Then
-      Print #1, "/home/root/moxa7gate_UC7410PLUS \"
-ElseIf ws.Cells(SETTModelRow, 2).Value = "UC8410" Then
-      Print #1, "/home/moxa7gate_UC8410 \"
-ElseIf ws.Cells(SETTModelRow, 2).Value = "EM1240" Then
-      Print #1, "/home/km400 \"
-Else: Print #1, "./moxa7gate \"
+If ws.Cells(SETTModelRow, 2).Value = "MOXA UC-7410" Then
+    Print #1, "/root/moxa7gate_UC7410 \"
+ElseIf ws.Cells(SETTModelRow, 2).Value = "MOXA UC-7410 Plus" Then
+    Print #1, "/home/root/moxa7gate_UC7410PLUS \"
+ElseIf ws.Cells(SETTModelRow, 2).Value = "MOXA UC-8410" Then
+    Print #1, "/home/root/moxa7gate_UC8410 \"
+Else
+    Print #1, "./moxa7gate \"
 End If
 
 ' наыюъ хмтнплюжхъ

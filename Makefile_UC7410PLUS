@@ -16,7 +16,7 @@ endif
 
 CC=$(PREFIX)gcc
 STRIP=$(PREFIX)strip
-NAME=moxa7gate_plus
+NAME=moxa7gate_UC7410PLUS
 
 all: release
 

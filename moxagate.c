@@ -130,10 +130,10 @@ int init_moxagate_memory()
 	pthread_mutex_init(&MoxaDevice.moxa_mutex, NULL);
 
 	// идентификаторы объектов для вывода детальной статистики в блок диагностики шлюза
-  MoxaDevice.wData4x[GWINF_STATDETAILS_1] = 0xffff;
-  MoxaDevice.wData4x[GWINF_STATDETAILS_2] = 0xffff;
-  MoxaDevice.wData4x[GWINF_STATDETAILS_3] = 0xffff;
-  MoxaDevice.wData4x[GWINF_STATDETAILS_4] = 0xffff;
+  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_STATDETAILS_1] = 0xffff;
+  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_STATDETAILS_2] = 0xffff;
+  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_STATDETAILS_3] = 0xffff;
+  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_STATDETAILS_4] = 0xffff;
 
   return 0;
   }
@@ -500,61 +500,61 @@ int refresh_status_info()
 
 	// состояние последовательных интерфейсов P1 - P8
   for(i=0; i<MAX_MOXA_PORTS; i++)
-  	MoxaDevice.wData4x[GWINF_STATE_IFACERTU + i] = IfaceRTU[i].modbus_mode;
+  	MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_STATE_IFACERTU + i] = IfaceRTU[i].modbus_mode;
   // состояние Ethernet-интерфейсов T01 - T32
   for(i=0; i<MAX_TCP_SERVERS; i++)
-  	MoxaDevice.wData4x[GWINF_STATE_IFACETCP + i] = IfaceTCP[i].modbus_mode;
+  	MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_STATE_IFACETCP + i] = IfaceTCP[i].modbus_mode;
   // состояние клиентских соединений 1 - 32
   for(i=0; i<MOXAGATE_CLIENTS_NUMBER; i++)
-  	MoxaDevice.wData4x[GWINF_STATE_CLIENTS + i] = Client[i].status;
+  	MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_STATE_CLIENTS + i] = Client[i].status;
 
 	// флаги статуса связи блоков таблицы опроса
 #ifndef MOXA7GATE_KM400
   for(i=0; i<MAX_QUERY_ENTRIES; i++) {
 		j = 0x01 << (i % 16);
     if(PQuery[i].status_bit==0)
-			MoxaDevice.wData4x[GWINF_PROXY_STATUS + (i/16)]&=~j;
+			MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_PROXY_STATUS + (i/16)]&=~j;
 			else
-			MoxaDevice.wData4x[GWINF_PROXY_STATUS + (i/16)]|= j;
+			MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_PROXY_STATUS + (i/16)]|= j;
     }
 #else
 	j = 0x01 << (0 % 16);
   if(PQuery[0].status_bit==0)
-		MoxaDevice.wData4x[GWINF_PROXY_STATUS]&=~j;
+		MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_PROXY_STATUS]&=~j;
 		else
-		MoxaDevice.wData4x[GWINF_PROXY_STATUS]|= j;
+		MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_PROXY_STATUS]|= j;
 
 	j = 0x01 << (1 % 16);
   if(VSlave[0].status_bit==0)
-		MoxaDevice.wData4x[GWINF_PROXY_STATUS]&=~j;
+		MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_PROXY_STATUS]&=~j;
 		else
-		MoxaDevice.wData4x[GWINF_PROXY_STATUS]|= j;
+		MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_PROXY_STATUS]|= j;
 
 	j = 0x01 << (4 % 16);
   if(PQuery[1].status_bit==0)
-		MoxaDevice.wData4x[GWINF_PROXY_STATUS]&=~j;
+		MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_PROXY_STATUS]&=~j;
 		else
-		MoxaDevice.wData4x[GWINF_PROXY_STATUS]|= j;
+		MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_PROXY_STATUS]|= j;
 
 	j = 0x01 << (5 % 16);
   if(VSlave[1].status_bit==0)
-		MoxaDevice.wData4x[GWINF_PROXY_STATUS]&=~j;
+		MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_PROXY_STATUS]&=~j;
 		else
-		MoxaDevice.wData4x[GWINF_PROXY_STATUS]|= j;
+		MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_PROXY_STATUS]|= j;
 
 #endif
 
   // регистр-счетчик циклов сканирования
-  MoxaDevice.wData4x[GWINF_SCAN_COUNTER] = Security.scan_counter/1000;
+  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_SCAN_COUNTER] = Security.scan_counter/1000;
 	
   // статистика TCP-соединений
-  MoxaDevice.wData4x[GWINF_CONSTAT_M7G + 0] = Security.accepted_connections_number;
-  MoxaDevice.wData4x[GWINF_CONSTAT_M7G + 1] = Security.current_connections_number;
-  MoxaDevice.wData4x[GWINF_CONSTAT_M7G + 2] = Security.rejected_connections_number;
+  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_CONSTAT_M7G + 0] = Security.accepted_connections_number;
+  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_CONSTAT_M7G + 1] = Security.current_connections_number;
+  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_CONSTAT_M7G + 2] = Security.rejected_connections_number;
   for(i=0; i<MAX_MOXA_PORTS; i++) {
-	  MoxaDevice.wData4x[GWINF_CONSTAT_RTU + 3*i] = IfaceRTU[i].Security.accepted_connections_number;
-	  MoxaDevice.wData4x[GWINF_CONSTAT_RTU + 3*i] = IfaceRTU[i].Security.current_connections_number;
-	  MoxaDevice.wData4x[GWINF_CONSTAT_RTU + 3*i] = IfaceRTU[i].Security.rejected_connections_number;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_CONSTAT_RTU + 3*i] = IfaceRTU[i].Security.accepted_connections_number;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_CONSTAT_RTU + 3*i] = IfaceRTU[i].Security.current_connections_number;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_CONSTAT_RTU + 3*i] = IfaceRTU[i].Security.rejected_connections_number;
     }
   
   // детальная статистика
@@ -570,60 +570,60 @@ int refresh_status_info()
   		default:;
   	  }
 
-  	if(MoxaDevice.wData4x[j]<=GATEWAY_P8)
-  	  stat=&IfaceRTU[MoxaDevice.wData4x[j]].stat;
+  	if(MoxaDevice.wData4x[MoxaDevice.status_info + j]<=GATEWAY_P8)
+  	  stat=&IfaceRTU[MoxaDevice.wData4x[MoxaDevice.status_info + j]].stat;
 
-  	if(MoxaDevice.wData4x[j]==GATEWAY_MOXAGATE)
+  	if(MoxaDevice.wData4x[MoxaDevice.status_info + j]==GATEWAY_MOXAGATE)
   	  stat=&Security.stat;
 
-  	if( (MoxaDevice.wData4x[j]>=GATEWAY_T01) &&
-  	    (MoxaDevice.wData4x[j]<=GATEWAY_T32)
-  	  ) stat=&IfaceTCP[MoxaDevice.wData4x[j] - GATEWAY_T01].stat;
+  	if( (MoxaDevice.wData4x[MoxaDevice.status_info + j]>=GATEWAY_T01) &&
+  	    (MoxaDevice.wData4x[MoxaDevice.status_info + j]<=GATEWAY_T32)
+  	  ) stat=&IfaceTCP[MoxaDevice.wData4x[MoxaDevice.status_info + j] - GATEWAY_T01].stat;
 
-  	if( (MoxaDevice.wData4x[j]>=100) &&
-  	    (MoxaDevice.wData4x[j]<=131)
-  	  ) stat=&Client[MoxaDevice.wData4x[j] - 100].stat;
+  	if( (MoxaDevice.wData4x[MoxaDevice.status_info + j]>=100) &&
+  	    (MoxaDevice.wData4x[MoxaDevice.status_info + j]<=131)
+  	  ) stat=&Client[MoxaDevice.wData4x[MoxaDevice.status_info + j] - 100].stat;
 
 		if(stat==NULL) continue;
 		j+=1;
 
-	  MoxaDevice.wData4x[j + 0] = stat->tcp_req_recv;
-	  MoxaDevice.wData4x[j + 1] = stat->tcp_req_adu;
-	  MoxaDevice.wData4x[j + 2] = stat->tcp_req_pdu;
-	  MoxaDevice.wData4x[j + 3] = stat->rtu_req_recv;
-	  MoxaDevice.wData4x[j + 4] = stat->rtu_req_crc;
-	  MoxaDevice.wData4x[j + 5] = stat->rtu_req_adu;
-	  MoxaDevice.wData4x[j + 6] = stat->rtu_req_pdu;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j + 0] = stat->tcp_req_recv;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j + 1] = stat->tcp_req_adu;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j + 2] = stat->tcp_req_pdu;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j + 3] = stat->rtu_req_recv;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j + 4] = stat->rtu_req_crc;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j + 5] = stat->rtu_req_adu;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j + 6] = stat->rtu_req_pdu;
 	
-	  MoxaDevice.wData4x[j + 7] = stat->frwd_proxy;
-	  MoxaDevice.wData4x[j + 8] = stat->frwd_atm;
-	  MoxaDevice.wData4x[j + 9] = stat->frwd_rtm;
-	  MoxaDevice.wData4x[j +10] = stat->frwd_queue_in;
-	  MoxaDevice.wData4x[j +11] = stat->frwd_queue_out;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j + 7] = stat->frwd_proxy;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j + 8] = stat->frwd_atm;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j + 9] = stat->frwd_rtm;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j +10] = stat->frwd_queue_in;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j +11] = stat->frwd_queue_out;
 	
-	  MoxaDevice.wData4x[j +12] = stat->rtu_req_send;
-	  MoxaDevice.wData4x[j +13] = stat->rtu_rsp_recv;
-	  MoxaDevice.wData4x[j +14] = stat->rtu_rsp_timeout;
-	  MoxaDevice.wData4x[j +15] = stat->rtu_rsp_crc;
-	  MoxaDevice.wData4x[j +16] = stat->rtu_rsp_adu;
-	  MoxaDevice.wData4x[j +17] = stat->rtu_rsp_pdu;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j +12] = stat->rtu_req_send;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j +13] = stat->rtu_rsp_recv;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j +14] = stat->rtu_rsp_timeout;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j +15] = stat->rtu_rsp_crc;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j +16] = stat->rtu_rsp_adu;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j +17] = stat->rtu_rsp_pdu;
 	
-	  MoxaDevice.wData4x[j +18] = stat->tcp_req_send;
-	  MoxaDevice.wData4x[j +19] = stat->tcp_rsp_recv;
-	  MoxaDevice.wData4x[j +20] = stat->tcp_rsp_timeout;
-	  MoxaDevice.wData4x[j +21] = stat->tcp_rsp_adu;
-	  MoxaDevice.wData4x[j +22] = stat->tcp_rsp_pdu;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j +18] = stat->tcp_req_send;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j +19] = stat->tcp_rsp_recv;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j +20] = stat->tcp_rsp_timeout;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j +21] = stat->tcp_rsp_adu;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j +22] = stat->tcp_rsp_pdu;
 	
-	  MoxaDevice.wData4x[j +23] = stat->frwd_rsp;
-	  MoxaDevice.wData4x[j +24] = stat->tcp_rsp_send;
-	  MoxaDevice.wData4x[j +25] = stat->rtu_rsp_send;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j +23] = stat->frwd_rsp;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j +24] = stat->tcp_rsp_send;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + j +25] = stat->rtu_rsp_send;
 
 		j-=1;
 	  
 		for(k=0; k<STAT_FUNC_AMOUNT; k++) {
-			MoxaDevice.wData4x[j + 3*k +32] = stat->func[k][STAT_RES_OK];
-			MoxaDevice.wData4x[j + 3*k +33] = stat->func[k][STAT_RES_ERR];
-			MoxaDevice.wData4x[j + 3*k +34] = stat->func[k][STAT_RES_EXP];
+			MoxaDevice.wData4x[MoxaDevice.status_info + j + 3*k +32] = stat->func[k][STAT_RES_OK];
+			MoxaDevice.wData4x[MoxaDevice.status_info + j + 3*k +33] = stat->func[k][STAT_RES_ERR];
+			MoxaDevice.wData4x[MoxaDevice.status_info + j + 3*k +34] = stat->func[k][STAT_RES_EXP];
 			}
 	  
     }
@@ -648,20 +648,20 @@ int refresh_status_info()
 ///-----------------------------------------------------------------------------------------------------------------
 int common_stat_to_gw4x(int index, GW_StaticData *src)
   {
-	MoxaDevice.wData4x[index + 0] = src->accepted;
-	MoxaDevice.wData4x[index + 1] = src->frwd_p;
-	MoxaDevice.wData4x[index + 2] = src->frwd_a;
-	MoxaDevice.wData4x[index + 3] = src->frwd_r;
-	MoxaDevice.wData4x[index + 4] = src->errors;
-	MoxaDevice.wData4x[index + 5] = src->sended;
+	MoxaDevice.wData4x[MoxaDevice.status_info + index + 0] = src->accepted;
+	MoxaDevice.wData4x[MoxaDevice.status_info + index + 1] = src->frwd_p;
+	MoxaDevice.wData4x[MoxaDevice.status_info + index + 2] = src->frwd_a;
+	MoxaDevice.wData4x[MoxaDevice.status_info + index + 3] = src->frwd_r;
+	MoxaDevice.wData4x[MoxaDevice.status_info + index + 4] = src->errors;
+	MoxaDevice.wData4x[MoxaDevice.status_info + index + 5] = src->sended;
 
-	MoxaDevice.wData4x[index + 6] = src->proc_time;
-	MoxaDevice.wData4x[index + 7] = src->proc_time_min;
-	MoxaDevice.wData4x[index + 8] = src->proc_time_max;
+	MoxaDevice.wData4x[MoxaDevice.status_info + index + 6] = src->proc_time;
+	MoxaDevice.wData4x[MoxaDevice.status_info + index + 7] = src->proc_time_min;
+	MoxaDevice.wData4x[MoxaDevice.status_info + index + 8] = src->proc_time_max;
 
-	MoxaDevice.wData4x[index + 9] = src->poll_time;
-	MoxaDevice.wData4x[index +10] = src->poll_time_min;
-	MoxaDevice.wData4x[index +11] = src->poll_time_max;
+	MoxaDevice.wData4x[MoxaDevice.status_info + index + 9] = src->poll_time;
+	MoxaDevice.wData4x[MoxaDevice.status_info + index +10] = src->poll_time_min;
+	MoxaDevice.wData4x[MoxaDevice.status_info + index +11] = src->poll_time_max;
 
 	return 0;
   }

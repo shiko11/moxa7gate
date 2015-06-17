@@ -18,7 +18,9 @@
 #include <unistd.h> /* POSIX Symbolic Constants */
 #include <errno.h>  /* Error definitions */
 
+#ifndef ARCHITECTURE_I386
 #include <moxadevice.h>
+#endif
 
 #include "modbus.h"
 
@@ -222,6 +224,9 @@ int open_comm(char *device,char *mode)
 //     if (_mb_rtu) printf( "%s open\n", device );
 #endif
 	//анализ параметра "интерфейс порта (режим)"
+
+#ifndef ARCHITECTURE_I386
+
 	if ( strcmp( mode, "RS232") == 0 ) {
 	itmp = RS232_MODE;
 	} else {
@@ -244,6 +249,8 @@ int open_comm(char *device,char *mode)
 		fprintf( stderr, "set mode failed\n");
 		exit(1);
 	}
+#endif
+
 	return (ttyfd);	
 }
 

@@ -66,7 +66,13 @@ int init_interfaces_h()
     // Serial Line
     iface->serial.fd=-1;
 
+#ifdef ARCHITECTURE_I386
+    sprintf(iface->serial.p_name, "/dev/ttyS%d", i);
+#else
     sprintf(iface->serial.p_name, "/dev/ttyM%d", i);
+#endif
+
+//  sprintf(iface->serial.p_name, "/dev/ttyM%d", i);
     strcpy (iface->serial.p_mode, "RS485_2w");
     strcpy (iface->serial.speed,  "9600");
     strcpy (iface->serial.parity, "none");

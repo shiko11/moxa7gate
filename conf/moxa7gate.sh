@@ -1,40 +1,35 @@
 #! /bin/sh
 #
 # MOXA7GATE MODBUS GATEWAY SOFTWARE VERSION 1.2
-# SEM-ENGINEERING, BRYANSK 2014
+# SEM-ENGINEERING, BRYANSK 2015
 #
-# OBJECT: œ ” À“Ã
-# LOCATION: ”—Œ 1
-# LABEL: A4
+# OBJECT: tsreg host
+# LOCATION: stend
+# LABEL: A
 #
 # THIS CONFIGURATION FILE GENERATED AUTOMATICALLY
-# AT 17.01.2014 15:27:06
-# VERSION 1.10
+# AT 17.06.2015 11:51:01
+# VERSION 1.1
 #
-# Device Model: EM1240
-# Network Name: EM1240
-# LAN1 Address: 192.168.3.127
-# LAN2 Address: 192.168.4.127
+# Device Model: MOXA UC-7410
+# Network Name: tsreg
+# LAN1 Address: 10.0.2.15
+# LAN2 Address: 10.0.3.15
 #
  
-/home/km400 \
---Object "œ ” À“Ã" \
---Location "”—Œ 1" \
---Label "A4" \
---NetworkName "EM1240" \
---LAN1Address "192.168.3.127" \
---LAN2Address "192.168.4.127" \
---VersionNumber "1.10" \
---VersionTime "17.01.2014 15:27:06" \
---Model "EM1240" \
+/root/moxa7gate_UC7410 \
+--Object "tsreg host" \
+--Location "stend" \
+--Label "A" \
+--NetworkName "tsreg" \
+--LAN1Address "10.0.2.15" \
+--LAN2Address "10.0.3.15" \
+--VersionNumber "1.1" \
+--VersionTime "17.06.2015 11:51:01" \
+--Model "MOXA UC-7410" \
 --tcp_port 502 \
---status_info 1 \
---show_sys_messages \
-PORT1 RS232 115200 EVEN 200 RTU_MASTER --desc "M340" \
-TCP01 192.168.3.252:502 1 0 200 0.0.0.0:502 --desc "M340" \
+--status_info 200 \
+TCP01 192.168.56.1:502 1 0 1000 0.0.0.0:502 --desc "MODSIM Ì‡ ÎÓÍ‡Î¸ÌÓÏ œ " \
 AT1 2560 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 \
-RT P1 1 HOLDING_REGISTER 1660 1680 59 --desc "CM" \
-RT T01 1 HOLDING_REGISTER 1660 1740 59 --desc "CM" \
-QT P1 1 HOLDING_REGISTER R 1560 59 1560 0 2 --desc "PLC" \
-QT T01 1 HOLDING_REGISTER R 1560 59 1620 20 2 --desc "PLC" \
+QT T01 1 HOLDING_REGISTER R 1 20 1 400 2 --desc "«‡‰‚ËÊÍ‡ π3" \
 &

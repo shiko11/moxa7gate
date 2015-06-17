@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 
 #include "main.h"
 
@@ -21,6 +22,14 @@
 //struct timezone tz;
 //unsigned int p_errors[MAX_MOXA_PORTS];
 struct sockaddr_in	addr;
+
+sig_atomic_t sigint_count = 0;
+void custom_sig_handler(int signal_number)
+  {
+  sigint_count++;
+  //printf("SIGINT received %d\n", sigint_count);
+  Security.halt = 1;
+  }
 
 ///=== MAIN_H private functions
 
@@ -53,6 +62,12 @@ int main(int argc, char *argv[])
 	pthread_t		moxaTH;
 
 	time_t curtime;
+
+  struct sigaction sa;
+  
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = &custom_sig_handler;
+  sigaction(SIGINT, &sa, NULL);
 
   init_moxagate_h();
   init_interfaces_h();

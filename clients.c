@@ -246,7 +246,7 @@ int gateway_common_processing()
 	struct sockaddr_in	addr;
   int i, j, P, T, csd, rc;
 
-	struct timeval tv;
+	struct timeval tv, tv_wait;
 	struct timezone tz;
 
 	int arg;
@@ -254,6 +254,9 @@ int gateway_common_processing()
 	FD_ZERO(&watchset);
 
 	while (1) {
+
+	  tv_wait.tv_sec=0; tv_wait.tv_usec=100000;
+		select(0, NULL, NULL, NULL, &tv_wait); // поток выполняется с периодом в 100 мс
 
 		gettimeofday(&tv, &tz);
 

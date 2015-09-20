@@ -182,10 +182,10 @@ int check_ProxyQuery_Entry(int index)
       (PQuery[index].length < MBF_0x02_MIN_QUANTITY) ||
       (PQuery[index].length > MBF_0x02_MAX_QUANTITY)
       )) return PQUERY_LENPACKET;
-  if( (PQuery[index].mbf==MBF_READ_HOLDING_REGISTERS) && (
-      (PQuery[index].length < MBF_0x03_MIN_QUANTITY) ||
-      (PQuery[index].length > MBF_0x03_MAX_QUANTITY)
-      )) return PQUERY_LENPACKET;
+//  if( (PQuery[index].mbf==MBF_READ_HOLDING_REGISTERS) && ( // для конфигурации TSC проверка работает не корректно
+//      (PQuery[index].length < MBF_0x03_MIN_QUANTITY) ||
+//      (PQuery[index].length > MBF_0x03_MAX_QUANTITY)
+//      )) return PQUERY_LENPACKET;
   if( (PQuery[index].mbf==MBF_READ_INPUT_REGISTERS) && (
       (PQuery[index].length < MBF_0x04_MIN_QUANTITY) ||
       (PQuery[index].length > MBF_0x04_MAX_QUANTITY)

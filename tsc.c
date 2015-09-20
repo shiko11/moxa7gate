@@ -34,7 +34,7 @@ int init_tsc_h(int port)
 
       // тест, ед. изм.
 //   	strcpy(metric, "metric1");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-//   	strcpy(tags  , " tagk=tagv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
+//   	strcpy(tags  , "tagk=tagv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
 //   	strcpy(HB_Param[i][0].metric, metric);
 //   	strcpy(HB_Param[i][0].tags  , tags  );
 //   	HB_Param[i][0].adc_min=0; HB_Param[i][0].adc_max=35;
@@ -44,435 +44,81 @@ int init_tsc_h(int port)
 
 //      // \2, \3
 //   	  strcpy(metric, "\8");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-//   	  strcpy(tags  , " \9"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
+//   	  strcpy(tags  , "\9"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
 //   	  strcpy(HB_Param[i][\1].metric, metric);
 //   	  strcpy(HB_Param[i][\1].tags  , tags  );
 //   	  HB_Param[i][\1].adc_min=\7; HB_Param[i][\1].adc_max=\6;
 //   	  HB_Param[i][\1].eng_min=\5; HB_Param[i][\1].eng_max=\4;
 
     case GATEWAY_T01:
-      // TT851, град. С, Температура воздуха в КТП
-   	  strcpy(metric, "temp");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=ktp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
+      // QT671, %, Регулятор давления №1 - положение регулирующего затвора
+   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
+   	  strcpy(tags  , "sys=im1"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
    	  strcpy(HB_Param[i][0].metric, metric);
    	  strcpy(HB_Param[i][0].tags  , tags  );
-   	  HB_Param[i][0].adc_min=0; HB_Param[i][0].adc_max=65535;
-   	  HB_Param[i][0].eng_min=-25.0; HB_Param[i][0].eng_max=50.0;
-      // TT852, град. С, Температура воздуха в щитовой КИП
-   	  strcpy(metric, "temp");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=schsu"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
+   	  HB_Param[i][0].adc_min=2400; HB_Param[i][0].adc_max=21600;
+   	  HB_Param[i][0].eng_min=-10.0; HB_Param[i][0].eng_max=110.0;
+
+      // QT672, %, Регулятор давления №2 - положение регулирующего затвора
+   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
+   	  strcpy(tags  , "sys=im2"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
    	  strcpy(HB_Param[i][1].metric, metric);
    	  strcpy(HB_Param[i][1].tags  , tags  );
-   	  HB_Param[i][1].adc_min=0; HB_Param[i][1].adc_max=65535;
-   	  HB_Param[i][1].eng_min=-25.0; HB_Param[i][1].eng_max=50.0;
-      // TT900, град. С, Температура воздуха в шкафу УСО11.1
-   	  strcpy(metric, "temp");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=uso11_1"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
+   	  HB_Param[i][1].adc_min=2400; HB_Param[i][1].adc_max=21600;
+   	  HB_Param[i][1].eng_min=-10.0; HB_Param[i][1].eng_max=110.0;
+
+      // FR671, Гц, Регулятор давления №1 - задание частоты на ПЧ ЭП
+   	  strcpy(metric, "frq");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
+   	  strcpy(tags  , "sys=im1"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
    	  strcpy(HB_Param[i][2].metric, metric);
    	  strcpy(HB_Param[i][2].tags  , tags  );
    	  HB_Param[i][2].adc_min=0; HB_Param[i][2].adc_max=65535;
-   	  HB_Param[i][2].eng_min=-50.0; HB_Param[i][2].eng_max=200.0;
-      // TT901, град. С, Температура воздуха в шкафу УСО11.2
-   	  strcpy(metric, "temp");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=uso11_2"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
+   	  HB_Param[i][2].eng_min=-50.0; HB_Param[i][2].eng_max=50.0;
+
+      // FR672, Гц, Регулятор давления №2 - задание частоты на ПЧ ЭП
+   	  strcpy(metric, "frq");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
+   	  strcpy(tags  , "sys=im2"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
    	  strcpy(HB_Param[i][3].metric, metric);
    	  strcpy(HB_Param[i][3].tags  , tags  );
    	  HB_Param[i][3].adc_min=0; HB_Param[i][3].adc_max=65535;
-   	  HB_Param[i][3].eng_min=-50.0; HB_Param[i][3].eng_max=180.0;
-      // TT902, град. С, Температура воздуха в шкафу УСО11.3
-   	  strcpy(metric, "temp");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=uso11_3"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
+   	  HB_Param[i][3].eng_min=-50.0; HB_Param[i][3].eng_max=50.0;
+
+      // PT003_1, МПа, Давление нефти до УРД
+   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
+   	  strcpy(tags  , "sys=bfr dp=cv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
    	  strcpy(HB_Param[i][4].metric, metric);
    	  strcpy(HB_Param[i][4].tags  , tags  );
-   	  HB_Param[i][4].adc_min=0; HB_Param[i][4].adc_max=65535;
-   	  HB_Param[i][4].eng_min=-50.0; HB_Param[i][4].eng_max=180.0;
-      // TT903, град. С, Температура воздуха в шкафу УСО11.4
-   	  strcpy(metric, "temp");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=uso11_4"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
+   	  HB_Param[i][4].adc_min=2400; HB_Param[i][4].adc_max=21600;
+   	  HB_Param[i][4].eng_min=-1.0; HB_Param[i][4].eng_max=11.0;
+
+      // PT005_1, МПа, Давление нефти после УРД
+   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
+   	  strcpy(tags  , "sys=aft dp=cv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
    	  strcpy(HB_Param[i][5].metric, metric);
    	  strcpy(HB_Param[i][5].tags  , tags  );
-   	  HB_Param[i][5].adc_min=0; HB_Param[i][5].adc_max=65535;
-   	  HB_Param[i][5].eng_min=-50.0; HB_Param[i][5].eng_max=200.0;
-      // FT679, куб.м./час, Расход через л.2 РД 10,11 (РР-9,10)
-   	  strcpy(metric, "flow");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rdab dp=cv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
+   	  HB_Param[i][5].adc_min=2400; HB_Param[i][5].adc_max=21600;
+   	  HB_Param[i][5].eng_min=-1.0; HB_Param[i][5].eng_max=11.0;
+
+      // PT003_2, МПа, Текущее значение уставки давления до УРД
+   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
+   	  strcpy(tags  , "sys=bfr dp=sp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
    	  strcpy(HB_Param[i][6].metric, metric);
    	  strcpy(HB_Param[i][6].tags  , tags  );
    	  HB_Param[i][6].adc_min=0; HB_Param[i][6].adc_max=65535;
-   	  HB_Param[i][6].eng_min=0.0; HB_Param[i][6].eng_max=2200.0;
-      // SPRDAB, куб.м./час, Уставка расхода для РД 10,11 (РР-9,10)
-   	  strcpy(metric, "flow");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rdab dp=sp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][7].metric, metric);
-   	  strcpy(HB_Param[i][7].tags  , tags  );
-   	  HB_Param[i][7].adc_min=0; HB_Param[i][7].adc_max=65535;
-   	  HB_Param[i][7].eng_min=0.0; HB_Param[i][7].eng_max=65535.0;
-      // QT_P9, %, Положение РД 10 (РР-9)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd10 dp=cv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][8].metric, metric);
-   	  strcpy(HB_Param[i][8].tags  , tags  );
-   	  HB_Param[i][8].adc_min=0; HB_Param[i][8].adc_max=65535;
-   	  HB_Param[i][8].eng_min=-12.5; HB_Param[i][8].eng_max=112.5;
-      // SPRDA, %, Задание положения РД 10 (РР-9)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd10 dp=sp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][9].metric, metric);
-   	  strcpy(HB_Param[i][9].tags  , tags  );
-   	  HB_Param[i][9].adc_min=0; HB_Param[i][9].adc_max=65535;
-   	  HB_Param[i][9].eng_min=0.0; HB_Param[i][9].eng_max=100.0;
-      // QT_P10, %, Положение РД 11 (РР-10)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd11 dp=cv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][10].metric, metric);
-   	  strcpy(HB_Param[i][10].tags  , tags  );
-   	  HB_Param[i][10].adc_min=0; HB_Param[i][10].adc_max=65535;
-   	  HB_Param[i][10].eng_min=-12.5; HB_Param[i][10].eng_max=112.5;
-      // SPRDB, %, Задание положения РД 11 (РР-10)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd11 dp=sp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][11].metric, metric);
-   	  strcpy(HB_Param[i][11].tags  , tags  );
-   	  HB_Param[i][11].adc_min=0; HB_Param[i][11].adc_max=65535;
-   	  HB_Param[i][11].eng_min=0.0; HB_Param[i][11].eng_max=100.0;
-      // PT675, кгс/см2, Давление на входе РД 10,11 (РР-9,10)
-   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rdab"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][12].metric, metric);
-   	  strcpy(HB_Param[i][12].tags  , tags  );
-   	  HB_Param[i][12].adc_min=0; HB_Param[i][12].adc_max=65535;
-   	  HB_Param[i][12].eng_min=-2.0; HB_Param[i][12].eng_max=57.2;
+   	  HB_Param[i][6].eng_min=0.0; HB_Param[i][6].eng_max=10.0;
+
     	break;
 
     case GATEWAY_T02:
-      // PT501, кгс/см2, Давление на выходе КПСОД_1 л.0 DN_1220 (нефть)
-   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=sod0 dp=out"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][0].metric, metric);
-   	  strcpy(HB_Param[i][0].tags  , tags  );
-   	  HB_Param[i][0].adc_min=0; HB_Param[i][0].adc_max=65535;
-   	  HB_Param[i][0].eng_min=-1.6; HB_Param[i][0].eng_max=10.0;
-      // PT502, кгс/см2, Давление на выходе КПСОД_2 л.9 DN_1020 (нефть)
-   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=sod9 dp=out"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][1].metric, metric);
-   	  strcpy(HB_Param[i][1].tags  , tags  );
-   	  HB_Param[i][1].adc_min=0; HB_Param[i][1].adc_max=65535;
-   	  HB_Param[i][1].eng_min=-1.6; HB_Param[i][1].eng_max=10.0;
-      // PT503, кгс/см2, Давление на выходе КПСОД_3 л.4 DN_820 (нефть)
-   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=sod4 dp=out"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][2].metric, metric);
-   	  strcpy(HB_Param[i][2].tags  , tags  );
-   	  HB_Param[i][2].adc_min=0; HB_Param[i][2].adc_max=65535;
-   	  HB_Param[i][2].eng_min=-1.6; HB_Param[i][2].eng_max=10.0;
-      // PT504, кгс/см2, Давление на выходе КПСОД_4 л.1 DN_630 (нефть)
-   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=sod1 dp=out"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][3].metric, metric);
-   	  strcpy(HB_Param[i][3].tags  , tags  );
-   	  HB_Param[i][3].adc_min=0; HB_Param[i][3].adc_max=65535;
-   	  HB_Param[i][3].eng_min=-1.6; HB_Param[i][3].eng_max=10.0;
-      // PT505, кгс/см2, Давление на выходе КПСОД_5 л.2 DN_630 (ДТ)
-   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=sod2 dp=out"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][4].metric, metric);
-   	  strcpy(HB_Param[i][4].tags  , tags  );
-   	  HB_Param[i][4].adc_min=0; HB_Param[i][4].adc_max=65535;
-   	  HB_Param[i][4].eng_min=-1.6; HB_Param[i][4].eng_max=10.0;
-      // PT506, кгс/см2, Давление на выходе КПСОД_6 л.7 DN_426 (мазут/ДТ)
-   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=sod7 dp=out"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][5].metric, metric);
-   	  strcpy(HB_Param[i][5].tags  , tags  );
-   	  HB_Param[i][5].adc_min=0; HB_Param[i][5].adc_max=65535;
-   	  HB_Param[i][5].eng_min=-1.6; HB_Param[i][5].eng_max=10.0;
-      // PT507, кгс/см2, Давление в КПСОД_1 л.0 DN_1220 (нефть)
-   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=sod0 dp=in"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][6].metric, metric);
-   	  strcpy(HB_Param[i][6].tags  , tags  );
-   	  HB_Param[i][6].adc_min=0; HB_Param[i][6].adc_max=65535;
-   	  HB_Param[i][6].eng_min=-1.0; HB_Param[i][6].eng_max=16.0;
-      // PT508, кгс/см2, Давление в КПСОД_2 л.9 DN_1020 (нефть)
-   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=sod9 dp=in"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][7].metric, metric);
-   	  strcpy(HB_Param[i][7].tags  , tags  );
-   	  HB_Param[i][7].adc_min=0; HB_Param[i][7].adc_max=65535;
-   	  HB_Param[i][7].eng_min=-1.0; HB_Param[i][7].eng_max=16.0;
-      // PT509, кгс/см2, Давление в КПСОД_3 л.4 DN_820 (нефть)
-   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=sod4 dp=in"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][8].metric, metric);
-   	  strcpy(HB_Param[i][8].tags  , tags  );
-   	  HB_Param[i][8].adc_min=0; HB_Param[i][8].adc_max=65535;
-   	  HB_Param[i][8].eng_min=-1.0; HB_Param[i][8].eng_max=16.0;
-      // PT510, кгс/см2, Давление в КПСОД_4 л.1 DN_630 (нефть)
-   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=sod1 dp=in"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][9].metric, metric);
-   	  strcpy(HB_Param[i][9].tags  , tags  );
-   	  HB_Param[i][9].adc_min=0; HB_Param[i][9].adc_max=65535;
-   	  HB_Param[i][9].eng_min=-1.0; HB_Param[i][9].eng_max=16.0;
-      // PT511, кгс/см2, Давление в КПСОД_5 л.2 DN_630 (ДТ)
-   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=sod2 dp=in"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][10].metric, metric);
-   	  strcpy(HB_Param[i][10].tags  , tags  );
-   	  HB_Param[i][10].adc_min=0; HB_Param[i][10].adc_max=65535;
-   	  HB_Param[i][10].eng_min=-1.0; HB_Param[i][10].eng_max=16.0;
-      // PT512, кгс/см2, Давление в КПСОД_6 л.7 DN_426 (мазут/ДТ)
-   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=sod7 dp=in"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][11].metric, metric);
-   	  strcpy(HB_Param[i][11].tags  , tags  );
-   	  HB_Param[i][11].adc_min=0; HB_Param[i][11].adc_max=65535;
-   	  HB_Param[i][11].eng_min=-1.0; HB_Param[i][11].eng_max=16.0;
-      // QT901, % НКПР, Загазованность на площадке входа в тоннель
-   	  strcpy(metric, "gaz");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=sp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][12].metric, metric);
-   	  strcpy(HB_Param[i][12].tags  , tags  );
-   	  HB_Param[i][12].adc_min=0; HB_Param[i][12].adc_max=65535;
-   	  HB_Param[i][12].eng_min=-5.0; HB_Param[i][12].eng_max=105.0;
-      // LT651, мм, Уровень в емкости ЕП-25 (нефть)
-   	  strcpy(metric, "level");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=ep25"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][13].metric, metric);
-   	  strcpy(HB_Param[i][13].tags  , tags  );
-   	  HB_Param[i][13].adc_min=0; HB_Param[i][13].adc_max=65535;
-   	  HB_Param[i][13].eng_min=0.0; HB_Param[i][13].eng_max=3355.0;
-      // LT652, мм, Уровень в емкости ЕП-16 (ДТ)
-   	  strcpy(metric, "level");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=ep16"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][14].metric, metric);
-   	  strcpy(HB_Param[i][14].tags  , tags  );
-   	  HB_Param[i][14].adc_min=0; HB_Param[i][14].adc_max=65535;
-   	  HB_Param[i][14].eng_min=0.0; HB_Param[i][14].eng_max=3355.0;
-      // LT653, мм, Уровень в емкости ЕП-40 (нефть)
-   	  strcpy(metric, "level");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=ep40"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][15].metric, metric);
-   	  strcpy(HB_Param[i][15].tags  , tags  );
-   	  HB_Param[i][15].adc_min=0; HB_Param[i][15].adc_max=65535;
-   	  HB_Param[i][15].eng_min=0.0; HB_Param[i][15].eng_max=3605.0;
+    	return 1;
     	break;
 
     case GATEWAY_T03:
-      // FT671, куб.м./час, Расход через л.0 РД 7,6 (РР-1,2)
-   	  strcpy(metric, "flow");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd67 dp=cv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][0].metric, metric);
-   	  strcpy(HB_Param[i][0].tags  , tags  );
-   	  HB_Param[i][0].adc_min=0; HB_Param[i][0].adc_max=65535;
-   	  HB_Param[i][0].eng_min=0.0; HB_Param[i][0].eng_max=13500.0;
-      // SPRD67, куб.м./час, Уставка расхода для РД 7,6 (РР-1,2)
-   	  strcpy(metric, "flow");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd67 dp=sp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][1].metric, metric);
-   	  strcpy(HB_Param[i][1].tags  , tags  );
-   	  HB_Param[i][1].adc_min=0; HB_Param[i][1].adc_max=65535;
-   	  HB_Param[i][1].eng_min=0.0; HB_Param[i][1].eng_max=65535.0;
-      // QT_P1, %, Положение РД 7 (РР-1)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd7 dp=cv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][2].metric, metric);
-   	  strcpy(HB_Param[i][2].tags  , tags  );
-   	  HB_Param[i][2].adc_min=0; HB_Param[i][2].adc_max=65535;
-   	  HB_Param[i][2].eng_min=-12.5; HB_Param[i][2].eng_max=112.5;
-      // SPRD7, %, Задание положения РД 7 (РР-1)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd7 dp=sp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][3].metric, metric);
-   	  strcpy(HB_Param[i][3].tags  , tags  );
-   	  HB_Param[i][3].adc_min=0; HB_Param[i][3].adc_max=65535;
-   	  HB_Param[i][3].eng_min=0.0; HB_Param[i][3].eng_max=100.0;
-      // QT_P2, %, Положение РД 6 (РР-2)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd6 dp=cv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][4].metric, metric);
-   	  strcpy(HB_Param[i][4].tags  , tags  );
-   	  HB_Param[i][4].adc_min=0; HB_Param[i][4].adc_max=65535;
-   	  HB_Param[i][4].eng_min=-12.5; HB_Param[i][4].eng_max=112.5;
-      // SPRD6, %, Задание положения РД 6 (РР-2)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd6 dp=sp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][5].metric, metric);
-   	  strcpy(HB_Param[i][5].tags  , tags  );
-   	  HB_Param[i][5].adc_min=0; HB_Param[i][5].adc_max=65535;
-   	  HB_Param[i][5].eng_min=0.0; HB_Param[i][5].eng_max=100.0;
-      // PT671, кгс/см2, Давление на входе РД 7,6 (РР-1,2)
-   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd67"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][6].metric, metric);
-   	  strcpy(HB_Param[i][6].tags  , tags  );
-   	  HB_Param[i][6].adc_min=0; HB_Param[i][6].adc_max=65535;
-   	  HB_Param[i][6].eng_min=-2.0; HB_Param[i][6].eng_max=57.2;
-      // FT673, куб.м./час, Расход через л.8 РД 5,4 (РР-3,4)
-   	  strcpy(metric, "flow");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd45 dp=cv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][7].metric, metric);
-   	  strcpy(HB_Param[i][7].tags  , tags  );
-   	  HB_Param[i][7].adc_min=0; HB_Param[i][7].adc_max=65535;
-   	  HB_Param[i][7].eng_min=0.0; HB_Param[i][7].eng_max=8300.0;
-      // SPRD45, куб.м./час, Уставка расхода для РД 5,4 (РР-3,4)
-   	  strcpy(metric, "flow");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd45 dp=sp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][8].metric, metric);
-   	  strcpy(HB_Param[i][8].tags  , tags  );
-   	  HB_Param[i][8].adc_min=0; HB_Param[i][8].adc_max=65535;
-   	  HB_Param[i][8].eng_min=0.0; HB_Param[i][8].eng_max=65535.0;
-      // QT_P3, %, Положение РД 5 (РР-3)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd5 dp=cv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][9].metric, metric);
-   	  strcpy(HB_Param[i][9].tags  , tags  );
-   	  HB_Param[i][9].adc_min=0; HB_Param[i][9].adc_max=65535;
-   	  HB_Param[i][9].eng_min=-12.5; HB_Param[i][9].eng_max=112.5;
-      // SPRD5, %, Задание положения РД 5 (РР-3)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd5 dp=sp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][10].metric, metric);
-   	  strcpy(HB_Param[i][10].tags  , tags  );
-   	  HB_Param[i][10].adc_min=0; HB_Param[i][10].adc_max=65535;
-   	  HB_Param[i][10].eng_min=0.0; HB_Param[i][10].eng_max=100.0;
-      // QT_P4, %, Положение РД 4 (РР-4)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd4 dp=cv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][11].metric, metric);
-   	  strcpy(HB_Param[i][11].tags  , tags  );
-   	  HB_Param[i][11].adc_min=0; HB_Param[i][11].adc_max=65535;
-   	  HB_Param[i][11].eng_min=-12.5; HB_Param[i][11].eng_max=112.5;
-      // SPRD4, %, Задание положения РД 4 (РР-4)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd4 dp=sp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][12].metric, metric);
-   	  strcpy(HB_Param[i][12].tags  , tags  );
-   	  HB_Param[i][12].adc_min=0; HB_Param[i][12].adc_max=65535;
-   	  HB_Param[i][12].eng_min=0.0; HB_Param[i][12].eng_max=100.0;
-      // PT672, кгс/см2, Давление на входе РД 5,4 (РР-3,4)
-   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd45"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][13].metric, metric);
-   	  strcpy(HB_Param[i][13].tags  , tags  );
-   	  HB_Param[i][13].adc_min=0; HB_Param[i][13].adc_max=65535;
-   	  HB_Param[i][13].eng_min=-2.0; HB_Param[i][13].eng_max=57.2;
-      // FT672, куб.м./час, Расход через л.3 РД 7,6 или РД 5,4
-   	  strcpy(metric, "flow");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=line3 dp=cv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][14].metric, metric);
-   	  strcpy(HB_Param[i][14].tags  , tags  );
-   	  HB_Param[i][14].adc_min=0; HB_Param[i][14].adc_max=65535;
-   	  HB_Param[i][14].eng_min=0.0; HB_Param[i][14].eng_max=5000.0;
-      // , куб.м./час, Уставка расхода через л.3 РД 7,6 или РД 5,4
-   	  strcpy(metric, "flow");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=line3 dp=sp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][15].metric, metric);
-   	  strcpy(HB_Param[i][15].tags  , tags  );
-   	  HB_Param[i][15].adc_min=0; HB_Param[i][15].adc_max=65535;
-   	  HB_Param[i][15].eng_min=0.0; HB_Param[i][15].eng_max=65535.0;
+    	return 1;
     	break;
 
     case GATEWAY_T04:
-      // FT675, куб.м./час, Расход через л.4 РД 3,2 (РР-5,6)
-   	  strcpy(metric, "flow");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd23 dp=cv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][0].metric, metric);
-   	  strcpy(HB_Param[i][0].tags  , tags  );
-   	  HB_Param[i][0].adc_min=0; HB_Param[i][0].adc_max=65535;
-   	  HB_Param[i][0].eng_min=0.0; HB_Param[i][0].eng_max=3000.0;
-      // SPRD23, куб.м./час, Уставка расхода для РД 3,2 (РР-5,6)
-   	  strcpy(metric, "flow");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd23 dp=sp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][1].metric, metric);
-   	  strcpy(HB_Param[i][1].tags  , tags  );
-   	  HB_Param[i][1].adc_min=0; HB_Param[i][1].adc_max=65535;
-   	  HB_Param[i][1].eng_min=0.0; HB_Param[i][1].eng_max=65535.0;
-      // QT_P5, %, Положение РД 3 (РР-5)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd3 dp=cv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][2].metric, metric);
-   	  strcpy(HB_Param[i][2].tags  , tags  );
-   	  HB_Param[i][2].adc_min=0; HB_Param[i][2].adc_max=65535;
-   	  HB_Param[i][2].eng_min=-12.5; HB_Param[i][2].eng_max=112.5;
-      // SPRD3, %, Задание положения РД 3 (РР-5)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd3 dp=sp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][3].metric, metric);
-   	  strcpy(HB_Param[i][3].tags  , tags  );
-   	  HB_Param[i][3].adc_min=0; HB_Param[i][3].adc_max=65535;
-   	  HB_Param[i][3].eng_min=0.0; HB_Param[i][3].eng_max=100.0;
-      // QT_P6, %, Положение РД 2 (РР-6)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd2 dp=cv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][4].metric, metric);
-   	  strcpy(HB_Param[i][4].tags  , tags  );
-   	  HB_Param[i][4].adc_min=0; HB_Param[i][4].adc_max=65535;
-   	  HB_Param[i][4].eng_min=-12.5; HB_Param[i][4].eng_max=112.5;
-      // SPRD2, %, Задание положения РД 2 (РР-6)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd2 dp=sp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][5].metric, metric);
-   	  strcpy(HB_Param[i][5].tags  , tags  );
-   	  HB_Param[i][5].adc_min=0; HB_Param[i][5].adc_max=65535;
-   	  HB_Param[i][5].eng_min=0.0; HB_Param[i][5].eng_max=100.0;
-      // PT673, кгс/см2, Давление на входе РД 3,2 (РР-5,6)
-   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd23"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][6].metric, metric);
-   	  strcpy(HB_Param[i][6].tags  , tags  );
-   	  HB_Param[i][6].adc_min=0; HB_Param[i][6].adc_max=65535;
-   	  HB_Param[i][6].eng_min=-2.0; HB_Param[i][6].eng_max=57.2;
-      // FT677, куб.м./час, Расход через л.1 РД 8,9 (РР-7,8)
-   	  strcpy(metric, "flow");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd89 dp=cv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][7].metric, metric);
-   	  strcpy(HB_Param[i][7].tags  , tags  );
-   	  HB_Param[i][7].adc_min=0; HB_Param[i][7].adc_max=65535;
-   	  HB_Param[i][7].eng_min=0.0; HB_Param[i][7].eng_max=2700.0;
-      // SPRD89, куб.м./час, Уставка расхода для РД 8,9 (РР-7,8)
-   	  strcpy(metric, "flow");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd89 dp=sp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][8].metric, metric);
-   	  strcpy(HB_Param[i][8].tags  , tags  );
-   	  HB_Param[i][8].adc_min=0; HB_Param[i][8].adc_max=65535;
-   	  HB_Param[i][8].eng_min=0.0; HB_Param[i][8].eng_max=65535.0;
-      // QT_P7, %, Положение РД 8 (РР-7)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd8 dp=cv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][9].metric, metric);
-   	  strcpy(HB_Param[i][9].tags  , tags  );
-   	  HB_Param[i][9].adc_min=0; HB_Param[i][9].adc_max=65535;
-   	  HB_Param[i][9].eng_min=-12.5; HB_Param[i][9].eng_max=112.5;
-      // SPRD8, %, Задание положения РД 8 (РР-7)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd8 dp=sp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][10].metric, metric);
-   	  strcpy(HB_Param[i][10].tags  , tags  );
-   	  HB_Param[i][10].adc_min=0; HB_Param[i][10].adc_max=65535;
-   	  HB_Param[i][10].eng_min=0.0; HB_Param[i][10].eng_max=100.0;
-      // QT_P8, %, Положение РД 9 (РР-8)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd9 dp=cv"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][11].metric, metric);
-   	  strcpy(HB_Param[i][11].tags  , tags  );
-   	  HB_Param[i][11].adc_min=0; HB_Param[i][11].adc_max=65535;
-   	  HB_Param[i][11].eng_min=-12.5; HB_Param[i][11].eng_max=112.5;
-      // SPRD9, %, Задание положения РД 9 (РР-8)
-   	  strcpy(metric, "pos");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd9 dp=sp"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][12].metric, metric);
-   	  strcpy(HB_Param[i][12].tags  , tags  );
-   	  HB_Param[i][12].adc_min=0; HB_Param[i][12].adc_max=65535;
-   	  HB_Param[i][12].eng_min=0.0; HB_Param[i][12].eng_max=100.0;
-      // PT674, кгс/см2, Давление на входе РД 8,9 (РР-7,8)
-   	  strcpy(metric, "pres");    if(strlen(metric)>(HAGENT_METRIC_LEN-1)) return 2;
-   	  strcpy(tags  , " node=rd89"); if(strlen(tags)  >(HAGENT_TAGS_LEN  -1)) return 3;
-   	  strcpy(HB_Param[i][13].metric, metric);
-   	  strcpy(HB_Param[i][13].tags  , tags  );
-   	  HB_Param[i][13].adc_min=0; HB_Param[i][13].adc_max=65535;
-   	  HB_Param[i][13].eng_min=-2.0; HB_Param[i][13].eng_max=57.2;
+    	return 1;
     	break;
 										
     default:;

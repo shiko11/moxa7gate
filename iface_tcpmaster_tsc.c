@@ -443,15 +443,23 @@ void *iface_tcp_master(void *arg)
            sprintf(prmtms, "%d%d", rcv_eip[i].tv.tv_sec, (rcv_eip[i].tv.tv_usec + 500) / 1000);
       else sprintf(prmtms, "%d",   rcv_eip[i].tv.tv_sec);
 
-  	for(j=0; j<lclhdr.prmnum; j++)
+  	for(j=0; j<lclhdr.prmnum; j++) {
+
+//      printf("prm %d, adc %d, min %d, max %d, fault %4.4X\n", j,
+//  		   rcv_eip[i].prm[j],
+//  		   HB_Param[port_id-GATEWAY_T01][j].adc_min,
+//  		   HB_Param[port_id-GATEWAY_T01][j].adc_max,
+//  		   (lclhdr.fault & (1 << j)));
+
   		if(rcv_eip[i].prm[j] >= HB_Param[port_id-GATEWAY_T01][j].adc_min &&   // если достоверен код АЦП и
   		   rcv_eip[i].prm[j] <= HB_Param[port_id-GATEWAY_T01][j].adc_max &&   // установлен бит достоверности
   		   (lclhdr.fault & (1 << j)) == 0                                 ) { // в заголовке буфера истории
 
   		  // вычисляется значение наблюдаемого параметра в инженерных единицах измерения
-  		  prmval = HB_Param[port_id-GATEWAY_T01][j].eng_min + rcv_eip[i].prm[j] *
-  		           (HB_Param[port_id-GATEWAY_T01][j].eng_max - HB_Param[port_id-GATEWAY_T01][j].eng_min) /
-  		           (HB_Param[port_id-GATEWAY_T01][j].adc_max - HB_Param[port_id-GATEWAY_T01][j].adc_min) ;
+  		  prmval = HB_Param[port_id-GATEWAY_T01][j].eng_min + 
+  		          (rcv_eip[i].prm[j]                        - HB_Param[port_id-GATEWAY_T01][j].adc_min) *
+  		          (HB_Param[port_id-GATEWAY_T01][j].eng_max - HB_Param[port_id-GATEWAY_T01][j].eng_min) /
+  		          (HB_Param[port_id-GATEWAY_T01][j].adc_max - HB_Param[port_id-GATEWAY_T01][j].adc_min) ;
 
 //    	  printf("%s:%2.2f, ", HB_Param[port_id-GATEWAY_T01][j].metric, prmval);
 
@@ -480,6 +488,7 @@ void *iface_tcp_master(void *arg)
         	         MoxaDevice.wData4x[PQuery[Q].offset + HAGENT_HEADER_LEN + 27]++; // параметр истории не достоверен
 //        	printf("%s:  NaN, ", HB_Param[port_id-GATEWAY_T01][j].metric);
           }
+      }
 //    printf("\n");
     } // цикл по блокам ЕИП
 

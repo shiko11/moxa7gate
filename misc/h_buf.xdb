@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<FBExchangeFile>
+	<fileHeader company="Schneider Automation" product="Unity Pro XL V11.1 - 160831F" dateTime="date_and_time#2018-12-24-14:20:27" content="Function Block source file" DTDVersion="41"></fileHeader>
+	<contentHeader name="A4_KS_SHES_SMNP" version="0.0.97" dateTime="date_and_time#2018-11-29-17:19:14"></contentHeader>
+	<FBSource nameOfFBType="H_BUF" version="0.04" dateTime="dt#2015-09-25-15:57:42">
+		<comment>SEM History Buffer</comment>
+		<attribute name="TypeCodeCheckSumString" value="B083"></attribute>
+		<attribute name="TypeSignatureCheckSumString" value="EA6B"></attribute>
+		<inputParameters>
+			<variables name="ilStart" typeName="BOOL">
+				<attribute name="PositionPin" value="1"></attribute>
+			</variables>
+			<variables name="ilTmrRdy" typeName="BOOL">
+				<attribute name="PositionPin" value="2"></attribute>
+			</variables>
+			<variables name="ilMSPrec" typeName="BOOL">
+				<attribute name="PositionPin" value="3"></attribute>
+			</variables>
+			<variables name="iuPeriod" typeName="UINT">
+				<attribute name="PositionPin" value="4"></attribute>
+			</variables>
+			<variables name="iuPrmNum" typeName="UINT">
+				<attribute name="PositionPin" value="5"></attribute>
+			</variables>
+			<variables name="iwGroup1" typeName="WORD">
+				<attribute name="PositionPin" value="6"></attribute>
+			</variables>
+			<variables name="iwGroup2" typeName="WORD">
+				<attribute name="PositionPin" value="7"></attribute>
+			</variables>
+			<variables name="iaParams" typeName="ARRAY[1..32] OF UINT">
+				<attribute name="PositionPin" value="8"></attribute>
+			</variables>
+			<variables name="iwFault1" typeName="WORD">
+				<attribute name="PositionPin" value="9"></attribute>
+			</variables>
+			<variables name="iwFault2" typeName="WORD">
+				<attribute name="PositionPin" value="10"></attribute>
+			</variables>
+			<variables name="iuBufAdr" typeName="UINT">
+				<attribute name="PositionPin" value="11"></attribute>
+			</variables>
+			<variables name="iuBufLen" typeName="UINT">
+				<attribute name="PositionPin" value="12"></attribute>
+			</variables>
+			<variables name="iuTMms" typeName="UINT">
+				<attribute name="PositionPin" value="13"></attribute>
+			</variables>
+			<variables name="iwTMsec" typeName="WORD">
+				<attribute name="PositionPin" value="14"></attribute>
+			</variables>
+			<variables name="iwHdrLo" typeName="WORD">
+				<attribute name="PositionPin" value="15"></attribute>
+			</variables>
+			<variables name="iwHdrHi" typeName="WORD">
+				<attribute name="PositionPin" value="16"></attribute>
+			</variables>
+		</inputParameters>
+		<outputParameters>
+			<variables name="olRun" typeName="BOOL">
+				<attribute name="PositionPin" value="1"></attribute>
+			</variables>
+			<variables name="ouHeader" typeName="UINT">
+				<attribute name="PositionPin" value="2"></attribute>
+			</variables>
+			<variables name="ouCycles" typeName="UINT">
+				<attribute name="PositionPin" value="3"></attribute>
+			</variables>
+			<variables name="ouRunCnt" typeName="UINT">
+				<attribute name="PositionPin" value="4"></attribute>
+			</variables>
+		</outputParameters>
+		<privateLocalVariables>
+			<variables name="i" typeName="UINT"></variables>
+			<variables name="vdCurrTime" typeName="DINT"></variables>
+			<variables name="vdPrevTime" typeName="DINT"></variables>
+			<variables name="vdScanTime" typeName="DINT"></variables>
+			<variables name="vdTimer" typeName="DINT"></variables>
+			<variables name="vlFirstScan" typeName="BOOL"></variables>
+			<variables name="vlRunning" typeName="BOOL"></variables>
+			<variables name="vlRunningOld" typeName="BOOL"></variables>
+			<variables name="vlTimerDone" typeName="BOOL"></variables>
+			<variables name="vuAddr" typeName="UINT"></variables>
+			<variables name="vuBufLen" typeName="UINT"></variables>
+			<variables name="vuCyclCnt" typeName="UINT"></variables>
+			<variables name="vuHeader" typeName="UINT"></variables>
+			<variables name="vuRunCnt" typeName="UINT"></variables>
+			<variables name="vuBackup" typeName="UINT"></variables>
+			<variables name="vdPeriod" typeName="DINT">
+				<variableInit value="0"></variableInit>
+			</variables>
+		</privateLocalVariables>
+		<FBProgram name="Main">
+			<STSource>(******************************************************************************************************)
+(* Название модулЯ (блока) : H_BUF (SEM History Buffer)                                               *)
+(*                                                                                                    *)
+(*----------------------------------------------------------------------------------------------------*)
+(*                                                                                                    *)
+(* Описание работы модулЯ :                                                                           *)
+(* Модуль выполнЯет запись в адресуемый 4X-буфер памЯти значений параметров, предназначенных длЯ      *)
+(* сохранениЯ в базе данных истории длЯ последующего анализа и просмотра в виде трендов.              *)
+(*                                                                                                    *)
+(******************************************************************************************************)
+(*----------------------------------------------------------------------------------------------------*)
+
+vdCurrTime := FREERUN();
+vdScanTime := vdCurrTime - vdPrevTime; (* ОПРЕДЕЛЕНИЕ ДЛИТЕЛЬНОСТИ ЦИКЛА СКАНИРОВАНИЯ В МИКРОСЕКУНДАХ *)
+vdPrevTime := vdCurrTime;
+
+IF ilStart AND ilTmrRdy AND NOT vlFirstScan THEN (* РАБОТА АЛГОРИТМА ЗАПИСИ ЗНАЧЕНИЙ ЕИП В БУФЕР ИСТОРИИ РАЗРЕШЕНА *)
+    IF vdTimer &gt; vdScanTime THEN vdTimer := vdTimer - vdScanTime; vlTimerDone := FALSE;         (* ТАЙМЕР В РАБОТЕ *)
+                            ELSE vdTimer :=                    0; vlTimerDone :=  TRUE; END_IF; (* ТАЙМЕР СРАБОТАЛ *)
+    IF vdTimer = 0 OR vdTimer &gt; vdPeriod THEN (* ТАЙМЕР ОСТАНОВЛЕН, ПЕРЕЗАПУСК *)
+        IF ilMSPrec THEN vdTimer := 1000    * UINT_TO_DINT(iuPeriod);         (* МИЛИСЕКУНДНАЯ ТОЧНОСТЬ *)
+                    ELSE vdTimer := 1000000 * UINT_TO_DINT(iuPeriod); END_IF; (*     СЕКУНДНАЯ ТОЧНОСТЬ *)
+        vdPeriod := vdTimer;
+    END_IF;
+ELSE (* ВЫПОЛНЯЕТСЯ ИНИЦИАЛИЗАЦИЯ ПЕРЕМЕННЫХ *)
+    vdTimer := 0;
+    vlTimerDone := FALSE;
+
+    vlRunning := FALSE;
+    vuHeader  := 0;
+    vuCyclCnt := 0;
+END_IF;
+
+(*----------------------------------------------------------------------*)
+
+IF vlTimerDone THEN (* ТАЙМЕР СРАБОТАЛ *)
+
+    (* ЗАПИСЬ ОЧЕРЕДНОГО БЛОКА ЕДИНИЧНЫХ ИЗМЕРЕНИЙ ПАРАМЕТРОВ (ЕИП) *)
+    vuBufLen := (iuBufLen-8) / (iuPrmNum+1); (* РАЗМЕР БУФЕРА ИСТОРИИ В БЛОКАХ ЕИП *)
+    IF vuBufLen&gt;256 THEN vuBufLen := 256; END_IF; (* ОГРАНИЧЕНИЕ НА ЗНАЧЕНИЕ ПЕРЕМЕННОЙ vuHeader 0..255 *)
+    
+    vuAddr := iuBufAdr + vuHeader * (iuPrmNum+1) + 8; (* АДРЕС ПЕРВОГО РЕГИСТРА ТЕКУЩЕГО БЛОКА ЕИП *)
+
+    IF vuBufLen&gt;0 AND vuBufLen&lt;257            AND
+       iuPrmNum&gt;0 AND iuPrmNum&lt;33             AND
+       vuAddr&lt;=(iuBufAdr+iuBufLen-iuPrmNum-1) THEN (* НЕТ ОШИБКИ В КОНФИГУРАЦИИ *)
+
+        (* МЕТКА ВРЕМЕНИ *)
+        IF ilMSPrec THEN PUT_4X(vuAddr, iuTMms );         (* МИЛИСЕКУНДНАЯ ТОЧНОСТЬ *)
+                    ELSE PUT_4X(vuAddr, iwTMsec); END_IF; (*     СЕКУНДНАЯ ТОЧНОСТЬ *)
+        
+        (* КОДЫ АЦП *)
+	vuBackup := GET_4X(vuAddr+iuPrmNum+1); (* Некорректная работа функции PUT4X: обнуляется следующий за записываемым регистр *)
+        FOR i:=1 TO iuPrmNum DO
+            PUT_4X(vuAddr + i, GET_4X(iaParams[i])); 
+        END_FOR;
+        PUT_4X(vuAddr+iuPrmNum+1, vuBackup); (* Некорректная работа функции PUT4X: обнуляется следующий за записываемым регистр *)
+
+        (* ИНКРЕМЕНТ УКАЗАТЕЛЯ НА ПЕРВЫЙ СВОБОДНЫЙ БЛОК ЕИП БУФЕРА ИСТОРИИ (ПОСЛЕДНИЙ ИЗ ВСЕХ ПЕРЕЗАПИСЫВАЕТСЯ) *)
+        vuHeader := vuHeader + 1;
+        IF vuHeader &gt;= vuBufLen THEN vuHeader := 0; vuCyclCnt := vuCyclCnt + 1; END_IF;
+
+        (* ОБНОВЛЕНИЕ ЗАГОЛОВКА БУФЕРА ИСТОРИИ *)
+        PUT_4X(iuBufAdr  , vuHeader);
+        PUT_4X(iuBufAdr+1, vuCyclCnt);
+        PUT_4X(iuBufAdr+2, iwHdrLo);
+        PUT_4X(iuBufAdr+3, iwHdrHi                           OR
+                           SHL(UINT_TO_WORD(iuPrmNum-1), 10) OR
+                           SHL(BOOL_TO_WORD(ilMSPrec  ), 15) );
+        PUT_4X(iuBufAdr+4, iwFault1);
+        PUT_4X(iuBufAdr+5, iwFault2);
+        PUT_4X(iuBufAdr+6, iwGroup1);
+        PUT_4X(iuBufAdr+7, iwGroup2);
+
+        vlRunning :=  TRUE;
+    ELSE    (* vuBufLen &lt;&gt; 0 *)
+        vlRunning := FALSE;
+        vuHeader := 0;
+    END_IF; (* vuBufLen &lt;&gt; 0 *)
+
+END_IF; (* vlTimerDone *)
+
+(*----------------------------------------------------------------------*)
+
+(* ПОДСЧЕТ КОЛИЧЕСТВА ПЕРЕЗАПУСКОВ АЛГОРИТМА ЗАПИСИ *)
+IF vlRunning &lt;&gt; vlRunningOld AND NOT vlRunningOld THEN
+    vuRunCnt := vuRunCnt + 1;
+END_IF;
+vlRunningOld := vlRunning;
+
+vlFirstScan := FALSE;
+
+olRun    := vlRunning;
+ouHeader := vuHeader;
+ouCycles := vuCyclCnt;
+ouRunCnt := vuRunCnt;
+</STSource>
+		</FBProgram>
+	</FBSource>
+</FBExchangeFile>

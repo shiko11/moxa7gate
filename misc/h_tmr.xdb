@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<FBExchangeFile>
+	<fileHeader company="Schneider Automation" product="Unity Pro XL V11.1 - 160831F" dateTime="date_and_time#2018-12-24-14:20:40" content="Function Block source file" DTDVersion="41"></fileHeader>
+	<contentHeader name="A4_KS_SHES_SMNP" version="0.0.97" dateTime="date_and_time#2018-11-29-17:19:14"></contentHeader>
+	<FBSource nameOfFBType="H_TMR" version="0.08" dateTime="dt#2017-07-13-15:09:40">
+		<comment>SEM History Timer</comment>
+		<attribute name="TypeCodeCheckSumString" value="38B1"></attribute>
+		<attribute name="TypeSignatureCheckSumString" value="C0BE"></attribute>
+		<inputParameters>
+			<variables name="ilStart" typeName="BOOL">
+				<attribute name="PositionPin" value="1"></attribute>
+			</variables>
+		</inputParameters>
+		<outputParameters>
+			<variables name="olReady" typeName="BOOL">
+				<attribute name="PositionPin" value="1"></attribute>
+			</variables>
+			<variables name="ouTMms" typeName="UINT">
+				<attribute name="PositionPin" value="2"></attribute>
+			</variables>
+			<variables name="owTMsec" typeName="WORD">
+				<attribute name="PositionPin" value="3"></attribute>
+			</variables>
+			<variables name="owHdrLo" typeName="WORD">
+				<attribute name="PositionPin" value="4"></attribute>
+			</variables>
+			<variables name="owHdrHi" typeName="WORD">
+				<attribute name="PositionPin" value="5"></attribute>
+			</variables>
+			<variables name="ouReInit" typeName="UINT">
+				<attribute name="PositionPin" value="6"></attribute>
+			</variables>
+			<variables name="ouReSync" typeName="UINT">
+				<attribute name="PositionPin" value="7"></attribute>
+			</variables>
+			<variables name="ouClkInc" typeName="UINT">
+				<attribute name="PositionPin" value="8"></attribute>
+			</variables>
+			<variables name="ouClkDec" typeName="UINT">
+				<attribute name="PositionPin" value="9"></attribute>
+			</variables>
+		</outputParameters>
+		<publicLocalVariables>
+			<variables name="vuNewSecTMms" typeName="UINT"></variables>
+		</publicLocalVariables>
+		<privateLocalVariables>
+			<variables name="vdCurrTime" typeName="DINT"></variables>
+			<variables name="vdMS" typeName="DINT"></variables>
+			<variables name="vdPrevTime" typeName="DINT"></variables>
+			<variables name="vdScanTime" typeName="DINT"></variables>
+			<variables name="vlFirstScan" typeName="BOOL">
+				<variableInit value="TRUE"></variableInit>
+			</variables>
+			<variables name="vlInitDone" typeName="BOOL">
+				<variableInit value="FALSE"></variableInit>
+			</variables>
+			<variables name="vlInitDoneSt1" typeName="BOOL">
+				<variableInit value="FALSE"></variableInit>
+			</variables>
+			<variables name="vlLclSecNew" typeName="BOOL"></variables>
+			<variables name="vlSysSecNew" typeName="BOOL"></variables>
+			<variables name="vlTimeMarkReady" typeName="BOOL">
+				<variableInit value="FALSE"></variableInit>
+			</variables>
+			<variables name="vlTmpBool1" typeName="BOOL"></variables>
+			<variables name="vlTmpBool2" typeName="BOOL"></variables>
+			<variables name="vlTrigFall" typeName="BOOL"></variables>
+			<variables name="vlTrigRise" typeName="BOOL"></variables>
+			<variables name="vuDay" typeName="UINT"></variables>
+			<variables name="vuHour" typeName="UINT"></variables>
+			<variables name="vuMin" typeName="UINT"></variables>
+			<variables name="vuMonth" typeName="UINT"></variables>
+			<variables name="vuReInitCnt" typeName="UINT">
+				<variableInit value="0"></variableInit>
+			</variables>
+			<variables name="vuReSyncCnt" typeName="UINT">
+				<variableInit value="0"></variableInit>
+			</variables>
+			<variables name="vuScanCounter" typeName="UINT">
+				<variableInit value="0"></variableInit>
+			</variables>
+			<variables name="vuSecCounter" typeName="UINT">
+				<variableInit value="0"></variableInit>
+			</variables>
+			<variables name="vuSecLcl" typeName="UINT"></variables>
+			<variables name="vuSecLclOld" typeName="UINT"></variables>
+			<variables name="vuSecSys" typeName="UINT"></variables>
+			<variables name="vuSecSysOld" typeName="UINT"></variables>
+			<variables name="vuTimeDecCnt" typeName="UINT">
+				<variableInit value="0"></variableInit>
+			</variables>
+			<variables name="vuTimeIncCnt" typeName="UINT">
+				<variableInit value="0"></variableInit>
+			</variables>
+			<variables name="vuYear" typeName="UINT"></variables>
+			<variables name="vwTmpWord1" typeName="WORD"></variables>
+			<variables name="vwTriggers" typeName="WORD">
+				<variableInit value="16#0000"></variableInit>
+			</variables>
+			<variables name="cd1K" typeName="DINT">
+				<variableInit value="1000"></variableInit>
+			</variables>
+			<variables name="cd1M" typeName="DINT">
+				<variableInit value="1000000"></variableInit>
+			</variables>
+			<variables name="vuSecSysCor" typeName="INT"></variables>
+			<variables name="vuSecLclCor" typeName="INT"></variables>
+		</privateLocalVariables>
+		<FBProgram name="Main">
+			<STSource>(******************************************************************************************************)
+(* Название модулЯ (блока) : H_TMR (SEM History Timer)                                                *)
+(*                                                                                                    *)
+(*----------------------------------------------------------------------------------------------------*)
+(*                                                                                                    *)
+(* Описание работы модулЯ :                                                                           *)
+(* Модуль выполнЯет привЯзку показаний милисекундного таймера контроллера к его системным часам       *)
+(*                                                                                                    *)
+(******************************************************************************************************)
+(*----------------------------------------------------------------------------------------------------*)
+(*--------------------------------------- Начало модулЯ ----------------------------------------------*)
+ 
+(* ПОЛУЧАЕМ АКТУАЛЬНОЕ ЗНАЧЕНИЕ СИСТЕМНОГО ВРЕМЕНИ * )
+vuYear  := GET_4X(TimeAdr + 2);
+vuMonth := GET_4X(TimeAdr + 0);
+vuDay   := GET_4X(TimeAdr + 1);
+vuHour  := GET_4X(TimeAdr + 3);
+vuMin   := GET_4X(TimeAdr + 4);
+vuSecSys:= GET_4X(TimeAdr + 5); *)
+
+(* ПОЛУЧЕНИЕ ЗНАЧЕНИЯ СИСТЕМНОГО ВРЕМЕНИ В НУЖНОМ ФОРМАТЕ *)
+vuYear  := INT_TO_UINT(BCD_TO_INT(BYTE_TO_INT(INT_TO_BYTE(    %SW53    ))));
+vuMonth := INT_TO_UINT(BCD_TO_INT(BYTE_TO_INT(INT_TO_BYTE(SHR(%SW52, 8)))));
+vuDay   := INT_TO_UINT(BCD_TO_INT(BYTE_TO_INT(INT_TO_BYTE(    %SW52    ))));
+vuHour  := INT_TO_UINT(BCD_TO_INT(BYTE_TO_INT(INT_TO_BYTE(SHR(%SW51, 8)))));
+vuMin   := INT_TO_UINT(BCD_TO_INT(BYTE_TO_INT(INT_TO_BYTE(    %SW51    ))));
+vuSecSys:= INT_TO_UINT(BCD_TO_INT(BYTE_TO_INT(INT_TO_BYTE(SHR(%SW50, 8)))));
+
+(* ТРИГГЕР ДЛЯ СИГНАЛА "НАСТУПИЛА НОВАЯ СИСТЕМНАЯ СЕКУНДА" *)
+vwTmpWord1 := 16#0001;                 (* БИТ ТРИГГЕРА    *)
+vlTmpBool1 := vuSecSys &lt;&gt; vuSecSysOld; (* СИГНАЛ ТРИГГЕРА *)
+vlTmpBool2 := (vwTriggers AND vwTmpWord1) &gt; 0;
+vlTrigRise := vlTmpBool1 AND NOT vlTmpBool2;
+vlTrigFall := vlTmpBool2 AND NOT vlTmpBool1;
+IF vlTmpBool1 THEN vwTriggers := vwTriggers      OR vwTmpWord1;
+              ELSE vwTriggers := vwTriggers AND NOT vwTmpWord1; END_IF;
+
+vlSysSecNew := vlTrigRise;
+
+(* ОБНОВЛЯЕМ ЛОКАЛЬНЫЙ СЧЕТЧИК МИКРОСЕКУНД *)
+vdCurrTime := FREERUN();
+vdScanTime := vdCurrTime - vdPrevTime;
+vdMS := vdMS + vdScanTime;
+
+(* ОБНОВЛЯЕМ ЛОКАЛЬНЫЙ СЧЕТЧИК СЕКУНД *)
+IF vdMS &gt;= cd1M THEN
+    vuSecLcl := (vuSecLcl + DINT_TO_UINT(vdMS/cd1M)) MOD 60;
+    vdMS := vdMS MOD cd1M;
+END_IF;
+
+(* ТРИГГЕР ДЛЯ СИГНАЛА "НАСТУПИЛА НОВАЯ ЛОКАЛЬНАЯ СЕКУНДА" *)
+vwTmpWord1 := 16#0002;                 (* БИТ    ТРИГГЕРА *)
+vlTmpBool1 := vuSecLcl &lt;&gt; vuSecLclOld; (* СИГНАЛ ТРИГГЕРА *)
+vlTmpBool2 := (vwTriggers AND vwTmpWord1) &gt; 0;
+vlTrigRise := vlTmpBool1 AND NOT vlTmpBool2;
+vlTrigFall := vlTmpBool2 AND NOT vlTmpBool1;
+IF vlTmpBool1 THEN vwTriggers := vwTriggers      OR vwTmpWord1;
+              ELSE vwTriggers := vwTriggers AND NOT vwTmpWord1; END_IF;
+
+vlLclSecNew := vlTrigRise;
+
+vlFirstScan := vlFirstScan OR NOT ilStart;
+
+IF NOT vlFirstScan THEN
+
+(* ####################################################################### *)
+
+    IF vlSysSecNew     AND (* НАСТУПИЛА НОВАЯ СИСТЕМНАЯ СЕКУНДА И *)
+       NOT vlInitDone THEN (* ИНИЦИАЛИЗАЦИЯ НЕ ВЫПОЛНЕНА          *)
+        vdMS     := 0;
+        vuSecLcl := vuSecSys;
+        vuReInitCnt := vuReInitCnt + 1;
+        vlInitDoneSt1 := TRUE;
+    END_IF;
+
+    IF vlInitDone THEN
+
+(* ----------------------------------------------------------------------- *)
+
+        (* ДЛИТЕЛЬНОСТЬ ЦИКЛА СКАНИРОВАНИЯ НЕ ДОЛЖНА ПРЕВЫШАТЬ 1000 МС *)
+
+        vuSecSysCor := UINT_TO_INT(vuSecSys);
+        vuSecLclCor := UINT_TO_INT(vuSecLcl);
+        IF vuSecSys =  0 AND vuSecLcl = 59 THEN vuSecSysCor := 60; END_IF;
+        IF vuSecSys = 59 AND vuSecLcl =  0 THEN vuSecLclCor := 60; END_IF;
+
+        IF (ABS(vuSecSysCor - vuSecLclCor) MOD 60) &lt;= 1 THEN
+
+            IF        vlSysSecNew  AND (* НАСТУПИЛА НОВАЯ СИСТЕМНАЯ СЕКУНДА И *)
+                      vlLclSecNew THEN (* НАСТУПИЛА НОВАЯ ЛОКАЛЬНАЯ СЕКУНДА   *)
+
+		vuNewSecTMms := 1000*vuSecSys + DINT_TO_UINT(vdMS/cd1K); (* ДЛЯ НУЖД ОТЛАДКИ *)
+
+            ELSIF     vlSysSecNew  AND (* НАСТУПИЛА НОВАЯ СИСТЕМНАЯ СЕКУНДА И *)
+                  NOT vlLclSecNew THEN (* НЕТ НОВОЙ ЛОКАЛЬНОЙ СЕКУНДЫ         *)
+                vdMS     := 0;
+                vuSecLcl := vuSecSys;
+                vwTmpWord1 := 16#0002;
+                vwTriggers := vwTriggers OR vwTmpWord1;
+                vuTimeIncCnt := vuTimeIncCnt + 1;
+            ELSIF NOT vlSysSecNew  AND (* НЕТ НОВОЙ СИСТЕМНОЙ СЕКУНДЫ И     *)
+                      vlLclSecNew THEN (* НАСТУПИЛА НОВАЯ ЛОКАЛЬНАЯ СЕКУНДА *)
+                vdMS := (vdMS + cd1M - vdScanTime) MOD cd1M;
+                vuSecLcl := vuSecSys;
+                vdMS := vdMS + (cd1M - vdMS) / 2;
+                vwTmpWord1 := 16#0002;
+                vwTriggers := vwTriggers AND NOT vwTmpWord1;
+                vuTimeDecCnt := vuTimeDecCnt + 1;
+            END_IF;
+
+            IF vuSecLcl = vuSecSys THEN
+
+                (* ВЫДЕРЖКА ВРЕМЕНИ ДЛЯ СИНХРОНИЗАЦИИ МИКРОСЕКУНДНОГО ТАЙМЕРА *)
+                IF vlSysSecNew        AND
+                   vuSecCounter  &lt; 4  THEN vuSecCounter  := vuSecCounter  + 1; END_IF;
+                IF vuScanCounter &lt; 40 THEN vuScanCounter := vuScanCounter + 1; END_IF;
+
+                IF vuSecCounter = 4 AND vuScanCounter = 40 THEN
+    
+                    vlTimeMarkReady := TRUE;
+
+                    (* ФОРМИРОВАНИЕ МЕТКИ ВРЕМЕНИ ДЛЯ БЛОКА ЕИП, МИЛИСЕКУНДНАЯ ТОЧНОСТЬ *)
+                    ouTMms := 1000*vuSecSys + DINT_TO_UINT(vdMS/cd1K);
+
+                    (* ФОРМИРОВАНИЕ МЕТКИ ВРЕМЕНИ ДЛЯ БЛОКА ЕИП, СЕКУНДНАЯ ТОЧНОСТЬ *)
+                    owTMsec:= UINT_TO_WORD(10*vuSecSys + DINT_TO_UINT(vdMS/100000)) OR SHL(UINT_TO_WORD(vuMin), 10);
+
+                    (* ФОРМИРОВАНИЕ МЕТКИ ВРЕМЕНИ ДЛЯ ЗАГОЛОВКА БУФЕРА *)
+                    owHdrLo := UINT_TO_WORD(vuMin) OR SHL(UINT_TO_WORD(vuHour), 6) OR SHL(UINT_TO_WORD(vuDay), 11);
+                    owHdrHi := UINT_TO_WORD(vuMonth) OR SHL(UINT_TO_WORD(vuYear), 4) AND 16#03FF;
+
+                END_IF;
+
+            ELSE    (* vuSecLcl = vuSecSys *)
+                vuSecCounter  := 0;
+                vuScanCounter := 0;
+                vlTimeMarkReady := FALSE;
+                vuReSyncCnt := vuReSyncCnt + 1;
+            END_IF; (* vuSecLcl = vuSecSys *)
+
+        ELSE    (* ABS(vuSecSys-vuSecLcl) &lt;= 1 *)
+            vlFirstScan := TRUE; (* ТРЕБУЕТСЯ ВЫПОЛНИТЬ ИНИЦИАЛИЗАЦИЮ *)
+        END_IF; (* ABS(vuSecSys-vuSecLcl) &lt;= 1 *)
+
+(* ----------------------------------------------------------------------- *)
+
+    END_IF; (* vlInitDone *)
+
+(* ####################################################################### *)
+
+END_IF; IF vlFirstScan THEN    (* NOT vlFirstScan *)
+    vlInitDone    := FALSE;
+    vlInitDoneSt1 := FALSE;
+    vuSecCounter  := 0;
+    vuScanCounter := 0;
+    vlTimeMarkReady := FALSE;
+    vuReSyncCnt  := 0;
+    vuTimeIncCnt := 0;
+    vuTimeDecCnt := 0;
+END_IF; (* NOT vlFirstScan *)
+
+IF vlInitDoneSt1 THEN
+    vlInitDoneSt1 := FALSE;
+    vwTmpWord1 := 16#0002;
+    vwTriggers := vwTriggers AND NOT vwTmpWord1;
+    vlInitDone    :=  TRUE;
+END_IF;
+
+vdPrevTime  := vdCurrTime;
+vuSecSysOld := vuSecSys;
+vuSecLclOld := vuSecLcl;
+vlFirstScan := FALSE;
+
+olReady  := vlTimeMarkReady;
+ouReInit := vuReInitCnt;
+ouReSync := vuReSyncCnt;
+ouClkInc := vuTimeIncCnt;
+ouClkDec := vuTimeDecCnt;
+</STSource>
+		</FBProgram>
+	</FBSource>
+</FBExchangeFile>

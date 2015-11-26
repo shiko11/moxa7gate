@@ -156,15 +156,17 @@ int check_ProxyQuery_Entry(int index)
       ) return PQUERY_MBADDR;
 
 	if(!(
-			PQuery[index].mbf==MBF_READ_COILS             ||
-			PQuery[index].mbf==MBF_READ_DECRETE_INPUTS    ||
-			PQuery[index].mbf==MBF_READ_HOLDING_REGISTERS ||
+			PQuery[index].mbf==MBF_READ_COILS               ||
+			PQuery[index].mbf==MBF_READ_DECRETE_INPUTS      ||
+			PQuery[index].mbf==MBF_READ_HOLDING_REGISTERS   ||
+			PQuery[index].mbf==MBF_WRITE_MULTIPLE_REGISTERS ||
 			PQuery[index].mbf==MBF_READ_INPUT_REGISTERS
 		)) return PQUERY_MBTABL;
 
 	if(!(
 			PQuery[index].access==QT_ACCESS_READWRITE ||
 			PQuery[index].access==QT_ACCESS_READONLY  ||
+			PQuery[index].access==QT_ACCESS_WRITEONLY ||
 			PQuery[index].access==QT_ACCESS_DISABLED
 		)) return PQUERY_ACCESS;
 
@@ -189,6 +191,10 @@ int check_ProxyQuery_Entry(int index)
   if( (PQuery[index].mbf==MBF_READ_INPUT_REGISTERS) && (
       (PQuery[index].length < MBF_0x04_MIN_QUANTITY) ||
       (PQuery[index].length > MBF_0x04_MAX_QUANTITY)
+      )) return PQUERY_LENPACKET;
+  if( (PQuery[index].mbf==MBF_WRITE_MULTIPLE_REGISTERS) && (
+      (PQuery[index].length < MBF_0x10_MIN_QUANTITY) ||
+      (PQuery[index].length > MBF_0x10_MAX_QUANTITY)
       )) return PQUERY_LENPACKET;
 
   // начальный регистр области записи

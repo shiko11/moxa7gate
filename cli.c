@@ -735,8 +735,14 @@ int parse_ProxyQueries(int 	argc, char	*argv[])
     for(j=0; j<k; j++) arg[j]=toupper(arg[j]);
          if(strcmp(arg, "RW")==0)  PQuery[qt_current].access=QT_ACCESS_READWRITE;
     else if(strcmp(arg, "R")==0)   PQuery[qt_current].access=QT_ACCESS_READONLY;
+    else if(strcmp(arg, "W")==0)   PQuery[qt_current].access=QT_ACCESS_WRITEONLY;
     else if(strcmp(arg, "OFF")==0) PQuery[qt_current].access=QT_ACCESS_DISABLED;
     // else return CL_ERR_QT_CFG;
+
+    if(PQuery[qt_current].access == QT_ACCESS_WRITEONLY        &&
+       PQuery[qt_current].mbf    == MBF_READ_HOLDING_REGISTERS    ) {
+       PQuery[qt_current].mbf = MBF_WRITE_MULTIPLE_REGISTERS;
+    }
 
     arg=argv[id_qt+5];
     PQuery[qt_current].start = atoi(arg);
@@ -1196,13 +1202,15 @@ int check_IntegrityPQueries()
 
   for(j=0; j<MAX_QUERY_ENTRIES; j++) {
 
-    if(PQuery[j].mbf==MB_FUNC_NONE) continue;
+    if(PQuery[j].mbf==MB_FUNC_NONE                 ||
+       PQuery[j].mbf==MBF_WRITE_MULTIPLE_REGISTERS  ) continue;
 
     // очередной блок данных опроса сравниваем со всеми, кроме самого себя, на
     // предмет пересечений занимаемого диапазона регистров в собственной памяти шлюза
     for(i=0; i<MAX_QUERY_ENTRIES; i++) {
 
-      if((i==j) || (PQuery[i].mbf==MB_FUNC_NONE)) continue;
+      if((i==j) || (PQuery[i].mbf==MB_FUNC_NONE)                ||
+                    PQuery[i].mbf==MBF_WRITE_MULTIPLE_REGISTERS  ) continue;
 
       begreg1=PQuery[j].offset;
       begreg2=PQuery[i].offset;

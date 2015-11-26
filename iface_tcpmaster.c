@@ -105,8 +105,21 @@ void *iface_tcp_master(void *arg)
 
 		if(PQuery[Q].delay!=0) usleep(PQuery[Q].delay*1000);
 
-		create_proxy_request(Q, req_adu, &req_adu_len);
-		client_id=GW_CLIENT_MOXAGATE;
+    // если текущая операция - операция записи, то определяем парный интерфейс
+    // и используем его мьютекс при формировании запроса для синхронизации с ним при доступе к общей памяти
+    if(PQuery[Q].access == QT_ACCESS_WRITEONLY) { // MBF_WRITE_MULTIPLE_REGISTERS 
+      connum = ((port_id-GATEWAY_T01)%2)==0 ? port_id-GATEWAY_T01+1: port_id-GATEWAY_T01-1;
+      pthread_mutex_lock  (&IfaceTCP[connum].serial_mutex);
+      }
+
+    create_proxy_request(Q, req_adu, &req_adu_len);
+
+    if(PQuery[Q].access == QT_ACCESS_WRITEONLY) { // MBF_WRITE_MULTIPLE_REGISTERS 
+      pthread_mutex_unlock(&IfaceTCP[connum].serial_mutex);
+      }
+
+
+	    client_id=GW_CLIENT_MOXAGATE;
 
 		tcp_master->Security.stat.accepted++;
 
@@ -249,7 +262,7 @@ void *iface_tcp_master(void *arg)
 		  case TCP_COM_ERR_TIMEOUT:
 		  	
 		  	timeout_counter++;
-		  	if((status==TCP_COM_ERR_NULL) || (timeout_counter>=4)) {
+		  	if((status==TCP_COM_ERR_NULL) || (timeout_counter>=16)) {
 					shutdown(csd, SHUT_RDWR);
 					close(csd);
 					if(connum==1) tcp_master->ethernet.csd =-1;
@@ -313,13 +326,9 @@ void *iface_tcp_master(void *arg)
 
 	if(client_id==GW_CLIENT_MOXAGATE) { // сохраняем локально полученные данные
 
-#ifdef MOXA7GATE_KM400
-    pthread_mutex_lock(&tcp_master->serial_mutex);
-#endif
-		process_proxy_response(Q, rsp_adu, rsp_adu_len+MB_TCP_ADU_HEADER_LEN-1);
-#ifdef MOXA7GATE_KM400
+    pthread_mutex_lock  (&tcp_master->serial_mutex);
+    process_proxy_response(Q, rsp_adu, rsp_adu_len+MB_TCP_ADU_HEADER_LEN-1);
     pthread_mutex_unlock(&tcp_master->serial_mutex);
-#endif
 
 		tcp_master->stat.sended++;
 		tcp_master->Security.stat.sended++;
@@ -399,7 +408,8 @@ int reset_tcpmaster_conn(GW_Iface *tcp_master, int connum)
 		// устанавливаем значение таймаута на операции записи и чтения для сокета
 		if(setsockopt(csd, SOL_SOCKET, SO_SNDTIMEO, &tv, optlen)!=0) res++;
 		if(setsockopt(csd, SOL_SOCKET, SO_RCVTIMEO, &tv, optlen)!=0) res++;
-		
+
+#ifndef CYGWIN_KERNEL_231		
     /* Set the KEEPALIVE option active */
     optlen = sizeof(optval);
     if(setsockopt(csd, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen)!=0) res++;
@@ -412,6 +422,7 @@ int reset_tcpmaster_conn(GW_Iface *tcp_master, int connum)
 
     optval = TCP_RECONN_INTVL/1000000; // the interval between subsequential keepalive probes
     if(setsockopt(csd, SOL_TCP, TCP_KEEPINTVL, &optval, optlen)!=0) res++;
+#endif
 
 		if(res!=0) { // SOCKET NOT INITIALIZED
 			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, TCPCON_INITIALIZED, 0, 0, 0, tcp_master->queue.port_id);
@@ -432,7 +443,8 @@ int reset_tcpmaster_conn(GW_Iface *tcp_master, int connum)
 	  }
 
 	if (status==TCPMSTCON_INPROGRESS) {
-		if(connect(csd, (struct sockaddr *)&server, sizeof(server))==-1) {
+		res = connect(csd, (struct sockaddr *)&server, sizeof(server));
+		if(res==-1 && errno!=EISCONN) {
 			// perror("perror: ");
 			// CONNECTION FAILED
 		 	// sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, TCPCON_FAILED, server.sin_addr.s_addr, 0, 0, tcp_master->queue.port_id);

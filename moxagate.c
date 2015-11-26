@@ -397,27 +397,42 @@ int process_moxamb_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu, 
 // формирование запроса на основе записи из таблицы опроса
 void create_proxy_request(int index, u8 *tcp_adu, u16 *tcp_adu_len)
   {
+	u16 *mem_start;
+	int j;
 
-	tcp_adu[TCPADU_ADDRESS]=	 PQuery[index].device;
+        tcp_adu[TCPADU_ADDRESS]=	 PQuery[index].device;
 	tcp_adu[TCPADU_FUNCTION]=	 PQuery[index].mbf;
 
-	tcp_adu[TCPADU_START_HI]=	(PQuery[index].start>>8)&0xff;
-	tcp_adu[TCPADU_START_LO]=  PQuery[index].start&0xff;
-	tcp_adu[TCPADU_LEN_HI]=		(PQuery[index].length>>8)&0xff;
-	tcp_adu[TCPADU_LEN_LO]= 	 PQuery[index].length&0xff;
-																																
+	tcp_adu[TCPADU_START_HI]=(PQuery[index].start >>8)&0xff;
+	tcp_adu[TCPADU_START_LO]= PQuery[index].start     &0xff;
+	tcp_adu[TCPADU_LEN_HI]=  (PQuery[index].length>>8)&0xff;
+	tcp_adu[TCPADU_LEN_LO]=   PQuery[index].length    &0xff;
+
 	*tcp_adu_len=12;
 
-	return;
-	}
+    if(PQuery[index].access == QT_ACCESS_WRITEONLY) { // MBF_WRITE_MULTIPLE_REGISTERS 
+
+      tcp_adu[TCPADU_BYTECOUNT] = 2 * PQuery[index].length;
+      mem_start=MoxaDevice.wData4x;
+      for(j=0; j<tcp_adu[TCPADU_BYTECOUNT]; j++)
+        tcp_adu[TCPADU_BYTECOUNT+1+j] = j%2==0 ?
+	  (mem_start[PQuery[index].offset+j/2] >> 8)& 0xff :
+           mem_start[PQuery[index].offset+j/2]      & 0xff ;
+
+      *tcp_adu_len += 2 * PQuery[index].length + 1;
+
+      }
+
+  return;
+  }
 ///-----------------------------------------------------------------------------------------------------------------
 // обработка ответа на запрос из таблицы опроса
 void process_proxy_response(int index, u8 *tcp_adu, u16 tcp_adu_len)
   {
-	static u16 *mem_start;
-	static u8  *m_start;
-	static u8 mask_src, mask_dst;
-	static int j, status, n;
+	u16 *mem_start;
+	u8  *m_start;
+	u8 mask_src, mask_dst;
+	int j, status, n;
 
 	if((tcp_adu[TCPADU_FUNCTION]&0x80)==0) {
 	switch(tcp_adu[TCPADU_FUNCTION]) {
@@ -454,6 +469,18 @@ void process_proxy_response(int index, u8 *tcp_adu, u16 tcp_adu_len)
 						m_start[status] & (~mask_dst);
 
 					}
+
+			break;
+
+		case MBF_WRITE_MULTIPLE_REGISTERS:
+
+	          if(((tcp_adu[TCPADU_START_HI] << 8) | tcp_adu[TCPADU_START_LO]) != PQuery[index].start ||
+	             ((tcp_adu[TCPADU_LEN_HI  ] << 8) | tcp_adu[TCPADU_LEN_LO  ]) != PQuery[index].length   ) {
+
+	            PQuery[index].err_counter++;
+	            if(PQuery[index].err_counter >= PQuery[index].critical) PQuery[index].status_bit=0;
+	            }
+           
 
 			break;
 

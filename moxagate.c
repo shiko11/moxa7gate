@@ -33,6 +33,7 @@ int init_moxagate_h()
   clear_stat(&MoxaDevice.stat);
 
   MoxaDevice.map2Xto4X=0;
+  MoxaDevice.map3Xto4X=0;
 
   // MoxaDevice.moxa_mutex
 
@@ -95,7 +96,7 @@ int init_moxagate_memory()
 		}
 
   // выделение памяти под таблицу 3x
-	if(MoxaDevice.amount3xRegisters>0) {
+	if((MoxaDevice.amount3xRegisters>0) && (MoxaDevice.map3Xto4X==0)) {
 		k=sizeof(u16)*MoxaDevice.amount3xRegisters;
 		MoxaDevice.wData3x=(u16 *) malloc(k);
 		if(MoxaDevice.wData3x==NULL) {
@@ -123,6 +124,14 @@ int init_moxagate_memory()
 			MoxaDevice.amount2xStatus=MoxaDevice.amount4xRegisters*sizeof(u16)*8;
 			MoxaDevice.wData2x=(u8 *) MoxaDevice.wData4x;
 			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, MOXAGATE_MBTABLE_ALLOCATED, 2, k, 0, 0);
+		  }
+
+		if(MoxaDevice.map3Xto4X!=0) {
+			// отображаем таблицу input-регистров на таблицу holding-регистров
+			MoxaDevice.offset3xRegisters=MoxaDevice.offset4xRegisters;
+			MoxaDevice.amount3xRegisters=MoxaDevice.amount4xRegisters;
+			MoxaDevice.wData3x=MoxaDevice.wData4x;
+		        sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, MOXAGATE_MBTABLE_ALLOCATED, 3, k, 0, 0);
 		  }
 		}
 

@@ -133,7 +133,7 @@ End If
 Print #1, "#! /bin/sh"
 Print #1, "#"
 Print #1, "# MOXA7GATE MODBUS GATEWAY SOFTWARE VERSION 1.2"
-Print #1, "# SEM-ENGINEERING, BRYANSK " + CStr(Year(Date))
+Print #1, "# AO NPO SEM, BRYANSK " + CStr(Year(Date))
 Print #1, "#"
 Print #1, "# OBJECT: " + ws.Cells(SETTObjectRow, 2).Value
 Print #1, "# LOCATION: " + ws.Cells(SETTLocationRow, 2).Value
@@ -157,7 +157,7 @@ ElseIf ws.Cells(SETTModelRow, 2).Value = "MOXA UC-7410 Plus" Then
 ElseIf ws.Cells(SETTModelRow, 2).Value = "MOXA UC-8410" Then
     Print #1, "/home/root/moxa7gate_UC8410 \"
 Else
-    Print #1, "./moxa7gate \"
+    Print #1, "./moxa7gate_i386 \"
 End If
 
 ' ОБЩАЯ ИНФОРМАЦИЯ
@@ -216,6 +216,10 @@ End If
 
 If ws.Cells(SETTMap4Xto2XRow, 2).Value = "Да" Then
     Print #1, "--map2Xto4X \"
+End If
+
+If ws.Cells(SETTMap3Xto4XRow, 2).Value = "Да" Then
+    Print #1, "--map3Xto4X \"
 End If
 
 ' ОПЦИИ
@@ -404,6 +408,8 @@ For i = 2 To 129
         
         If ws.Cells(i, PTAccessColumn).Value = "Чтение/Запись" Then
           str = str + "RW "
+        ElseIf ws.Cells(i, PTAccessColumn).Value = "Только запись" Then
+          str = str + "W "
         ElseIf ws.Cells(i, PTAccessColumn).Value = "Отключен" Then
           str = str + "OFF "
         Else

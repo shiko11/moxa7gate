@@ -357,6 +357,7 @@ int parse_Security(int 	argc, char	*argv[])
 
 		if(strcmp(argv[id_key_argc[i]],"--show_sys_messages")==0) {j=1; Security.show_sys_messages=1;}
 		if(strcmp(argv[id_key_argc[i]],"--map2Xto4X")==0)         {j=1; MoxaDevice.map2Xto4X=1;}
+		if(strcmp(argv[id_key_argc[i]],"--map3Xto4X")==0)         {j=1; MoxaDevice.map3Xto4X=1;}
 
     // ОПЦИИ
 
@@ -1175,6 +1176,7 @@ int check_IntegrityPQueries()
 
   unsigned int i, begreg1, endreg1, begreg2, endreg2;
   char first_low_significant, first_high_significant;
+  unsigned char mbf;
 
   // проверяем, что поле iface ссылается на соответсвующим образом настроенные интерфейсы
   for(j=0; j<MAX_QUERY_ENTRIES; j++) {
@@ -1227,7 +1229,9 @@ int check_IntegrityPQueries()
       }
 
     // очередной блок данных из таблицы опроса учитываем при определении области памяти шлюза
-		switch(PQuery[j].mbf) {
+                mbf = ((PQuery[j].mbf==MBF_READ_INPUT_REGISTERS) && (MoxaDevice.map3Xto4X!=0)) ? MBF_READ_HOLDING_REGISTERS : PQuery[j].mbf;
+		switch(mbf) {
+//		switch(PQuery[j].mbf) {
 
 			case MBF_READ_COILS:
 				if(MoxaDevice.offset1xStatus > PQuery[j].offset) 

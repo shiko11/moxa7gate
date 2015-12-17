@@ -536,7 +536,7 @@ gateway_common_processing();
 
 	free(MoxaDevice.wData1x);
 	free(MoxaDevice.wData2x);
-	free(MoxaDevice.wData3x);
+        if(MoxaDevice.map3Xto4X==0) free(MoxaDevice.wData3x);
 	free(MoxaDevice.wData4x);
 
 #ifndef ARCHITECTURE_I386

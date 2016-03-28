@@ -156,6 +156,8 @@ ElseIf ws.Cells(SETTModelRow, 2).Value = "MOXA UC-7410 Plus" Then
     Print #1, "/home/root/moxa7gate_UC7410PLUS \"
 ElseIf ws.Cells(SETTModelRow, 2).Value = "MOXA UC-8410" Then
     Print #1, "/home/root/moxa7gate_UC8410 \"
+ElseIf ws.Cells(SETTModelRow, 2).Value = "Cygwin" Then
+    Print #1, "./moxa7gate_cygwin.exe \"
 Else
     Print #1, "./moxa7gate_i386 \"
 End If

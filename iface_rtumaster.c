@@ -34,6 +34,7 @@ void *iface_rtu_master(void *arg)
 	struct timezone tz;
 
 	int queue_has_query;
+	int mb_exception;
 
 	rtu_master = &IfaceRTU[port_id];
 	
@@ -83,6 +84,8 @@ void *iface_rtu_master(void *arg)
 		rtu_master->Security.stat.accepted++;
 
 		} else { //обрабатываем запрос из очереди последовательного порта
+
+			usleep(200000);
 
 			i=j; // после обработки запроса из очереди будет обработан прерванный запрос из таблицы опроса
 
@@ -170,6 +173,8 @@ void *iface_rtu_master(void *arg)
 		if(Security.show_data_flow==1)
 			show_traffic(TRAFFIC_RTU_RECV, port_id, client_id, &rsp_adu[6], rsp_adu_len);
 
+		mb_exception = 0;
+
 		switch(status) {
 		  case 0:
 		  	break;
@@ -208,8 +213,9 @@ void *iface_rtu_master(void *arg)
 						Client[client_id].stat.errors++;
 						func_res_err(rsp_adu[TCPADU_FUNCTION], &Client[client_id].stat);
 						stage_to_stat((MBCOM_RSP<<16) | (MBCOM_RTU_RECV<<8) | status, &Client[client_id].stat);
+						mb_exception = 1;
 				    }
-				continue;
+				if(mb_exception==0) continue;
 		  	break;
 		  
 		  default:;
@@ -233,17 +239,23 @@ void *iface_rtu_master(void *arg)
 		func_res_ok(rsp_adu[TCPADU_FUNCTION], &rtu_master->stat);
 		func_res_ok(rsp_adu[TCPADU_FUNCTION], &rtu_master->Security.stat);
 
-		} else if(client_id==GW_CLIENT_RTU_SLV) { //отправляем результат запроса непосредственно клиенту
-
-		// функция преобразования ответа в соответствии с контекстом
-		prepare_response(device_id, rsp_adu, rsp_adu_len);
-		forward_response(port_id, client_id, req_adu, req_adu_len, rsp_adu, rsp_adu_len);
-
 		} else if(client_id==GW_CLIENT_KM400) {
 
       // отдельный бит статуса связи для операции записи в КМ-400
       VSlave[device_id&0xff].status_bit=1;
       VSlave[device_id&0xff].err_counter=0;
+
+		} else { //отправляем результат запроса непосредственно клиенту
+
+		if(mb_exception==1) {
+		  rsp_adu[TCPADU_FUNCTION] = req_adu[TCPADU_FUNCTION] | 0x80; /* MODBUS EXCEPTION RESPONSE CODE */
+		  rsp_adu[TCPADU_START_HI] = 0x0b;                            /* GATEWAY TARGET DEVICE FAILED TO RESPOND */
+		  rsp_adu_len=3;
+		  }
+
+		// функция преобразования ответа в соответствии с контекстом
+		prepare_response(device_id, rsp_adu, rsp_adu_len);
+		forward_response(port_id, client_id, req_adu, req_adu_len, rsp_adu, rsp_adu_len);
 
 		}
 

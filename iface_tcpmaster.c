@@ -31,7 +31,7 @@ void *iface_tcp_master(void *arg)
 	u8  rsp_adu[MB_UNIVERSAL_ADU_LEN];
 	u16 rsp_adu_len;
 
-  int port_id=((unsigned)arg)>>8;
+  int port_id=((long)arg)>>8;
   int client_id, device_id;
 
 	int status;
@@ -109,15 +109,16 @@ void *iface_tcp_master(void *arg)
     // и используем его мьютекс при формировании запроса для синхронизации с ним при доступе к общей памяти
     if(PQuery[Q].access == QT_ACCESS_WRITEONLY) { // MBF_WRITE_MULTIPLE_REGISTERS 
       connum = ((port_id-GATEWAY_T01)%2)==0 ? port_id-GATEWAY_T01+1: port_id-GATEWAY_T01-1;
-      pthread_mutex_lock  (&IfaceTCP[connum].serial_mutex);
+      if(IfaceTCP[connum].modbus_mode==IFACE_TCPMASTER) pthread_mutex_lock  (&IfaceTCP[connum    ].serial_mutex);
+        else                                            pthread_mutex_lock  (&IfaceRTU[GATEWAY_P5].serial_mutex);
       }
 
     create_proxy_request(Q, req_adu, &req_adu_len);
 
     if(PQuery[Q].access == QT_ACCESS_WRITEONLY) { // MBF_WRITE_MULTIPLE_REGISTERS 
-      pthread_mutex_unlock(&IfaceTCP[connum].serial_mutex);
+      if(IfaceTCP[connum].modbus_mode==IFACE_TCPMASTER) pthread_mutex_unlock(&IfaceTCP[connum    ].serial_mutex);
+        else                                            pthread_mutex_unlock(&IfaceRTU[GATEWAY_P5].serial_mutex);
       }
-
 
 	    client_id=GW_CLIENT_MOXAGATE;
 

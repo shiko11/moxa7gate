@@ -249,7 +249,7 @@ int gateway_common_processing()
 	struct timeval tv, tv_wait;
 	struct timezone tz;
 
-	int arg;
+	long arg;
 
 	FD_ZERO(&watchset);
 

@@ -25,8 +25,8 @@ void *iface_tcp_server(void *arg)
 
 	int status;
 
-  int port_id=((unsigned)arg)>>8;
-  int client_id=((unsigned)arg)&0xff;
+  int port_id=((long)arg)>>8;
+  int client_id=((long)arg)&0xff;
 
 	GW_Iface	*tcp_server;
 

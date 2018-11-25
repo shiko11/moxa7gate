@@ -55,7 +55,8 @@ int main(int argc, char *argv[])
 
 	struct sembuf operations[1];
 
-	int arg, P, T;
+	int P, T;
+  long arg;
 	int ports[MAX_MOXA_PORTS]; // этот массив служит для организации порядка инициализации портов: сначала IFACE_TCPSERVER, затем остальные
 
   int rc;
@@ -350,11 +351,8 @@ if(Security.watchdog_timer==1) {
 
 			case IFACE_RTUMASTER:
 
-#ifdef MOXA7GATE_KM400
-        if(P!=kltm_port) continue; // используем ровно один порт для связи по Modbus-RTU
-        // мьютекс для синхронизации доступа к памяти, содержащей значения переменной PLC
+        // мьютекс для синхронизации доступа к памяти, при работе в активном режиме
         pthread_mutex_init(&IfaceRTU[P].serial_mutex, NULL);
-#endif
 
 				strcpy(IfaceRTU[P].bridge_status, "00P");
 				init_queue(&IfaceRTU[P].queue, P);
@@ -462,8 +460,8 @@ if(Security.watchdog_timer==1) {
 	  T=Security.TCPIndex[i];
 	  if(IfaceTCP[T].modbus_mode!=IFACE_TCPMASTER) continue;
 
-        	// мьютекс для синхронизации доступа к памяти
-        	pthread_mutex_init(&IfaceTCP[T].serial_mutex, NULL);
+    // мьютекс для синхронизации доступа к памяти, при работе в активном режиме
+   	pthread_mutex_init(&IfaceTCP[T].serial_mutex, NULL);
 
 		strcpy(IfaceTCP[T].bridge_status, "INI");
 		init_queue(&IfaceTCP[T].queue, GATEWAY_T01+T);

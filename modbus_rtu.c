@@ -261,6 +261,7 @@ int set_param_comms(int ttyfd,char *baud,char *parity, int timeout)
      struct termios      settings;
      speed_t             baud_rate;
 	  int						char_interval_timeout;
+    int t;
 
 	//БОБМЙЪ РБТБНЕФТБ "УЛПТПУФШ РПТФБ "
      if (strcmp(baud,"110" ) == 0) {
@@ -371,12 +372,13 @@ int set_param_comms(int ttyfd,char *baud,char *parity, int timeout)
 
           settings.c_cc[VMIN] = 0; // этот параметр проверяется при каждом вызове функции чтения ответа
 
-          if(timeout<100) {
+          t = (timeout+500)/1000;
+          if(t<100) {
             settings.c_cc[VTIME] = 1;
-            } else if(timeout>=25500) {
+            } else if(t>=25500) {
             settings.c_cc[VTIME] = 255;
             } else {
-            settings.c_cc[VTIME] = (timeout+50)/100;
+            settings.c_cc[VTIME] = (t+50)/100;
             }
 
           if( tcsetattr( ttyfd, TCSANOW, &settings ) < 0 ) {

@@ -67,7 +67,7 @@ int init_hmi_web_h()
 
 	struct shmid_ds mds;
 
-	access_key=ftok("/tmp/app", 'a');
+	access_key=ftok("/tmp/moxa7gate", 'a');
 												
 	mem_size_ttl =
 		sizeof(GW_AddressMap_Entry)*(MODBUS_ADDRESS_MAX+1)+

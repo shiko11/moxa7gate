@@ -298,7 +298,7 @@ int init_frwd_queue_h()
 ///-----------------------------------------------------------------------------
 int init_sem_set()
 	{
-	key_t sem_key=ftok("/tmp/app", 'b');
+	key_t sem_key=ftok("/tmp/moxa7gate", 'b');
 	
 	union semun sems;
 	unsigned short values[1];

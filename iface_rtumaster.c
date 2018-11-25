@@ -23,7 +23,7 @@ void *iface_rtu_master(void *arg)
 	u8  rsp_adu[MB_UNIVERSAL_ADU_LEN];
 	u16 rsp_adu_len;
 
-  int port_id=((unsigned)arg)>>8;
+  int port_id=((long)arg)>>8;
   int client_id, device_id;
 
 	int status;
@@ -78,7 +78,18 @@ void *iface_rtu_master(void *arg)
 
 		if(PQuery[Q].delay!=0) usleep(PQuery[Q].delay*1000);
 
-		create_proxy_request(Q, req_adu, &req_adu_len);
+    // если текущая операция - операция записи, то определяем парный интерфейс
+    // и используем его мьютекс при формировании запроса для синхронизации с ним при доступе к общей памяти
+    if(PQuery[Q].access == QT_ACCESS_WRITEONLY) { // MBF_WRITE_MULTIPLE_REGISTERS 
+      pthread_mutex_lock  (&IfaceTCP[GATEWAY_T01].serial_mutex);
+      }
+
+    create_proxy_request(Q, req_adu, &req_adu_len);
+
+    if(PQuery[Q].access == QT_ACCESS_WRITEONLY) { // MBF_WRITE_MULTIPLE_REGISTERS 
+      pthread_mutex_unlock(&IfaceTCP[GATEWAY_T01].serial_mutex);
+      }
+
 		client_id=GW_CLIENT_MOXAGATE;
 
 		rtu_master->Security.stat.accepted++;
@@ -226,13 +237,9 @@ void *iface_rtu_master(void *arg)
 
 	if(client_id==GW_CLIENT_MOXAGATE) { // сохраняем локально полученные данные
 
-#ifdef MOXA7GATE_KM400
     pthread_mutex_lock(&rtu_master->serial_mutex);
-#endif
     process_proxy_response(Q, rsp_adu, rsp_adu_len+MB_TCP_ADU_HEADER_LEN-1);
-#ifdef MOXA7GATE_KM400
     pthread_mutex_unlock(&rtu_master->serial_mutex);
-#endif
 
 		rtu_master->stat.sended++;
 		rtu_master->Security.stat.sended++;

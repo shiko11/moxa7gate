@@ -1,36 +1,40 @@
 #! /bin/sh
 #
 # MOXA7GATE MODBUS GATEWAY SOFTWARE VERSION 1.2
-# AO NPO SEM, BRYANSK 2015
+# SEM-ENGINEERING, BRYANSK 2018
 #
-# OBJECT: Стенд имитационный
-# LOCATION: АО НПО СЭМ
-# LABEL: A1
+# OBJECT: uport1150 host
+# LOCATION: stend
+# LABEL: A
 #
 # THIS CONFIGURATION FILE GENERATED AUTOMATICALLY
-# AT 17.12.2015 17:18:18
-# VERSION 1.7
+# AT 23.11.2018 17:03:54
+# VERSION 1.8
 #
-# Device Model: MOXA UC-8410
-# Network Name: mxdev
-# LAN1 Address: 192.168.0.11
-# LAN2 Address: 192.168.1.11
+# Device Model: MOXA UC-7410
+# Network Name: tsreg
+# LAN1 Address: 10.0.2.15
+# LAN2 Address: 
 #
  
-/home/root/moxa7gate_UC8410 \
---Object "Стенд имитационный" \
---Location "АО НПО СЭМ" \
---Label "A1" \
---NetworkName "mxdev" \
---LAN1Address "192.168.0.11" \
---LAN2Address "192.168.1.11" \
---VersionNumber "1.7" \
---VersionTime "17.12.2015 17:18:18" \
---Model "MOXA UC-8410" \
---tcp_port 502 \
---status_info 1000 \
---map3Xto4X \
-PORT1 RS485_2W 9600 NONE 1000 RTU_MASTER --desc "Шлейф задвижек AUMA" \
+./moxa7gate_i386 \
+--Object "uport1150 host" \
+--Location "stend" \
+--Label "A" \
+--NetworkName "tsreg" \
+--LAN1Address "10.0.2.15" \
+--LAN2Address "" \
+--VersionNumber "1.8" \
+--VersionTime "23.11.2018 17:03:54" \
+--Model "MOXA UC-7410" \
+--tcp_port 1502 \
+--status_info 600 \
+--show_sys_messages \
+PORT5 RS485_2W 9600 NONE 400 RTU_MASTER --desc "DeltaV USO9_4 C04 P02" \
+TCP01 192.168.127.1:502 1 0 1000 0.0.0.0:502 --desc "PLC Simulator" \
 AT1 2560 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 \
-QT P1 1 INPUT_REGISTER R 1000 8 1 100 2 --desc "Стенд имитационный" \
+QT P5  1 HOLDING_REGISTER R 1441 80  1   5 3 --desc "data_block_01" \
+QT P5  1 HOLDING_REGISTER R 1521 80 81   5 3 --desc "data_block_02" \
+QT T01 1 HOLDING_REGISTER W   21 80  1 185 3 --desc "data_block_01" \
+QT T01 1 HOLDING_REGISTER W  101 80 81 185 3 --desc "data_block_02" \
 &

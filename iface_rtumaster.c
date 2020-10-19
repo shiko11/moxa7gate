@@ -23,7 +23,7 @@ void *iface_rtu_master(void *arg)
 	u8  rsp_adu[MB_UNIVERSAL_ADU_LEN];
 	u16 rsp_adu_len;
 
-  int port_id=((unsigned)arg)>>8;
+  int port_id=((long)arg)>>8;
   int client_id, device_id;
 
 	int status;

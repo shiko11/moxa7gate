@@ -23,7 +23,7 @@
 #include "messages.h"
 #include "hmi_klb.h"
 #include "hmi_web.h"
-#include "kltm/kltm.h"
+// #include "kltm/kltm.h"
 
 ///=== MAIN_H constants
 

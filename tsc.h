@@ -78,6 +78,7 @@ int init_tsc_h(int port);
 
 int  check_header(u8 *rsp_adu, HB_Header *hdr);
 void  copy_header(HB_Header *src, HB_Header *dst);
+void  cross_params(int port, unsigned long group);
 
 ///*************************************************************************************
 

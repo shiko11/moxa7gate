@@ -338,7 +338,7 @@ int parse_Security(int 	argc, char	*argv[])
       j=2;
 			}
 
-		if(strcmp(argv[id_key_argc[i]],"--kltm_port")==0) {
+/*  if(strcmp(argv[id_key_argc[i]],"--kltm_port")==0) {
       if(id_key_valset[12]==1) return SECURITY_CONF_DUPLICATE;
 
       // интерфейс
@@ -353,7 +353,7 @@ int parse_Security(int 	argc, char	*argv[])
 
       id_key_valset[12]=1;
       j=2;
-			}
+			}*/
 
 		if(strcmp(argv[id_key_argc[i]],"--show_sys_messages")==0) {j=1; Security.show_sys_messages=1;}
 		if(strcmp(argv[id_key_argc[i]],"--map2Xto4X")==0)         {j=1; MoxaDevice.map2Xto4X=1;}

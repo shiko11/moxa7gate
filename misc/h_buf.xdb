@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <FBExchangeFile>
-	<fileHeader company="Schneider Automation" product="Unity Pro XL V11.1 - 160831F" dateTime="date_and_time#2018-12-24-14:20:27" content="Function Block source file" DTDVersion="41"></fileHeader>
-	<contentHeader name="A4_KS_SHES_SMNP" version="0.0.97" dateTime="date_and_time#2018-11-29-17:19:14"></contentHeader>
-	<FBSource nameOfFBType="H_BUF" version="0.04" dateTime="dt#2015-09-25-15:57:42">
+	<fileHeader company="Schneider Automation" product="Control Expert V14.1 - 191122A" dateTime="date_and_time#2020-8-31-10:11:45" content="Function Block source file" DTDVersion="41"></fileHeader>
+	<contentHeader name="Kirish_PNSRP_CPU_A1" version="0.0.365" dateTime="date_and_time#2020-8-31-9:14:2">
+		<comment>ЛПДС "Кириши" ПНС+РП.КЦ A1, A2</comment>
+	</contentHeader>
+	<FBSource nameOfFBType="H_BUF" version="0.05" dateTime="dt#2020-08-23-14:50:41">
 		<comment>SEM History Buffer</comment>
-		<attribute name="TypeCodeCheckSumString" value="B083"></attribute>
+		<attribute name="TypeCodeCheckSumString" value="7714"></attribute>
 		<attribute name="TypeSignatureCheckSumString" value="EA6B"></attribute>
+		<attribute name="TypeDataDicSubfieldsCount" value="53"></attribute>
 		<inputParameters>
 			<variables name="ilStart" typeName="BOOL">
 				<attribute name="PositionPin" value="1"></attribute>
@@ -139,31 +142,31 @@ IF vlTimerDone THEN (* ТАЙМЕР СРАБОТАЛ *)
        vuAddr&lt;=(iuBufAdr+iuBufLen-iuPrmNum-1) THEN (* НЕТ ОШИБКИ В КОНФИГУРАЦИИ *)
 
         (* МЕТКА ВРЕМЕНИ *)
-        IF ilMSPrec THEN PUT_4X(vuAddr, iuTMms );         (* МИЛИСЕКУНДНАЯ ТОЧНОСТЬ *)
-                    ELSE PUT_4X(vuAddr, iwTMsec); END_IF; (*     СЕКУНДНАЯ ТОЧНОСТЬ *)
+        IF ilMSPrec THEN S_4X(OFF:= vuAddr, IN:= iuTMms );         (* МИЛИСЕКУНДНАЯ ТОЧНОСТЬ *)
+                    ELSE S_4X(OFF:= vuAddr, IN:= iwTMsec); END_IF; (*     СЕКУНДНАЯ ТОЧНОСТЬ *)
         
         (* КОДЫ АЦП *)
-	vuBackup := GET_4X(vuAddr+iuPrmNum+1); (* Некорректная работа функции PUT4X: обнуляется следующий за записываемым регистр *)
+	vuBackup := G_4X(OFF:= vuAddr+iuPrmNum+1); (* Некорректная работа функции PUT4X: обнуляется следующий за записываемым регистр *)
         FOR i:=1 TO iuPrmNum DO
-            PUT_4X(vuAddr + i, GET_4X(iaParams[i])); 
+            S_4X(OFF:= vuAddr + i, IN:= G_4X(OFF:= iaParams[i])); 
         END_FOR;
-        PUT_4X(vuAddr+iuPrmNum+1, vuBackup); (* Некорректная работа функции PUT4X: обнуляется следующий за записываемым регистр *)
+        S_4X(OFF:= vuAddr+iuPrmNum+1, IN:= vuBackup); (* Некорректная работа функции PUT4X: обнуляется следующий за записываемым регистр *)
 
         (* ИНКРЕМЕНТ УКАЗАТЕЛЯ НА ПЕРВЫЙ СВОБОДНЫЙ БЛОК ЕИП БУФЕРА ИСТОРИИ (ПОСЛЕДНИЙ ИЗ ВСЕХ ПЕРЕЗАПИСЫВАЕТСЯ) *)
         vuHeader := vuHeader + 1;
         IF vuHeader &gt;= vuBufLen THEN vuHeader := 0; vuCyclCnt := vuCyclCnt + 1; END_IF;
 
         (* ОБНОВЛЕНИЕ ЗАГОЛОВКА БУФЕРА ИСТОРИИ *)
-        PUT_4X(iuBufAdr  , vuHeader);
-        PUT_4X(iuBufAdr+1, vuCyclCnt);
-        PUT_4X(iuBufAdr+2, iwHdrLo);
-        PUT_4X(iuBufAdr+3, iwHdrHi                           OR
+        S_4X(OFF:= iuBufAdr  , IN:= vuHeader);
+        S_4X(OFF:= iuBufAdr+1, IN:= vuCyclCnt);
+        S_4X(OFF:= iuBufAdr+2, IN:= iwHdrLo);
+        S_4X(OFF:= iuBufAdr+3, IN:= iwHdrHi                  OR
                            SHL(UINT_TO_WORD(iuPrmNum-1), 10) OR
                            SHL(BOOL_TO_WORD(ilMSPrec  ), 15) );
-        PUT_4X(iuBufAdr+4, iwFault1);
-        PUT_4X(iuBufAdr+5, iwFault2);
-        PUT_4X(iuBufAdr+6, iwGroup1);
-        PUT_4X(iuBufAdr+7, iwGroup2);
+        S_4X(OFF:= iuBufAdr+4, IN:= iwFault1);
+        S_4X(OFF:= iuBufAdr+5, IN:= iwFault2);
+        S_4X(OFF:= iuBufAdr+6, IN:= iwGroup1);
+        S_4X(OFF:= iuBufAdr+7, IN:= iwGroup2);
 
         vlRunning :=  TRUE;
     ELSE    (* vuBufLen &lt;&gt; 0 *)

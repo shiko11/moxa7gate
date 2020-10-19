@@ -43,7 +43,7 @@ void *iface_tcp_master(void *arg)
   // размер позволяет за один раз вычитать все содержимое буфера истории
   HB_EIP_Block rcv_eip[HAGENT_BUFEIP_MAX];
 
-  int port_id=((unsigned)arg)>>8;
+  int port_id=((long)arg)>>8;
   int client_id, device_id;
 
 	int status;
@@ -168,7 +168,9 @@ void *iface_tcp_master(void *arg)
 	                   
 	// сохраняем локально полученные данные
 	process_proxy_response(Q, rsp_adu, rsp_adu_len);
-	
+  // printf("rsp_adu_len: %d\n", rsp_adu_len);
+	// continue; // отладка процесса чтения заголовка
+
   // получение значений из заголовка буфера истории
   status=check_header(rsp_adu, &rcvhdr);
 	if(status!=0) {
@@ -428,7 +430,8 @@ void *iface_tcp_master(void *arg)
     }
   
   MoxaDevice.wData4x[PQuery[Q].offset + HAGENT_HEADER_LEN + 23]++; // как минимум часть новых данных успешно прошла проверку на корректность метки времени
-  copy_header(&rcvhdr, &lclhdr); // новые данные успешно прочитаны из буфера, переход к новому заголовку
+  if(lclhdr.group!=rcvhdr.group) cross_params(port_id, rcvhdr.group); // при необходимости актуализируется информация о прочитанных из ПЛК параметрах
+	copy_header(&rcvhdr, &lclhdr); // новые данные успешно прочитаны из буфера, переход к новому заголовку
 //continue; /// этап 3 выполнен, очередной блок данных из буфера истории прошел проверку на корректность
 
   // вывод исторических параметров в консоль и в openTSDB
@@ -441,7 +444,7 @@ void *iface_tcp_master(void *arg)
 //    else printf("%2.2d:%2.2d:%2.2d ",    tmp_tm.tm_hour, tmp_tm.tm_min, tmp_tm.tm_sec);
     if(rcvhdr.msprec==1) // определяется значение метки времени в формате openTSDB в зависимости от точности
            sprintf(prmtms, "%d%d", rcv_eip[i].tv.tv_sec, (rcv_eip[i].tv.tv_usec + 500) / 1000);
-      else sprintf(prmtms, "%d",   rcv_eip[i].tv.tv_sec);
+      else sprintf(prmtms, "%d",   rcv_eip[i].tv.tv_sec+10800); // 10800 - смещение на 3 часа вперёд (учёт часового пояса ПЛК)
 
   	for(j=0; j<lclhdr.prmnum; j++) {
 
@@ -452,11 +455,11 @@ void *iface_tcp_master(void *arg)
 //  		   (lclhdr.fault & (1 << j)));
 
   		if(rcv_eip[i].prm[j] >= HB_Param[port_id-GATEWAY_T01][j].adc_min &&   // если достоверен код АЦП и
-  		   rcv_eip[i].prm[j] <= HB_Param[port_id-GATEWAY_T01][j].adc_max &&   // установлен бит достоверности
+  		   rcv_eip[i].prm[j] <= HB_Param[port_id-GATEWAY_T01][j].adc_max &&   // снят бит недостоверности
   		   (lclhdr.fault & (1 << j)) == 0                                 ) { // в заголовке буфера истории
 
   		  // вычисляется значение наблюдаемого параметра в инженерных единицах измерения
-  		  prmval = HB_Param[port_id-GATEWAY_T01][j].eng_min + 
+  		  prmval = HB_Param[port_id-GATEWAY_T01][j].eng_min +
   		          (rcv_eip[i].prm[j]                        - HB_Param[port_id-GATEWAY_T01][j].adc_min) *
   		          (HB_Param[port_id-GATEWAY_T01][j].eng_max - HB_Param[port_id-GATEWAY_T01][j].eng_min) /
   		          (HB_Param[port_id-GATEWAY_T01][j].adc_max - HB_Param[port_id-GATEWAY_T01][j].adc_min) ;
@@ -646,8 +649,9 @@ int do_data_exchange(GW_Iface *tcp_master, int port_id, int *timeout_counter,
 	                   u8 *req_adu, u16  req_adu_len,
 	                   u8 *rsp_adu, u16 *rsp_adu_len)
   {
-	int status;
+	int status, rnum;
 	u16 adu_len;
+	struct timeval tv_wait;
   	
 		if(tcp_master->ethernet.status != TCPMSTCON_ESTABLISHED) return 1;
 
@@ -683,56 +687,74 @@ int do_data_exchange(GW_Iface *tcp_master, int port_id, int *timeout_counter,
 		  default:;
 		  };
 
-		status = mbcom_tcp_recv(tcp_master->ethernet.csd, rsp_adu, &adu_len);
-		*rsp_adu_len=adu_len;
-		
-		if(Security.show_data_flow==1)
-			show_traffic(TRAFFIC_TCP_RECV, port_id, GW_CLIENT_MOXAGATE, rsp_adu, *rsp_adu_len);
+    rnum=0; do {
 
-		switch(status) {
-		  case 0:
-		  	break;
+      status = mbcom_tcp_recv(tcp_master->ethernet.csd, rsp_adu, &adu_len);
+      *rsp_adu_len=adu_len;
+      
+      if(Security.show_data_flow==1)
+        show_traffic(TRAFFIC_TCP_RECV, port_id, GW_CLIENT_MOXAGATE, rsp_adu, *rsp_adu_len);
+  
+      switch(status) {
+        case 0:
+          break;
+  
+        case TCP_COM_ERR_NULL:
+        case TCP_COM_ERR_TIMEOUT:
+          
+          *timeout_counter++;
+          if((status==TCP_COM_ERR_NULL) || (*timeout_counter>=8)) {
+            shutdown(tcp_master->ethernet.csd, SHUT_RDWR);
+            close(tcp_master->ethernet.csd);
+            tcp_master->ethernet.csd =-1;
+            tcp_master->ethernet.status =TCPMSTCON_NOTMADE;
+  
+            *timeout_counter=0;
+  
+            sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_LANTCP, (status==TCP_COM_ERR_NULL?TCPCON_CLOSED_REMSD:TCPCON_CLOSED_TMOUT), 
+              tcp_master->ethernet.ip, 0, 0, 0);
+  
+            }
+          
+        case TCP_ADU_ERR_MIN:
+        case TCP_ADU_ERR_MAX:
+        case TCP_ADU_ERR_PROTOCOL:
+        case TCP_ADU_ERR_LEN:
+        case TCP_ADU_ERR_UID:
+        case TCP_PDU_ERR:
+  
+          tcp_master->stat.errors++;
+  
+          sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|port_id, POLL_TCP_RECV, (unsigned) status, GW_CLIENT_MOXAGATE, 0, 0);
+  
+          return 3;
+          break;
+  
+        default:;
+        };
 
-		  case TCP_COM_ERR_NULL:
-		  case TCP_COM_ERR_TIMEOUT:
-		  	
-		  	*timeout_counter++;
-		  	if((status==TCP_COM_ERR_NULL) || (*timeout_counter>=4)) {
-					shutdown(tcp_master->ethernet.csd, SHUT_RDWR);
-					close(tcp_master->ethernet.csd);
-					tcp_master->ethernet.csd =-1;
-					tcp_master->ethernet.status =TCPMSTCON_NOTMADE;
+      if(!((rsp_adu[TCPADU_TRANS_HI]==req_adu[TCPADU_TRANS_HI]) && // идентификатор транзакции в полученном ответе не соответствует запросу
+           (rsp_adu[TCPADU_TRANS_LO]==req_adu[TCPADU_TRANS_LO]) )) {
+			  rnum++;
+			  tv_wait.tv_sec = 2;
+			  tv_wait.tv_usec= 0;
+			  select(0, NULL, NULL, NULL, &tv_wait);
+			  } else rnum=5;
 
-					*timeout_counter=0;
+      } while(rnum<4);
 
-				  sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_LANTCP, (status==TCP_COM_ERR_NULL?TCPCON_CLOSED_REMSD:TCPCON_CLOSED_TMOUT), 
-				    tcp_master->ethernet.ip, 0, 0, 0);
-
-		  	  }
-		  	
-		  case TCP_ADU_ERR_MIN:
-		  case TCP_ADU_ERR_MAX:
-		  case TCP_ADU_ERR_PROTOCOL:
-		  case TCP_ADU_ERR_LEN:
-		  case TCP_ADU_ERR_UID:
-		  case TCP_PDU_ERR:
-
-				tcp_master->stat.errors++;
-
-			 	sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|port_id, POLL_TCP_RECV, (unsigned) status, GW_CLIENT_MOXAGATE, 0, 0);
-
-				return 3;
-		  	break;
-
-		  default:;
-		  };
-			 
   *timeout_counter=0;
 
 	if((rsp_adu[TCPADU_FUNCTION]&0x80)>0) { // получено исключение
 		tcp_master->stat.errors++;
 		return 4;
 	  }
+
+	if(rnum==4) { // идентификатор транзакции в полученном ответе не соответствует запросу
+		tcp_master->stat.errors++;
+		return 5;
+	  }
+
 	tcp_master->stat.sended++;
 
   return 0;

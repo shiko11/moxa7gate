@@ -13,7 +13,7 @@
 #include "interfaces.h"
 #include "moxagate.h"
 
-#include "kltm/kltm.h"
+// #include "kltm/kltm.h"
 
 ///=== CLI_H constants
 

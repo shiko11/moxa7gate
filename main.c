@@ -55,7 +55,8 @@ int main(int argc, char *argv[])
 
 	struct sembuf operations[1];
 
-	int arg, P, T;
+	long arg;
+	int P, T;
 	int ports[MAX_MOXA_PORTS]; // этот массив служит для организации порядка инициализации портов: сначала IFACE_TCPSERVER, затем остальные
 
   int rc;
@@ -98,7 +99,7 @@ int main(int argc, char *argv[])
   init_statistics_h();
   init_clients();
 
-  kltm_port=GATEWAY_NONE;
+//kltm_port=GATEWAY_NONE;
 
   ///!!! точка останова. возможен контроль средствами HMI инициализации переменных
 
@@ -131,13 +132,13 @@ int main(int argc, char *argv[])
 		exit(1);
     }
 
-#ifdef MOXA7GATE_KM400
-  if(kltm_port == GATEWAY_NONE) {
-  	printf("check kltm_port CLI parameter\n");
-    close_shm();
-		exit(1);
-    }
-#endif
+// #ifdef MOXA7GATE_KM400
+//   if(kltm_port == GATEWAY_NONE) {
+//   	printf("check kltm_port CLI parameter\n");
+//     close_shm();
+// 		exit(1);
+//     }
+// #endif
 
   /// До этого момента все сообщения в программе должны иметь тип EVENT_CAT_MONITOR,
   /// т.к. конфигурация системы сообщений по умолчанию отсеивает все прочие сообщения
@@ -281,14 +282,14 @@ if(Security.watchdog_timer==1) {
   ///!!! точка останова. возможен контроль рабочих параметров шлюза перед запуском циклов сканирования интерфейсов
 
 	//-------------------------------------------------------
-#ifdef MOXA7GATE_KM400
+// #ifdef MOXA7GATE_KM400
 /* ИНИЦИАЛИЗАЦИЯ МОДУЛЯ КМ-400 */
-  k=init_kltm_h();
-  if(k!=0) {
-  	printf("init_kltm_h: error code %d. exit\n", k);
-    exit(1);
-    }
-#endif
+//   k=init_kltm_h();
+//   if(k!=0) {
+//   	printf("init_kltm_h: error code %d. exit\n", k);
+//     exit(1);
+//     }
+// #endif
 
 /* ИНИЦИАЛИЗАЦИЯ СЕМАФОРОВ, НА КОТОРЫХ РАБОТАЮТ ОЧЕРЕДИ ПОРТОВ */
 	if(init_sem_set() != 0) exit(1);
@@ -348,11 +349,11 @@ if(Security.watchdog_timer==1) {
 
 			case IFACE_RTUMASTER:
 
-#ifdef MOXA7GATE_KM400
-        if(P!=kltm_port) continue; // используем ровно один порт для связи по Modbus-RTU
-        // мьютекс для синхронизации доступа к памяти, содержащей значения переменной PLC
-        pthread_mutex_init(&IfaceRTU[P].serial_mutex, NULL);
-#endif
+// #ifdef MOXA7GATE_KM400
+//         if(P!=kltm_port) continue; // используем ровно один порт для связи по Modbus-RTU
+//         // мьютекс для синхронизации доступа к памяти, содержащей значения переменной PLC
+//         pthread_mutex_init(&IfaceRTU[P].serial_mutex, NULL);
+// #endif
 
 				strcpy(IfaceRTU[P].bridge_status, "00P");
 				init_queue(&IfaceRTU[P].queue, P);
@@ -460,11 +461,11 @@ if(Security.watchdog_timer==1) {
 	  T=Security.TCPIndex[i];
 	  if(IfaceTCP[T].modbus_mode!=IFACE_TCPMASTER) continue;
 
-#ifdef MOXA7GATE_KM400
-        if((T+GATEWAY_T01)!=kltm_port) continue;  // используем ровно один порт для связи по Modbus-TCP
-        // мьютекс для синхронизации доступа к памяти, содержащей значения переменной PLC
-        pthread_mutex_init(&IfaceTCP[T].serial_mutex, NULL);
-#endif
+// #ifdef MOXA7GATE_KM400
+//         if((T+GATEWAY_T01)!=kltm_port) continue;  // используем ровно один порт для связи по Modbus-TCP
+//         // мьютекс для синхронизации доступа к памяти, содержащей значения переменной PLC
+//         pthread_mutex_init(&IfaceTCP[T].serial_mutex, NULL);
+// #endif
 
 		strcpy(IfaceTCP[T].bridge_status, "INI");
 		init_queue(&IfaceTCP[T].queue, GATEWAY_T01+T);
@@ -491,25 +492,25 @@ if(Security.watchdog_timer==1) {
 	operations[0].sem_num=IFACE_MOXAGATE;
 	semop(semaphore_id, operations, 1);
 
-#ifdef MOXA7GATE_KM400
-/// ЗАПУСК ПОТОКА ДЛЯ ОБРАБОТКИ ЗАПРОСОВ ОТ КЛТМ (M340) И МАСТЕРА ТЕЛЕМЕХАНИКИ (РДП)
-
-  /// ищем свободный слот для клиента KM-400
-  kltm_client=get_current_client();
-
-  Client[kltm_client].status=GW_CLIENT_KM400;
-  time(&Client[kltm_client].connection_time);
-  Client[kltm_client].disconnection_time=0;
-  time(&Client[kltm_client].last_activity_time);
-  sprintf(Client[j].device_name, "KM-400 MB P%d", 1); //!!! Modbus-master интерфейс должен определяться на стадии инициализации через параметры командной строки
-
-	Client[kltm_client].rc = pthread_create(
-		&Client[kltm_client].tid_srvr,
-		NULL,
-		kltm_main,
-		NULL);
-
-#endif
+// #ifdef MOXA7GATE_KM400
+// /// ЗАПУСК ПОТОКА ДЛЯ ОБРАБОТКИ ЗАПРОСОВ ОТ КЛТМ (M340) И МАСТЕРА ТЕЛЕМЕХАНИКИ (РДП)
+// 
+//   /// ищем свободный слот для клиента KM-400
+//   kltm_client=get_current_client();
+// 
+//   Client[kltm_client].status=GW_CLIENT_KM400;
+//   time(&Client[kltm_client].connection_time);
+//   Client[kltm_client].disconnection_time=0;
+//   time(&Client[kltm_client].last_activity_time);
+//   sprintf(Client[j].device_name, "KM-400 MB P%d", 1); //!!! Modbus-master интерфейс должен определяться на стадии инициализации через параметры командной строки
+// 
+// 	Client[kltm_client].rc = pthread_create(
+// 		&Client[kltm_client].tid_srvr,
+// 		NULL,
+// 		kltm_main,
+// 		NULL);
+// 
+// #endif
 
 /// ЗАПОМИНАЕМ ВРЕМЯ ЗАПУСКА ШЛЮЗА
 time(&MoxaDevice.start_time);

@@ -31,17 +31,17 @@ void *iface_tcp_master(void *arg)
 	u8  rsp_adu[MB_UNIVERSAL_ADU_LEN];
 	u16 rsp_adu_len;
 
-  int port_id=((unsigned)arg)>>8;
+  int port_id=((long)arg)>>8;
   int client_id, device_id;
 
-	int status;
+	int status, rnum;
 	unsigned i, j, Q;
 	int connum, csd, active_connection=0, timeout_counter=0;
 	int trans_id;
 
 	GW_Iface	*tcp_master;
 
-	struct timeval tv, tvchk, tv1;
+	struct timeval tv, tvchk, tv1, tv_wait;
 	struct timezone tz;
 
 	int queue_has_query;
@@ -241,6 +241,9 @@ void *iface_tcp_master(void *arg)
 //  gettimeofday(&tv1, NULL);
 //  printf("recv %lu; ", tv1.tv_sec*1000 + tv1.tv_usec/1000);
 
+    rnum=0; do {
+
+
 		status = mbcom_tcp_recv(csd,
 														rsp_adu,
 														&rsp_adu_len);
@@ -309,13 +312,29 @@ void *iface_tcp_master(void *arg)
 						stage_to_stat((MBCOM_RSP<<16) | (MBCOM_TCP_RECV<<8) | status, &Client[client_id].stat);
 				    }
 
-				continue;
+				rnum=4; // continue;
 		  	break;
 
 		  default:;
 		  };
 		
-			 
+		if(!((rsp_adu[TCPADU_TRANS_HI]==req_adu[TCPADU_TRANS_HI]) && // идентификатор транзакции в полученном ответе не соответствует запросу
+				 (rsp_adu[TCPADU_TRANS_LO]==req_adu[TCPADU_TRANS_LO]) )) {
+			rnum++;
+			tv_wait.tv_sec = 2;
+			tv_wait.tv_usec= 0;
+			select(0, NULL, NULL, NULL, &tv_wait);
+			} else rnum=5;
+
+		} while(rnum<4);
+
+	if(rnum==4) { // идентификатор транзакции в полученном ответе не соответствует запросу
+		tcp_master->stat.errors++;
+		continue;
+	  }
+
+  timeout_counter=0;
+
 ///###-----------------------------			
 
 	// восстанавливаем идентификатор транзакции

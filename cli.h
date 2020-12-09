@@ -13,8 +13,6 @@
 #include "interfaces.h"
 #include "moxagate.h"
 
-#include "kltm/kltm.h"
-
 ///=== CLI_H constants
 
 // конфигурационные константы времени компил€ции

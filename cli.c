@@ -338,23 +338,6 @@ int parse_Security(int 	argc, char	*argv[])
       j=2;
 			}
 
-		if(strcmp(argv[id_key_argc[i]],"--kltm_port")==0) {
-      if(id_key_valset[12]==1) return SECURITY_CONF_DUPLICATE;
-
-      // интерфейс
-      arg=argv[id_key_argc[i]+1];
-      if(  ((arg[0]=='P') && (arg[1]>48) && (arg[1]<57)) ||
-           ((arg[0]=='T') && (arg[1]>47) && (arg[1]<52) && (arg[2]>47) && (arg[2]<58))
-        )
-        kltm_port =
-        arg[0]=='P' ? arg[1]-48-1 :
-        10*(arg[1]-48) + (arg[2]-48) - 1 + GATEWAY_T01;
-        else return SECURITY_KLTM_CONF_IFACE; // считаем ошибка в названии интерфейса
-
-      id_key_valset[12]=1;
-      j=2;
-			}
-
 		if(strcmp(argv[id_key_argc[i]],"--show_sys_messages")==0) {j=1; Security.show_sys_messages=1;}
 		if(strcmp(argv[id_key_argc[i]],"--map2Xto4X")==0)         {j=1; MoxaDevice.map2Xto4X=1;}
 		if(strcmp(argv[id_key_argc[i]],"--map3Xto4X")==0)         {j=1; MoxaDevice.map3Xto4X=1;}

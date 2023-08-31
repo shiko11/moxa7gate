@@ -445,7 +445,8 @@ void *iface_tcp_master(void *arg)
 //    else printf("%2.2d:%2.2d:%2.2d ",    tmp_tm.tm_hour, tmp_tm.tm_min, tmp_tm.tm_sec);
     if(rcvhdr.msprec==1) // определяется значение метки времени в формате openTSDB в зависимости от точности
            sprintf(prmtms, "%d%d", rcv_eip[i].tv.tv_sec, (rcv_eip[i].tv.tv_usec + 500) / 1000);
-      else sprintf(prmtms, "%d",   rcv_eip[i].tv.tv_sec+10800); // 10800 - смещение на 3 часа вперёд (учёт часового пояса ПЛК)
+      else sprintf(prmtms, "%d",   rcv_eip[i].tv.tv_sec      ); // 10800 - смещение на 3 часа вперёд (учёт часового пояса ПЛК)
+//    else sprintf(prmtms, "%d",   rcv_eip[i].tv.tv_sec+10800); // 10800 - смещение на 3 часа вперёд (учёт часового пояса ПЛК)
 
   	for(j=0; j<lclhdr.prmnum; j++) {
 

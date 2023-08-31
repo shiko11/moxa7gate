@@ -69,7 +69,7 @@ typedef struct { // БЛОК ЕДИНИЧНОГО ИЗМЕРЕНИЯ ПАРАМЕТРОВ (ЕИП)
 ///=== TSC_H public variables
 
 // максимум четыре буфера истории, относящиеся соответственно к портам T01..T04
-HB_Parameter HB_Param[4][HAGENT_PARAMS_MAX]; // массив характеристик параметров истории
+extern HB_Parameter HB_Param[4][HAGENT_PARAMS_MAX]; // массив характеристик параметров истории
 
 ///=== TSC_H public functions
 

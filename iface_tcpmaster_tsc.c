@@ -14,6 +14,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <netinet/tcp.h>
+#include <unistd.h>
 
 #include <fcntl.h>
 #include <errno.h>

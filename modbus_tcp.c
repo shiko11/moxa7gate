@@ -10,6 +10,7 @@
 ///=== MODBUS_H IMPLEMENTATION
 
 #include <errno.h>
+#include <sys/socket.h>
 
 #include "modbus.h"
 

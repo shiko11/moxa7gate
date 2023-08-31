@@ -28,13 +28,16 @@
 
 ///=== HMI_WEB_H public variables
 
-  int shm_segment_id;
-  int shm_segment_ok;
+extern int shm_segment_id;
+extern int shm_segment_ok;
 
 ///=== HMI_WEB_H public functions
 
 ///--- shared memory operations
 int init_hmi_web_h();
 int close_shm();
+
+int refresh_shm(); // обновление динамических данных, таких как статистика и другие счетчики
+int update_shm();  // обновление статических данных, таких как параметры конфигурации
 
 #endif  /* HMI_WEB_H */

@@ -10,6 +10,8 @@
 
 ///=== INTERFACES_H MODULE IMPLEMENTATION
 
+#include <unistd.h>
+
 #include "interfaces.h"
 #include "moxagate.h"
 #include "messages.h"

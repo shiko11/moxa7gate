@@ -82,7 +82,7 @@ typedef struct {
 
 ///=== MOXAGATE_H public variables
 
-  GW_MoxaDevice MoxaDevice; // данные и параметры устройства MOXAGATE
+extern GW_MoxaDevice MoxaDevice; // данные и параметры устройства MOXAGATE
 
 ///=== MOXAGATE_H public functions
 
@@ -92,5 +92,9 @@ int init_moxagate_memory();
 void *moxa_device(void *arg); /// Потоковая функция обработки запросов к MOXA
 
 int refresh_status_info(); // обновление динамических данных в блоке диагностики шлюза
+
+void create_proxy_request(int index, u8 *tcp_adu, u16 *tcp_adu_len);  // формирование запроса на основе записи из таблицы опроса
+void process_proxy_response(int index, u8 *tcp_adu, u16 tcp_adu_len); // обработка ответа на запрос из таблицы опроса
+void make_tcp_adu(u8 *tcp_adu, int length); // подготовка новой TCP ADU для отправки на TCP сервер
 
 #endif  /* MOXAGATE_H */

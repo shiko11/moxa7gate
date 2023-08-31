@@ -38,7 +38,6 @@ release:
 -DARCHITECTURE_I386 \
 main.c cli.c moxagate.c modbus_rtu.c modbus_tcp.c forwarding.c clients.c \
 iface_tcpserver.c iface_rtumaster.c iface_rtuslave.c iface_tcpmaster_tsc.c tsc.c \
-interfaces.c hmi_klb.c hmi_klb_displays.c hmi_web.c messages.c statistics.c \
-mxlib/mxkeypad_lx.c mxlib/mxlcm_lx.c mxlib/mxwdg_lx.c mxlib/mxbuzzer_lx.c \
+interfaces.c hmi_web.c messages.c statistics.c \
 -lpthread
 	$(STRIP) -s $(NAME)

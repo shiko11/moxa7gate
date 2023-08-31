@@ -19,6 +19,14 @@
 #include "modbus.h"
 #include "messages.h"
 
+///=== MOXAGATE_H public variables
+
+GW_MoxaDevice MoxaDevice; // данные и параметры устройства MOXAGATE
+
+///=== MOXAGATE_H private functions
+
+int common_stat_to_gw4x(int index, GW_StaticData *src);
+
 ///----------------------------------------------------------------------------
 int init_moxagate_h()
   {

@@ -17,6 +17,11 @@
 #include "tsc.h"
 #include "interfaces.h"
 
+///=== TSC_H public variables
+
+// максимум четыре буфера истории, относящиеся соответственно к портам T01..T04
+HB_Parameter HB_Param[4][HAGENT_PARAMS_MAX]; // массив характеристик параметров истории
+
 ///=== TSC_H private variables
 
 HB_Parameter HB_Param_Cross[150]; // сквозной массив характеристик параметров истории

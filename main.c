@@ -267,6 +267,7 @@ int main(int argc, char *argv[])
 
   ///!!! точка останова. Тест функции верификации параметров конфигурации
 
+#ifndef ARCHITECTURE_I386
 /// ИНИЦИАЛИЗАЦИЯ WATCH-DOG ТАЙМЕРА
 if(Security.watchdog_timer==1) {
 	MoxaDevice.mxwdt_handle = mxwdg_open(MOXAGATE_WATCHDOG_PERIOD*1000);
@@ -276,6 +277,7 @@ if(Security.watchdog_timer==1) {
 	  }
   sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_SYSTEM, MOXAGATE_WATCHDOG_STARTED, 0, 0, 0, 0);
 	}
+#endif
 
   // производим выделение памяти для хранения данных локально
   init_moxagate_memory();
@@ -541,7 +543,9 @@ gateway_common_processing();
 	free(MoxaDevice.wData3x);
 	free(MoxaDevice.wData4x);
 
+#ifndef ARCHITECTURE_I386
   if(Security.watchdog_timer==1) mxwdg_close(MoxaDevice.mxwdt_handle);
+#endif
 
 	// PROGRAM TERMINATED
 	time(&curtime);

@@ -16,12 +16,18 @@
 #include <sys/socket.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include "interfaces.h"
 #include "clients.h"
 #include "moxagate.h"
 #include "messages.h"
 #include "hmi_web.h"
+
+///=== CLIENTS_H public variables
+
+  GW_Security Security;
+	GW_Client	Client[MOXAGATE_CLIENTS_NUMBER];
 
 ///=== CLIENTS_H private variables
 
@@ -390,8 +396,10 @@ int gateway_common_processing()
 		// инкрементируем значение счетчика циклов сканирования главного потока программы
 		Security.scan_counter++;
 		
+#ifndef ARCHITECTURE_I386
 		// выполняем сброс watch-dog таймера
 		if(Security.watchdog_timer==1) mxwdg_refresh(MoxaDevice.mxwdt_handle);
+#endif
 		}
 
   // usleep(4000000); /// перед выходом из программы ожидаем, пока cgi-скрипт освободит разделяемую память

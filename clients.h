@@ -147,8 +147,8 @@ typedef struct { // параметры клиентского устройства
 
 ///=== CLIENTS_H public variables
 
-  GW_Security Security;
-	GW_Client	Client[MOXAGATE_CLIENTS_NUMBER];
+extern GW_Security Security;
+extern GW_Client	Client[MOXAGATE_CLIENTS_NUMBER];
 
 ///=== CLIENTS_H public functions
 

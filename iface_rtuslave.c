@@ -11,6 +11,7 @@
 ///=== INTERFACES_H MODULE IMPLEMENTATION
 
 #include <pthread.h>
+#include <unistd.h>
 
 #include "interfaces.h"
 #include "moxagate.h"

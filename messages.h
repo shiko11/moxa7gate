@@ -127,12 +127,14 @@ typedef struct { // ЖУРНАЛ СОБЫТИЙ ШЛЮЗА
 
 ///=== MESSAGES_H public variables
 
-GW_EventLog EventLog;
+extern GW_EventLog EventLog;
 
 ///=== MESSAGES_H public functions
 
 // условно конструктор
 int init_messages_h();
+
+int init_message_templates();
 
 void sysmsg_ex(unsigned char msgtype, unsigned char msgcode,
 								unsigned int prm1,

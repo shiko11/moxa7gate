@@ -55,8 +55,8 @@ int main(int argc, char *argv[])
 
 	struct sembuf operations[1];
 
-	long arg;
 	int P, T;
+	long arg;
 	int ports[MAX_MOXA_PORTS]; // этот массив служит для организации порядка инициализации портов: сначала IFACE_TCPSERVER, затем остальные
 
   int rc;

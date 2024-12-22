@@ -150,7 +150,7 @@
 ///    битов данных, метода контроля потока, режима RTU/ASCII
 typedef struct {
 	int fd;                // системный идентификатор
-	char p_name[12];  // имя порта (устройства в системе)
+	char p_name[13];  // имя порта (устройства в системе)
 	char p_mode[12];  // режим работы 232/485_2W/422/485_4W
 	char speed[12];   // скорость обмена
 	char parity[12];  // контроль четности
@@ -223,8 +223,8 @@ typedef struct {
 
 ///=== INTERFACES_H public variables
 
-GW_Iface IfaceRTU[MAX_MOXA_PORTS];  // данные и параметры интерфейсов RTU
-GW_Iface IfaceTCP[MAX_TCP_SERVERS]; // данные и параметры интерфейсов TCP
+extern GW_Iface IfaceRTU[MAX_MOXA_PORTS];  // данные и параметры интерфейсов RTU
+extern GW_Iface IfaceTCP[MAX_TCP_SERVERS]; // данные и параметры интерфейсов TCP
 
 ///=== INTERFACES_H public functions
 

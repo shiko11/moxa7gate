@@ -10,6 +10,8 @@
 
 ///=== INTERFACES_H MODULE IMPLEMENTATION
 
+#include <unistd.h>
+
 #include "interfaces.h"
 #include "moxagate.h"
 #include "messages.h"
@@ -264,6 +266,6 @@ void *iface_rtu_master(void *arg)
 	}
 	EndRun: ;
 	// THREAD STOPPED
- 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|port_id, 43, 0, 0, 0, 0);
+ 	sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|port_id, IFACE_THREAD_STOPPED, 0, 0, 0, 0);
 	pthread_exit (0);	
 }

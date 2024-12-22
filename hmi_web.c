@@ -19,6 +19,11 @@
 #include "moxagate.h"
 #include "hmi_klb.h"
 
+///=== HMI_WEB_H public variables
+
+int shm_segment_id;
+int shm_segment_ok;
+
 ///=== HMI_WEB_H private variables
 
 char *pointer;
@@ -42,9 +47,6 @@ struct shmid_ds shmbuffer;
 unsigned int i, j, k;
 
 ///=== HMI_WEB_H private functions
-
-int refresh_shm(); // обновление динамических данных, таких как статистика и другие счетчики
-int update_shm();  // обновление статических данных, таких как параметры конфигурации
 
 /*//---for reference purposes only!-----------------------------------------------------
 struct shmid_ds {

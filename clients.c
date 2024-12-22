@@ -16,12 +16,18 @@
 #include <sys/socket.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include "interfaces.h"
 #include "clients.h"
 #include "moxagate.h"
 #include "messages.h"
 #include "hmi_web.h"
+
+///=== CLIENTS_H public variables
+
+GW_Security Security;
+GW_Client   Client[MOXAGATE_CLIENTS_NUMBER];
 
 ///=== CLIENTS_H private variables
 

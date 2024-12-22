@@ -23,12 +23,32 @@ union semun {
 	struct seminfo *__buf;
   };
 
+///=== FRWD_QUEUE_H public variables
+
+// Набор семафоров. Используется для синхронизации работы потоков с очередями.
+int semaphore_id;
+
+GW_AddressMap_Entry AddressMap[MODBUS_ADDRESS_MAX+1]; // нумерация с единицы
+GW_VSlave_Entry      VSlave[MAX_VIRTUAL_SLAVES];
+GW_ProxyQuery_Entry   PQuery[MAX_QUERY_ENTRIES];
+GW_Exception        Exception[MOXAGATE_EXCEPTIONS_NUMBER];
+
+unsigned short vsmem_offset1xStatus, vsmem_offset2xStatus, vsmem_offset3xRegisters, vsmem_offset4xRegisters;
+unsigned short vsmem_amount1xStatus, vsmem_amount2xStatus, vsmem_amount3xRegisters, vsmem_amount4xRegisters;
+unsigned short vsmem_used1xStatus, vsmem_used2xStatus, vsmem_used3xRegisters, vsmem_used4xRegisters;
+
+// массив исключительных ситуаций служит для устранения проблем при обмене, вызванных особенностями
+// конечных устройств modbus-slave. он содержит набор флагов, включающих определенные алгоритмы в
+// определенных ситуациях.
+
+// obsolete
+// исключение для СКС-07, параметр - битовый массив номеров последовательных портов, к которым подключены диогены
+unsigned int exceptions; // obsolete // массив из 16 флагов
+unsigned int except_prm[16]; // obsolete // параметр исключения
+
 ///=== FRWD_QUEUE_H private variables
 
 ///=== FRWD_QUEUE_H private functions
-
-int translateRegisters(int start_address, int length, int *port_id, int *device_id);
-int translateProxyDevice(int start_address, int length, int *port_id, int *device_id);
 
 ///-----------------------------------------------------------------------------
 int init_AddressMap_Entry(int index)

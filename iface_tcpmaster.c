@@ -10,10 +10,14 @@
 
 ///=== INTERFACES_H MODULE IMPLEMENTATION
 
+#include <string.h>
+#include <stdio.h>
+
 #include <pthread.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <netinet/tcp.h>
+#include <unistd.h>
 
 #include <fcntl.h>
 #include <errno.h>

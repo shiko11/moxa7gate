@@ -15,13 +15,13 @@
 #include <sys/socket.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include "modbus.h"
 #include "cli.h"
 #include "interfaces.h"
 #include "moxagate.h"
 #include "messages.h"
-#include "hmi_klb.h"
 #include "hmi_web.h"
 
 ///=== MAIN_H constants

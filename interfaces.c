@@ -16,6 +16,11 @@
 #include "cli.h"
 #include "messages.h"
 
+///=== INTERFACES_H public variables
+
+GW_Iface IfaceRTU[MAX_MOXA_PORTS];  // данные и параметры интерфейсов RTU
+GW_Iface IfaceTCP[MAX_TCP_SERVERS]; // данные и параметры интерфейсов TCP
+
 ///----------------------------------------------------------------------------
 // условно конструктор
 int init_interfaces_h()

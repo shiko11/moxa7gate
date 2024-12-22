@@ -18,8 +18,11 @@
 #include "interfaces.h"
 #include "moxagate.h"
 #include "cli.h"
-#include "hmi_klb.h"
 #include "hmi_web.h"
+
+///=== MESSAGES_H public variables
+
+GW_EventLog EventLog;
 
 ///=== MESSAGES_H private variables
 
@@ -29,8 +32,6 @@ time_t	curtime;
 struct tm *tmd;
 
 ///=== MESSAGES_H private functions
-
-int init_message_templates();
 
 //******************************************************************************
 int init_messages_h()
@@ -166,11 +167,13 @@ strcpy(&EventLog.msg_tpl[A2D(IFACE_THREAD_STARTED)], 			"THREAD STARTED MODE %d 
 strcpy(&EventLog.msg_tpl[A2D(IFACE_THREAD_STOPPED)], 			"THREAD STOPPED");
 strcpy(&EventLog.msg_tpl[A2D(PROGRAM_TERMINATED)], 				"PROGRAM TERMINATED (WORKTIME %d)");
 
+#ifndef ARCHITECTURE_I386
 /// HMI (Человеко-машинный интерфейс) [XX..XX, XX]
 strcpy(&EventLog.msg_tpl[A2D(HMI_KLB_INIT_KEYPAD)], "KEYPAD INITIALIZATION");
 strcpy(&EventLog.msg_tpl[A2D(HMI_KLB_INIT_LCM   )], "LCM INITIALIZATION");
 strcpy(&EventLog.msg_tpl[A2D(HMI_KLB_INIT_BUZZER)], "BUZZER INITIALIZATION");
 strcpy(&EventLog.msg_tpl[A2D(HMI_KLB_INIT_THREAD)], "HMI THREAD INITIALIZATION");
+#endif
 
 strcpy(&EventLog.msg_tpl[A2D(HMI_WEB_ENOENT )], "SHARED MEM: ENOENT");
 strcpy(&EventLog.msg_tpl[A2D(HMI_WEB_EACCES )], "SHARED MEM: EACCES");
@@ -460,7 +463,7 @@ void make_msgstr(	unsigned char msgcode, char *str,
 		sprintf(str, &EventLog.msg_tpl[A2D(msgcode)], prm1, prm2);
 
   // сообщения c одним (первым) строковым параметром
-  if(p1==EVENT_PRM_STR)
+  if((p1==EVENT_PRM_STR)&&(p2==EVENT_PRM_NO))
 		sprintf(str, &EventLog.msg_tpl[A2D(msgcode)], prm1str);
 
   // сообщения c двумя строковыми параметрами

@@ -23,6 +23,7 @@
 #include "moxagate.h"
 #include "messages.h"
 #include "hmi_web.h"
+#include "custom.h"
 
 ///=== CLIENTS_H public variables
 
@@ -481,6 +482,11 @@ int gateway_common_processing()
     refresh_shm();
     // обновляем динамические данные блока диагностики шлюза
     refresh_status_info();
+
+		// копирование данных для обеспечения обмена между устройствами,
+		// подключенными к TCPSlave интерфейсам шлюза
+		// !!! (реализация этой функции уникальна для каждого конкретного случая и должна быть изменена при изменении конфигурации интерфейсов TCPSlave)
+		refresh_tcpslave_data_shes(); // обмен между 1РП и 2РП ПП Шесхарис, система автоматики на MKLogic-500
 
 		// останов программы по внешней команде
 		if(Security.halt==1) break;

@@ -37,6 +37,7 @@ release:
 main.c cli.c moxagate.c modbus_rtu.c modbus_tcp.c forwarding.c clients.c \
 iface_tcpserver.c iface_rtumaster.c iface_rtuslave.c iface_tcpmaster.c \
 iface_tcpslave.c interfaces.c hmi_web.c messages.c statistics.c \
+custom.c \
 -lpthread
 #	$(STRIP) -s $(NAME)
 

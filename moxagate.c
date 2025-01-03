@@ -589,16 +589,21 @@ int refresh_status_info()
 #endif
 
   // регистр-счетчик циклов сканирования
-  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_SCAN_COUNTER] = Security.scan_counter/1000;
+  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_SCAN_COUNTER] = Security.scan_counter; // /1000;
 	
   // статистика TCP-соединений
   MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_CONSTAT_M7G + 0] = Security.accepted_connections_number;
   MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_CONSTAT_M7G + 1] = Security.current_connections_number;
   MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_CONSTAT_M7G + 2] = Security.rejected_connections_number;
   for(i=0; i<MAX_MOXA_PORTS; i++) {
-	  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_CONSTAT_RTU + 3*i] = IfaceRTU[i].Security.accepted_connections_number;
-	  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_CONSTAT_RTU + 3*i] = IfaceRTU[i].Security.current_connections_number;
-	  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_CONSTAT_RTU + 3*i] = IfaceRTU[i].Security.rejected_connections_number;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_CONSTAT_RTU + 3*i + 0] = IfaceRTU[i].Security.accepted_connections_number;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_CONSTAT_RTU + 3*i + 1] = IfaceRTU[i].Security.current_connections_number;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_CONSTAT_RTU + 3*i + 2] = IfaceRTU[i].Security.rejected_connections_number;
+    }
+  for(i=0; i<MAX_TCP_SERVERS; i++) {
+	  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_CONSTAT_TCP + 3*i + 0] = IfaceTCP[i].Security.accepted_connections_number;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_CONSTAT_TCP + 3*i + 1] = IfaceTCP[i].Security.current_connections_number;
+	  MoxaDevice.wData4x[MoxaDevice.status_info + GWINF_CONSTAT_TCP + 3*i + 2] = IfaceTCP[i].Security.rejected_connections_number;
     }
   
   // детальная статистика

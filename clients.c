@@ -118,7 +118,7 @@ int close_clients()
 	for(i=0; i<MOXAGATE_CLIENTS_NUMBER; i++)
     clear_client(i);
 
-	//fcntl(ssd, F_SETFL, fcntl(ssd, F_GETFL, 0) & (~O_NONBLOCK));
+	fcntl(ssd, F_SETFL, fcntl(ssd, F_GETFL, 0) & (~O_NONBLOCK));
 	shutdown(ssd, SHUT_RDWR);
 	close(ssd);
 
@@ -170,6 +170,16 @@ int clear_client(int client)
 			Client[client].status=GW_CLIENT_IDLE;
 
 		  IfaceRTU[Client[client].iface].Security.current_connections_number--;
+
+			time(&Client[client].disconnection_time);
+      break;
+
+    case GW_CLIENT_TCP_SLV:
+		  close(Client[client].csd);
+			Client[client].csd=-1;
+			Client[client].status=GW_CLIENT_IDLE;
+
+		  IfaceTCP[Client[client].iface].Security.current_connections_number--;
 
 			time(&Client[client].disconnection_time);
       break;
@@ -349,6 +359,88 @@ int gateway_common_processing()
 			  }
 	    }
 #endif
+
+    // прием входящих соединений к интерфейсам IFACE_TCPSLAVE и создание клиентских потоков:
+    for(i=0; i<Security.TCPIndex[MAX_TCP_SERVERS]; i++) {
+  
+  	  T=Security.TCPIndex[i];
+  	  if(IfaceTCP[T].modbus_mode!=IFACE_TCPSLAVE) continue;
+
+		  rc=sizeof(addr);
+		  if(IfaceTCP[T].ssd>=0) csd = accept(IfaceTCP[T].ssd, (struct sockaddr *)&addr, &rc);
+		    else continue;
+			
+			// запросов на подключение от клиентов нет
+		  if((csd<0)&&(errno==EAGAIN)) continue;
+			  
+			if (csd < 0) {
+				perror("accept");
+				close(IfaceTCP[T].ssd);
+				IfaceTCP[T].ssd=-1;
+				IfaceTCP[T].modbus_mode=IFACE_ERROR;
+	      strcpy(IfaceTCP[T].bridge_status, "ERR");
+				// CONNECTION ACCEPTED
+				sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, TCPCON_ACCEPTED, 0, 0, 0, 0);
+			  }
+
+     /// ищем свободный слот для нового соединения
+		 current_client=get_current_client();
+
+	   if((IfaceTCP[T].Security.current_connections_number==MAX_TCP_CLIENTS_PER_PORT) ||
+	      (current_client==MOXAGATE_CLIENTS_NUMBER)) {
+
+			 IfaceTCP[T].Security.rejected_connections_number++;
+			 
+			 // CONNECTION REJECTED
+			 if(current_client==MOXAGATE_CLIENTS_NUMBER)
+			   sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_LANTCP, CLIENT_NOTAVAIL, addr.sin_addr.s_addr, 0, 0, 0);
+			   else
+			   sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|GATEWAY_LANTCP, TCPCON_REJECTED, addr.sin_addr.s_addr, 0, 0, 0);
+			 
+			 close(csd);
+	   	 continue;
+	     }
+	  Client[current_client].csd=csd;
+	  	
+		time(&Client[current_client].connection_time);
+    Client[current_client].disconnection_time=0;
+		Client[current_client].ip=addr.sin_addr.s_addr;
+		Client[current_client].port=addr.sin_port;
+		Client[current_client].status=GW_CLIENT_TCP_SLV;
+		clear_stat(&Client[current_client].stat);			 
+		sprintf(Client[current_client].device_name, "%d.%d.%d.%d",
+			addr.sin_addr.s_addr >> 24, (addr.sin_addr.s_addr >> 16) & 0xff,
+			(addr.sin_addr.s_addr >> 8) & 0xff, addr.sin_addr.s_addr & 0xff);
+    Client[current_client].iface=T;
+
+		//printf("ip%X\n", addr.sin_addr.s_addr);
+			
+		  IfaceTCP[T].Security.accepted_connections_number++;
+		  IfaceTCP[T].Security.current_connections_number++;
+
+			// CONNECTION ACCEPTED
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_LANTCP, TCPCON_ACCEPTED, addr.sin_addr.s_addr, current_client, 0, 0);
+			
+			arg=(T<<8)|(current_client&0xff);
+			Client[current_client].rc = pthread_create(
+				&Client[current_client].tid_srvr,
+				NULL,
+				iface_tcp_slave,
+				(void *) arg);
+			
+			if(Client[current_client].rc!=0) {
+				close(IfaceTCP[T].ssd);
+				IfaceTCP[T].ssd=-1;
+				IfaceTCP[T].modbus_mode=IFACE_ERROR;
+	      strcpy(IfaceTCP[T].bridge_status, "ERR");
+
+				clear_client(current_client);
+				Client[current_client].status=GW_CLIENT_ERROR;
+
+	      // THREAD INITIALIZED
+				sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, IFACE_THREAD_INIT, Client[current_client].rc, 0, 0, 0);
+			  }
+	    }
 
 		/// обслуживание TCP-соединений TCP MASTER интерфейсов
 	  for(i=0; i<Security.TCPIndex[MAX_TCP_SERVERS]; i++) {

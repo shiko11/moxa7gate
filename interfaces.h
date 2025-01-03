@@ -15,6 +15,7 @@
 #define INTERFACES_H
 
 #define   MAX_MOXA_PORTS 8
+#define MAX_TCP_SERVERS 32
 
 #include "forwarding.h"
 #include "clients.h"
@@ -122,6 +123,7 @@
 #define IFACE_MOXAGATE			0x0A
 
 #define IFACE_TCPMASTER			15
+#define IFACE_TCPSLAVE			19
 
 // возможные другие состояния интерфейсов шлюза
 #define IFACE_ERROR					16
@@ -190,7 +192,7 @@ typedef struct {
 
 	} GW_TCPIface;
 
-// параметры интерфейса шлюза (условно наследник GW_SerialIface и GW_SerialIface)
+// параметры интерфейса шлюза (условно наследник GW_SerialIface и GW_TCPIface)
 typedef struct {
   
   ///=== условно открытые переменные (public members)
@@ -235,7 +237,8 @@ int check_Iface(GW_Iface *iface);
 void *iface_tcp_server(void *arg); /// Потоковая функция режима GATEWAY_SIMPLE
 void *iface_tcp_master(void *arg); /// Потоковая функция режима IFACE_TCPMASTER
 void *iface_rtu_master(void *arg); /// Потоковая функция режима IFACE_RTUMASTER
-void *iface_rtu_slave(void *arg); /// Потоковая функция режима IFACE_RTUSLAVE
+void *iface_rtu_slave(void *arg);  /// Потоковая функция режима IFACE_RTUSLAVE
+void *iface_tcp_slave(void *arg);  /// Потоковая функция режима IFACE_TCPSLAVE
 
 int forward_response(int port_id, int client_id, u8 *req_adu, u16 req_adu_len, u8 *rsp_adu, u16 rsp_adu_len);
 

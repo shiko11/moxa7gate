@@ -106,7 +106,7 @@ Dim first As Boolean
 
 '**** Œ“ –€¬¿≈Ã ‘¿…À ƒÀﬂ «¿œ»—»
 
-FileToOpen = Application.GetSaveAsFilename(InitialFileName:=FILE_NAME, fileFilter:="Linux Shell Scripts (*.sh), *.sh")
+FileToOpen = Application.GetSaveAsFilename(InitialFileName:=FILE_NAME, fileFilter:="Bash Scripts (*.bash), *.bash")
 
 If FileToOpen <> False Then
     Open FileToOpen For Output Access Write Lock Write As #1
@@ -130,7 +130,7 @@ Else
 End If
 
 
-Print #1, "#! /bin/sh"
+Print #1, "#!/bin/bash"
 Print #1, "#"
 Print #1, "# MOXA7GATE MODBUS GATEWAY SOFTWARE VERSION 1.2"
 Print #1, "# AO NPO SEM, BRYANSK " + CStr(Year(Date))
@@ -616,5 +616,4 @@ For j = 2 To 129
   Next j
 
 End Sub
-
 

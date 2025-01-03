@@ -19,9 +19,6 @@
 
 // конфигурационные константы времени компиляции
 
-///!!! эта константа принадлежит модулю интерфейсов
-#define MAX_TCP_SERVERS 32
-
 #define MAX_TCP_CLIENTS_PER_PORT 4
 #define MOXAGATE_CLIENTS_NUMBER 32
 
@@ -73,6 +70,7 @@
 #define GW_CLIENT_RTU_SLV			5
 #define GW_CLIENT_MOXAGATE		6 // используется при обработке PROXY-запросов
 #define GW_CLIENT_KM400				7
+#define GW_CLIENT_TCP_SLV			8
 
 // параметры, предназначенные для контроля и управления шлюзом
 typedef struct {

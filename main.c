@@ -255,6 +255,17 @@ int main(int argc, char *argv[])
     exit(2);
     }
 
+	// Интерфейсы TCPMaster преобразуются в интферфейсы TCPSlave в случае если их IP адрес совпадает с собственным IP адресом шлюза
+  for(i=0; i<Security.TCPIndex[MAX_TCP_SERVERS]; i++) {
+	  T=Security.TCPIndex[i];
+    if((IfaceTCP[T].modbus_mode==IFACE_TCPMASTER)     &&
+  		 (IfaceTCP[T].ethernet.ip==Security.LAN1Address)  ) {
+
+			IfaceTCP[T].modbus_mode = IFACE_TCPSLAVE;
+			IfaceTCP[T].Security.tcp_port = IfaceTCP[T].ethernet.port;
+		  }
+	  }
+
   ///!!! точка останова. Тест функции верификации параметров конфигурации
 
 #ifndef ARCHITECTURE_I386
@@ -276,10 +287,18 @@ if(Security.watchdog_timer==1) {
 	//-------------------------------------------------------
 
 /* ИНИЦИАЛИЗАЦИЯ СЕМАФОРОВ, НА КОТОРЫХ РАБОТАЮТ ОЧЕРЕДИ ПОРТОВ */
-	if(init_sem_set() != 0) exit(1);
+	if(init_sem_set() != 0) {
+	  close_shm();
+	  semctl(semaphore_id, MAX_MOXA_PORTS, IPC_RMID, NULL);
+		exit(1);
+	  }
 
 /* ИНИЦИАЛИЗАЦИЯ TCP ПОРТА ШЛЮЗА, ПРИНИМАЮЩЕГО СОЕДИНЕНИЯ КО ВСЕМ ПОРТАМ, ЗА ИСКЛЮЧЕНИЕМ ПОРТОВ GATEWAY_SIMPLE */
-  if(init_main_socket() !=0 ) exit(1);
+  if(init_main_socket() !=0 ) {
+	  close_shm();
+	  semctl(semaphore_id, MAX_MOXA_PORTS, IPC_RMID, NULL);
+		exit(1);
+	  }
 
 /* ЗАПУСК ПОТОКОВЫХ ФУНКЦИЙ, ИНИЦИАЛИЗАЦИЯ ПОСЛЕДОВАТЕЛЬНЫХ ПОРТОВ */
 
@@ -397,7 +416,7 @@ if(Security.watchdog_timer==1) {
 				addr.sin_family = AF_INET;
 				addr.sin_port = htons(IfaceRTU[P].Security.tcp_port);
 				addr.sin_addr.s_addr = htonl(INADDR_ANY);
-				//РТЙЧСЪЩЧБЕН УПЛЕФ 
+				//привязываем сокет 
 				if (bind(IfaceRTU[P].ssd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 					perror("bind");
 					//status
@@ -411,7 +430,7 @@ if(Security.watchdog_timer==1) {
 			    break;
 					}
 
-				//УФБЧЙН Ч ПЮЕТЕДШ
+				//ставим в очередь
 				listen(IfaceRTU[P].ssd, MAX_TCP_CLIENTS_PER_PORT);
 				
 				fcntl(IfaceRTU[P].ssd, F_SETFL, fcntl(IfaceRTU[P].ssd, F_GETFL, 0) | O_NONBLOCK);
@@ -439,8 +458,8 @@ if(Security.watchdog_timer==1) {
 	  T=Security.TCPIndex[i];
 	  if(IfaceTCP[T].modbus_mode!=IFACE_TCPMASTER) continue;
 
-        	// мьютекс для синхронизации доступа к памяти
-        	pthread_mutex_init(&IfaceTCP[T].serial_mutex, NULL);
+    // мьютекс для синхронизации доступа к памяти
+    pthread_mutex_init(&IfaceTCP[T].serial_mutex, NULL);
 
 		strcpy(IfaceTCP[T].bridge_status, "INI");
 		init_queue(&IfaceTCP[T].queue, GATEWAY_T01+T);
@@ -455,6 +474,56 @@ if(Security.watchdog_timer==1) {
 
 		operations[0].sem_num=GATEWAY_T01+T;
 		semop(semaphore_id, operations, 1);
+		}
+
+/// ЗАПУСК ПОТОКОВЫХ ФУНКЦИЙ ИНТЕРФЕЙСОВ В РЕЖИМЕ IFACE_TCPSLAVE
+
+  for(i=0; i<Security.TCPIndex[MAX_TCP_SERVERS]; i++) {
+
+	  T=Security.TCPIndex[i];
+	  if(IfaceTCP[T].modbus_mode!=IFACE_TCPSLAVE) continue;
+
+    // мьютекс для синхронизации доступа к памяти
+    pthread_mutex_init(&IfaceTCP[T].serial_mutex, NULL);
+
+    // SOCKET INITIALIZED
+		IfaceTCP[T].ssd = socket(AF_INET, SOCK_STREAM, 0);
+		if (IfaceTCP[T].ssd < 0) {
+			perror("csdet");
+			IfaceTCP[T].modbus_mode=IFACE_ERROR;
+	    ///!!! перенести формирование этой строки в mxshm.c:99[refresh_shm()]
+	    strcpy(IfaceTCP[T].bridge_status, "ERR"); 
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, TCPCON_INITIALIZED, 1, 0, 0, 0);
+	    break;
+			}
+		
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(IfaceTCP[T].Security.tcp_port);
+		addr.sin_addr.s_addr = htonl(INADDR_ANY);
+		//привязываем сокет 
+		if (bind(IfaceTCP[T].ssd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+			perror("bind");
+			//status
+			//exit(1);
+			close(IfaceTCP[T].ssd);
+			IfaceTCP[T].ssd=-1;
+			IfaceTCP[T].modbus_mode=IFACE_ERROR;
+	    ///!!! перенести формирование этой строки в mxshm.c:99[refresh_shm()]
+	    strcpy(IfaceTCP[T].bridge_status, "ERR");
+			sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, TCPCON_INITIALIZED, 2, 0, 0, 0);
+	    break;
+			}
+
+		//ставим в очередь
+		listen(IfaceTCP[T].ssd, MAX_TCP_CLIENTS_PER_PORT);
+		
+		fcntl(IfaceTCP[T].ssd, F_SETFL, fcntl(IfaceTCP[T].ssd, F_GETFL, 0) | O_NONBLOCK);
+
+		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_LANTCP, TCPCON_INITIALIZED, 3, 0, 0, 0);
+	    ///!!! перенести формирование этой строки в mxshm.c:99[refresh_shm()]
+	  strcpy(IfaceTCP[T].bridge_status, "00S");
+		
+//  init_queue(&IfaceTCP[T].queue, GATEWAY_T01+T);
 		}
 
 /// ЗАПУСК ПОТОКА ДЛЯ ОБРАБОТКИ ЗАПРОСОВ НЕПОСРЕДСТВЕННО К MOXA
@@ -478,8 +547,16 @@ gateway_common_processing();
 
 	for(i=0; i<MAX_MOXA_PORTS; i++)
 	  if(IfaceRTU[i].ssd>=0) {
+		  fcntl(IfaceRTU[i].ssd, F_SETFL, fcntl(IfaceRTU[i].ssd, F_GETFL, 0) & (~O_NONBLOCK));
 			shutdown(IfaceRTU[i].ssd, SHUT_RDWR);
 	  	close(IfaceRTU[i].ssd);
+	  	}
+
+	for(i=0; i<MAX_TCP_SERVERS; i++)
+	  if(IfaceTCP[i].ssd>=0) {
+		  fcntl(IfaceTCP[i].ssd, F_SETFL, fcntl(IfaceTCP[i].ssd, F_GETFL, 0) & (~O_NONBLOCK));
+			shutdown(IfaceTCP[i].ssd, SHUT_RDWR);
+	  	close(IfaceTCP[i].ssd);
 	  	}
 
   close_clients(); // условно деструктор модуля CLIETNS_H
@@ -505,4 +582,4 @@ gateway_common_processing();
 
 	return (0);
 }
-///-----------------------------------------------------------------------------------------------------------------
+

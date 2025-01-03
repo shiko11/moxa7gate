@@ -863,22 +863,52 @@ return;
 ///----------------------------------------------------------------------------
 int check_GatewayTCPPorts()
   {
-  int i, j;
+  int i, j, k, p1, p2;
 
-  for(i=GATEWAY_P1; i<=GATEWAY_P8; i++) {
+  for(k=GATEWAY_P1; k<GATEWAY_ASSETS; k++) {
 
-		if(IfaceRTU[i].modbus_mode!=IFACE_TCPSERVER) continue;
+    if( ((k > GATEWAY_P8) && (k < GATEWAY_T01)) ||
+        (k > GATEWAY_T32)
+      ) continue;
 
-    for(j=GATEWAY_P1; j<=GATEWAY_P8; j++)
-      if(	(j!=i) && (IfaceRTU[j].modbus_mode==IFACE_TCPSERVER) &&
-      		(IfaceRTU[j].Security.tcp_port == IfaceRTU[i].Security.tcp_port)) break;
-      
-    if(j!=GATEWAY_P8+1) return (j<<8)|i;
+		p1 = 0;
+    if(k<=GATEWAY_P8) {
+      if(IfaceRTU[k].modbus_mode==IFACE_TCPSERVER) p1 = IfaceRTU[k].Security.tcp_port;
+      } else {
+        i = k-GATEWAY_T01;
+        if((IfaceTCP[i].modbus_mode==IFACE_TCPMASTER)     &&
+					 (IfaceTCP[i].ethernet.ip==Security.LAN1Address)  ) p1 = IfaceTCP[i].ethernet.port;
+        }
 
-    if(IfaceRTU[i].Security.tcp_port == Security.tcp_port) break;
+    for(j=GATEWAY_P1; j<GATEWAY_ASSETS; j++) {
+  
+      if( ((j > GATEWAY_P8) && (j < GATEWAY_T01)) ||
+          (j > GATEWAY_T32)
+        ) continue;
+  
+  		p2 = 0;
+      if(j<=GATEWAY_P8) {
+        if(IfaceRTU[j].modbus_mode==IFACE_TCPSERVER) p2 = IfaceRTU[j].Security.tcp_port;
+        } else {
+          i = j-GATEWAY_T01;
+          if((IfaceTCP[i].modbus_mode==IFACE_TCPMASTER)     &&
+  					 (IfaceTCP[i].ethernet.ip==Security.LAN1Address)  ) p2 = IfaceTCP[i].ethernet.port;
+          }
+
+        
+        //if(	(j!=k) && (p1!=0) && (p2!=0)) printf("\np1 = %d, p2 = %d", p1, p2);
+        if(	(j!=k) && (p1!=0) && (p2!=0) && (p1==p2)) break;
+
+      }
+
+    if(j!=GATEWAY_ASSETS) return (j<<8)|k;
+
+    //if(k==GATEWAY_T01) printf("\np1 = %d, sp = %d\n", p1, Security.tcp_port);
+    if(p1 == Security.tcp_port) break;
+
     }
 
-  if(i!=GATEWAY_P8+1) return (i<<8)|GATEWAY_SECURITY;
+  if(k!=GATEWAY_ASSETS) return (k<<8)|GATEWAY_SECURITY;
 
   return 0;
   }

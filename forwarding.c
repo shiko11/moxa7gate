@@ -170,7 +170,7 @@ int check_ProxyQuery_Entry(int index)
     ) return PQUERY_IFACE;
 	
   // игнорируем адрес MODBUS, если указан не RTU-интерфейс:
-  if(AddressMap[index].iface<=GATEWAY_P8)
+  if(PQuery[index].iface<=GATEWAY_P8)
     if(  (PQuery[index].device < MODBUS_ADDRESS_MIN) ||
          (PQuery[index].device > MODBUS_ADDRESS_MAX)
       ) return PQUERY_MBADDR;

@@ -10,6 +10,13 @@
 
 ///=== INTERFACES_H MODULE IMPLEMENTATION
 
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <errno.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdio.h>
+
 #include "messages.h"
 #include "interfaces.h"
 #include "moxagate.h"
@@ -324,4 +331,213 @@ int process_tcpslave_request(int client_id, u8 *adu, u16 adu_len, u8 *memory_adu
 
 	return 0;
 	}
+
+///----------------------------------------------------------------------------
+void *iface_tcp_slave_mklogic500(void *arg)
+  {
+  u8  req_adu[MB_UNIVERSAL_ADU_LEN];
+  u16 req_adu_len;
+  u8  rsp_adu[MB_UNIVERSAL_ADU_LEN];
+  u16 rsp_adu_len;
+
+  int status;
+
+  int port_id=((long)arg)>>8;
+  int client_id=((long)arg)&0xff;
+
+  GW_Iface *tcp_server;
+
+  struct timeval tv1, tv2;
+  struct timezone tz;
+
+	struct sockaddr_in addr;
+  int csd, rc;
+
+  tcp_server = &IfaceTCP[port_id];
+
+  //tcp_server->clients[client_id].stat.request_time_min=10000; // 10 seconds, must be "this->serial.timeout"
+  //tcp_server->clients[client_id].stat.request_time_max=0;
+  //tcp_server->clients[client_id].stat.request_time_average=0;
+  //for(i=0; i<MAX_LATENCY_HISTORY_POINTS; i++) tcp_server->clients[client_id].stat.latency_history[i]=1000; //ms
+  //tcp_server->clients[client_id].stat.clp=0;
+
+  // THREAD STARTED
+  sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_LANTCP, IFACE_THREAD_STARTED, tcp_server->modbus_mode, client_id, 0, 0);
+
+  while (1) {
+
+    rc=sizeof(addr);
+    if(tcp_server->ssd>=0) csd = accept(tcp_server->ssd, (struct sockaddr *)&addr, &rc);
+      else goto EndRun;
+
+    // запросов на подключение от клиентов нет
+    if((csd<0)&&(errno==EAGAIN)) continue;
+    
+    if (csd < 0) {
+      perror("accept");
+      close(tcp_server->ssd);
+      tcp_server->ssd=-1;
+      tcp_server->modbus_mode=IFACE_ERROR;
+      strcpy(tcp_server->bridge_status, "ERR");
+      // CONNECTION ACCEPTED
+      sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, TCPCON_ACCEPTED, 0, 0, 0, 0);
+      goto EndRun;
+      }
+
+    Client[client_id].csd=csd;
+      
+    time(&Client[client_id].connection_time);
+//  Client[client_id].disconnection_time=0;
+    Client[client_id].ip=addr.sin_addr.s_addr;
+    Client[client_id].port=addr.sin_port;
+//  Client[client_id].status=GW_CLIENT_TCP_SLV;
+//  clear_stat(&Client[client_id].stat);       
+    sprintf(Client[client_id].device_name, "%d.%d.%d.%d",
+      addr.sin_addr.s_addr >> 24, (addr.sin_addr.s_addr >> 16) & 0xff,
+      (addr.sin_addr.s_addr >> 8) & 0xff, addr.sin_addr.s_addr & 0xff);
+//  Client[client_id].iface=port_id;
+  
+    //printf("ip%X\n", addr.sin_addr.s_addr);
+      
+    tcp_server->Security.accepted_connections_number++;
+    tcp_server->Security.current_connections_number++;
+
+    // CONNECTION ACCEPTED
+    // sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_LANTCP, TCPCON_ACCEPTED, addr.sin_addr.s_addr, client_id, 0, 0);
+
+    status = mbcom_tcp_recv(Client[client_id].csd,
+                            req_adu,
+                            &req_adu_len);
+
+    tcp_server->stat.accepted++;
+    Client[client_id].stat.accepted++;
+
+    if(Security.show_data_flow==1)
+      show_traffic(TRAFFIC_TCP_RECV, port_id, client_id, req_adu, req_adu_len);
+
+//    gettimeofday(&tv2, &tz);
+//    Client[client_id].stat.scan_rate=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
+//    if(Client[client_id].stat.scan_rate>MB_SCAN_RATE_INFINITE)
+//      Client[client_id].stat.scan_rate=MB_SCAN_RATE_INFINITE;
+//    gettimeofday(&tv1, &tz);
+
+    switch(status) {
+      case 0:
+        break;
+      case TCP_COM_ERR_NULL:
+      case TCP_ADU_ERR_MIN:
+      case TCP_ADU_ERR_MAX:
+      case TCP_ADU_ERR_PROTOCOL:
+      case TCP_ADU_ERR_LEN:
+      case TCP_ADU_ERR_UID:
+      case TCP_PDU_ERR:
+
+        tcp_server->stat.errors++;
+        Client[client_id].stat.errors++;
+        func_res_err(req_adu[TCPADU_FUNCTION], &tcp_server->stat);
+        func_res_err(req_adu[TCPADU_FUNCTION], &Client[client_id].stat);
+        stage_to_stat((MBCOM_REQ<<16) | (MBCOM_TCP_RECV<<8) | status, &tcp_server->stat);
+        stage_to_stat((MBCOM_REQ<<16) | (MBCOM_TCP_RECV<<8) | status, &Client[client_id].stat);
+
+        sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|port_id, POLL_TCP_RECV, (unsigned) status, client_id, 0, 0);
+
+//      if(status==TCP_COM_ERR_NULL) {
+//        // tcp_server->modbus_mode=MODBUS_PORT_ERROR; /// нельзя так делать
+//        goto EndRun;
+//        }
+        continue;
+        break;
+      default:;
+      };
+  
+    status = process_tcpslave_request(client_id, req_adu, req_adu_len, rsp_adu, &rsp_adu_len);
+
+    if(status!=0) { // учет ошибочных запросов
+      tcp_server->stat.errors++;
+      Client[client_id].stat.errors++;
+      func_res_err(req_adu[TCPADU_FUNCTION], &tcp_server->stat);
+      func_res_err(req_adu[TCPADU_FUNCTION], &Client[client_id].stat);
+      stage_to_stat((MBCOM_REQ<<16) | (MBCOM_FRWD_REQ<<8) | FRWD_TYPE_PROXY, &tcp_server->stat);
+      stage_to_stat((MBCOM_REQ<<16) | (MBCOM_FRWD_REQ<<8) | FRWD_TYPE_PROXY, &Client[client_id].stat);
+      sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|GATEWAY_LANTCP, FRWD_TRANS_PQUERY, client_id, (unsigned) status, 0, 0);
+      // подготовка ответа - исключения
+      rsp_adu[TCPADU_ADDRESS]  = req_adu[TCPADU_ADDRESS];         //device ID
+      rsp_adu[TCPADU_FUNCTION] = req_adu[TCPADU_FUNCTION] | 0x80; /* MODBUS EXCEPTION RESPONSE CODE */
+      rsp_adu[TCPADU_START_HI] = 0x0b;                            /* GATEWAY TARGET DEVICE FAILED TO RESPOND */
+      rsp_adu_len=3;
+      }
+
+    rsp_adu[TCPADU_TRANS_HI]=req_adu[TCPADU_TRANS_HI];
+    rsp_adu[TCPADU_TRANS_LO]=req_adu[TCPADU_TRANS_LO];
+    rsp_adu[TCPADU_PROTO_HI]=req_adu[TCPADU_PROTO_HI];
+    rsp_adu[TCPADU_PROTO_LO]=req_adu[TCPADU_PROTO_LO];
+    rsp_adu[TCPADU_SIZE_HI ]=rsp_adu_len>>8;
+    rsp_adu[TCPADU_SIZE_LO ]=rsp_adu_len&0xff;
+
+    rsp_adu_len += TCPADU_ADDRESS;
+
+    if(Security.show_data_flow==1)
+      show_traffic(TRAFFIC_TCP_SEND, port_id, client_id, rsp_adu, rsp_adu_len);
+
+    status = mbcom_tcp_send(Client[client_id].csd,
+                            rsp_adu,
+                            rsp_adu_len);
+
+    switch(status) {
+      case 0:
+
+        tcp_server->stat.sended++;
+        Client[client_id].stat.sended++;
+        func_res_ok(rsp_adu[TCPADU_FUNCTION], &tcp_server->stat);
+        func_res_ok(rsp_adu[TCPADU_FUNCTION], &Client[client_id].stat);
+
+        break;
+
+      case TCP_COM_ERR_SEND:
+
+        tcp_server->stat.errors++;
+        Client[client_id].stat.errors++;
+        func_res_err(rsp_adu[TCPADU_FUNCTION], &tcp_server->stat);
+        func_res_err(rsp_adu[TCPADU_FUNCTION], &Client[client_id].stat);
+        stage_to_stat((MBCOM_RSP<<16) | (MBCOM_TCP_SEND<<8) | status, &tcp_server->stat);
+        stage_to_stat((MBCOM_RSP<<16) | (MBCOM_TCP_SEND<<8) | status, &Client[client_id].stat);
+
+         sysmsg_ex(EVENT_CAT_DEBUG|EVENT_TYPE_WRN|port_id, POLL_TCP_SEND, (unsigned) status, client_id, 0, 0);
+
+        break;
+
+      default:;
+      };
+
+  gettimeofday(&tv2, &tz);
+
+  close(Client[client_id].csd);
+  Client[client_id].csd=-1;
+  tcp_server->Security.current_connections_number--;
+  time(&Client[client_id].disconnection_time);
+
+  //tcp_server->clients[client_id].stat.request_time_average=(tv2.tv_sec-tv1.tv_sec)*1000+(tv2.tv_usec-tv1.tv_usec)/1000;
+  //tcp_server->clients[client_id].stat.latency_history[tcp_server->clients[client_id].stat.clp]=tcp_server->clients[client_id].stat.request_time_average;
+  //tcp_server->clients[client_id].stat.clp=tcp_server->clients[client_id].stat.clp<MAX_LATENCY_HISTORY_POINTS?tcp_server->clients[client_id].stat.clp+1:0;
+
+  //if(tcp_server->clients[client_id].stat.request_time_min>tcp_server->clients[client_id].stat.request_time_average)
+  //  tcp_server->clients[client_id].stat.request_time_min=tcp_server->clients[client_id].stat.request_time_average;
+  //if(tcp_server->clients[client_id].stat.request_time_max<tcp_server->clients[client_id].stat.request_time_average)
+  //  tcp_server->clients[client_id].stat.request_time_max=tcp_server->clients[client_id].stat.request_time_average;
+
+//  tcp_server->clients[client_id].stat.request_time_average=0;
+//  for(i=0; i<MAX_LATENCY_HISTORY_POINTS; i++)
+//    tcp_server->clients[client_id].stat.request_time_average+=tcp_server->clients[client_id].stat.latency_history[i];
+//  tcp_server->clients[client_id].stat.request_time_average/=MAX_LATENCY_HISTORY_POINTS;
+  
+//  printf("%d\n", tcp_server->stat.request_time_average);
+//  printf("%d:%d\n", tv1.tv_sec, tv1.tv_usec);
+//  printf("%d:%d\n", tv2.tv_sec, tv2.tv_usec);
+  }
+  EndRun: ;
+  clear_client(client_id);
+  // THREAD STOPPED
+   sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_WRN|port_id, IFACE_THREAD_STOPPED, 0, 0, 0, 0);
+  pthread_exit (0);  
+}
 

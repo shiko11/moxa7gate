@@ -38,9 +38,9 @@ int refresh_tcpslave_data_shes() {
       case 0: src= 27 - 1;
               dst=  9 - 1; // СА 2РП ПП «Шесхарис» (основной канал). Чтение 1
               break;
-      case 1: src= 33 - 1;
-              dst= 10 - 1; // СА 2РП ПП «Шесхарис» (основной канал). Чтение 2
-              break;
+//    case 1: src= 33 - 1;
+//            dst= 10 - 1; // СА 2РП ПП «Шесхарис» (основной канал). Чтение 2
+//            break;
       case 2: src= 14 - 1; // СА 2РП ПП «Шесхарис» (основной канал). Запись 1
               dst= 17 - 1;
               break;
@@ -60,6 +60,18 @@ int refresh_tcpslave_data_shes() {
           MoxaDevice.wData4x[PQuery[src].offset+n] ;
 
     }
+
+    src= 33 - 1;
+    dst=  9 - 1; // СА 2РП ПП «Шесхарис» (основной канал). Чтение 1
+    for(n=0; n<23; n++)
+      MoxaDevice.wData4x[PQuery[dst].offset+n+100] =
+      MoxaDevice.wData4x[PQuery[src].offset+n    ] ;
+
+    src= 33 - 1;
+    dst= 10 - 1; // СА 2РП ПП «Шесхарис» (основной канал). Чтение 2
+    for(n=0; n<24; n++)
+      MoxaDevice.wData4x[PQuery[dst].offset+n    ] =
+      MoxaDevice.wData4x[PQuery[src].offset+n+ 25] ;
 
   // DiagState:        uDiagState;                 //   1-  4 - Диагностика - состояние
   // ms1970UTC:        ULINT;                      //   5-  8 - Текущая дата и время UTC в миллисекундах c 01.01.1970 00:00:00.000

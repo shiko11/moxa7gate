@@ -362,6 +362,7 @@ int gateway_common_processing()
 #endif
 
     // прием входящих соединений к интерфейсам IFACE_TCPSLAVE и создание клиентских потоков:
+		if(0) // следующий код не выполняется в связи с модификацией данной версии программы для работы с контроллерами MKLogic-500
     for(i=0; i<Security.TCPIndex[MAX_TCP_SERVERS]; i++) {
   
   	  T=Security.TCPIndex[i];

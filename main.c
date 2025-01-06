@@ -517,14 +517,41 @@ if(Security.watchdog_timer==1) {
 		//ставим в очередь
 		listen(IfaceTCP[T].ssd, MAX_TCP_CLIENTS_PER_PORT);
 		
-		fcntl(IfaceTCP[T].ssd, F_SETFL, fcntl(IfaceTCP[T].ssd, F_GETFL, 0) | O_NONBLOCK);
+		//fcntl(IfaceTCP[T].ssd, F_SETFL, fcntl(IfaceTCP[T].ssd, F_GETFL, 0) | O_NONBLOCK);
 
 		sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_INF|GATEWAY_LANTCP, TCPCON_INITIALIZED, 3, 0, 0, 0);
 	    ///!!! перенести формирование этой строки в mxshm.c:99[refresh_shm()]
 	  strcpy(IfaceTCP[T].bridge_status, "00S");
 		
 //  init_queue(&IfaceTCP[T].queue, GATEWAY_T01+T);
-		}
+
+  /// ищем свободный слот для нового соединения
+  j= get_current_client();
+  Client[j].status= GW_CLIENT_TCP_SLV;
+  Client[j].iface=  T;
+  clear_stat(&Client[j].stat);       
+
+  arg=(T<<8)|(j&0xff);
+  Client[j].rc = pthread_create(
+    &Client[j].tid_srvr,
+    NULL,
+    iface_tcp_slave_mklogic500,
+    (void *) arg);
+
+  if(Client[j].rc!=0) {
+    close(IfaceTCP[T].ssd);
+    IfaceTCP[T].ssd=-1;
+    IfaceTCP[T].modbus_mode=IFACE_ERROR;
+    strcpy(IfaceTCP[T].bridge_status, "ERR");
+
+    clear_client(j);
+    Client[j].status=GW_CLIENT_ERROR;
+
+    // THREAD INITIALIZED
+    sysmsg_ex(EVENT_CAT_MONITOR|EVENT_TYPE_ERR|GATEWAY_LANTCP, IFACE_THREAD_INIT, Client[j].rc, 0, 0, 0);
+    }
+
+  }
 
 /// ЗАПУСК ПОТОКА ДЛЯ ОБРАБОТКИ ЗАПРОСОВ НЕПОСРЕДСТВЕННО К MOXA
 

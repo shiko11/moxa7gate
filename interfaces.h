@@ -239,6 +239,7 @@ void *iface_tcp_master(void *arg); /// Потоковая функция режима IFACE_TCPMASTER
 void *iface_rtu_master(void *arg); /// Потоковая функция режима IFACE_RTUMASTER
 void *iface_rtu_slave(void *arg);  /// Потоковая функция режима IFACE_RTUSLAVE
 void *iface_tcp_slave(void *arg);  /// Потоковая функция режима IFACE_TCPSLAVE
+void *iface_tcp_slave_mklogic500(void *arg); /// Потоковая функция режима IFACE_TCPSLAVE, адаптированная для работы с контроллерами MKLogic-500
 
 int forward_response(int port_id, int client_id, u8 *req_adu, u16 req_adu_len, u8 *rsp_adu, u16 rsp_adu_len);
 
